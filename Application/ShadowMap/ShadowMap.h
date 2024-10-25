@@ -54,6 +54,8 @@ struct FrameData
 	Handle <HwDescriptorSet> zeroDescrSetOfPresentPass;
 	//
 	Handle<HwBufferObject> frameBufferObject;
+
+	bool update = false;
 };
 
 class ShadowMap

@@ -610,6 +610,8 @@ void ShadowMap::base2()
             info.computeGroup = Ogre::Vector3i(1, 1, 1);
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             FrameData* frameData = this->getFrameData(frameIndex);
+            if (frameData->update)
+                return;
             info.descSets.clear();
             info.descSets.push_back(frameData->clearBufferDescrSet);
             rs->pushGroupMarker("clearBuffer");
@@ -683,6 +685,9 @@ void ShadowMap::base2()
         ComputePassCallback callback = [=, this](ComputePassInfo& info) {
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             auto* frameData = this->getFrameData(frameIndex);
+            if (frameData->update)
+                return;
+           // frameData->update = true;
             info.programHandle = filterTrianglesProgramHandle;
             info.computeGroup = Ogre::Vector3i(dispatchGroupCount, 1, 1);
             info.descSets.clear();
@@ -701,19 +706,25 @@ void ShadowMap::base2()
                 barriers[barrierCount++] =
                 {
                     frameData->indirectDrawArgBuffer,
-                    RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_UNORDERED_ACCESS
+                    RESOURCE_STATE_UNORDERED_ACCESS, 
+                    RESOURCE_STATE_INDIRECT_ARGUMENT | RESOURCE_STATE_SHADER_RESOURCE
                 };
 
                 barriers[barrierCount++] =
                 {
                     frameData->indirectDataBuffer,
-                    RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_UNORDERED_ACCESS
+                    RESOURCE_STATE_UNORDERED_ACCESS, 
+                    RESOURCE_STATE_SHADER_RESOURCE
                 };
 
                 for (auto i = 0; i < 2; i++)
                 {
-                    barriers[barrierCount++] = { filteredIndexBuffer[i], RESOURCE_STATE_UNORDERED_ACCESS,
-                                                   RESOURCE_STATE_UNORDERED_ACCESS };
+                    barriers[barrierCount++] = 
+                    { 
+                        filteredIndexBuffer[i], 
+                        RESOURCE_STATE_UNORDERED_ACCESS,
+                        RESOURCE_STATE_INDEX_BUFFER | RESOURCE_STATE_SHADER_RESOURCE
+                    };
                 }
                 
 
@@ -732,7 +743,7 @@ void ShadowMap::base2()
     samplerParams.filterMin = backend::SamplerFilterType::NEAREST;
     samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST;
     samplerParams.compareMode = backend::SamplerCompareMode::NONE;
-    samplerParams.compareFunc = backend::SamplerCompareFunc::LE;
+    samplerParams.compareFunc = backend::SamplerCompareFunc::N;
     samplerParams.wrapS = backend::SamplerWrapMode::CLAMP_TO_EDGE;
     samplerParams.wrapT = backend::SamplerWrapMode::CLAMP_TO_EDGE;
     samplerParams.wrapR = backend::SamplerWrapMode::CLAMP_TO_EDGE;
@@ -777,7 +788,7 @@ void ShadowMap::base2()
 
         std::vector<OgreTexture*> diffuseList;
         bool alpha = true;
-        if (alpha)
+        if (1)
         {
             auto subMeshCount = mesh->getSubMeshCount();
             diffuseList.reserve(256);
@@ -803,12 +814,10 @@ void ShadowMap::base2()
         {
             FrameData& frameData = mFrameData[i];
 
-            auto zeroDescrSetOfShadowPass =
-                rs->createDescriptorSet(zeroLayout);
+            auto zeroDescrSetOfShadowPass = rs->createDescriptorSet(zeroLayout);
             rs->updateDescriptorSetBuffer(zeroDescrSetOfShadowPass, 4, &vertexDataHandle, 1);
 
-            auto thirdDescrSetOfShadowPass =
-                rs->createDescriptorSet(thirdLayout);
+            auto thirdDescrSetOfShadowPass = rs->createDescriptorSet(thirdLayout);
             rs->updateDescriptorSetBuffer(thirdDescrSetOfShadowPass, 0,
                 &frameData.esmUniformBlockHandle, 1);
             frameData.zeroDescrSetOfShadowPass = zeroDescrSetOfShadowPass;
@@ -846,13 +855,23 @@ void ShadowMap::base2()
 
         RenderPassCallback shadowCallback = [=, this](RenderPassInfo& info) {
             auto* rs = Ogre::Root::getSingleton().getRenderSystem();
+            RenderTargetBarrier rtBarriers[] =
+            {
+                {
+                    esmShadowMap,
+                    RESOURCE_STATE_SHADER_RESOURCE,
+                    RESOURCE_STATE_DEPTH_WRITE
+                }
+            };
+            rs->resourceBarrier(0, nullptr, 1, rtBarriers);
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             info.renderTargetCount = 0;
             info.depthTarget.depthStencil = esmShadowMap;
             info.depthTarget.clearValue = { 1.0f, 0.0f };
             rs->pushGroupMarker("DrawEsmShadowMap");
             rs->beginRenderPass(info);
-            rs->bindIndexBuffer(filteredIndexBuffer[VIEW_SHADOW], 4);
+            auto target = VIEW_SHADOW;
+            
             FrameData* frameData = this->getFrameData(frameIndex);
             Handle<HwDescriptorSet> tmp[4];
             tmp[0] = frameData->zeroDescrSetOfShadowPass;
@@ -860,13 +879,12 @@ void ShadowMap::base2()
             tmp[2] = Handle<HwDescriptorSet>();
             tmp[3] = frameData->thirdDescrSetOfShadowPass;
             rs->bindPipeline(meshDepthHandle, meshDepthPipelineHandle, &tmp[0], 4);
-
+            rs->bindIndexBuffer(filteredIndexBuffer[target], 4);
             uint64_t indirectBufferByteOffset =
-                GET_INDIRECT_DRAW_ELEM_INDEX(VIEW_SHADOW, 0, 0) * sizeof(uint32_t);
+                GET_INDIRECT_DRAW_ELEM_INDEX(target, 0, 0) * sizeof(uint32_t);
 
             rs->drawIndexedIndirect(frameData->indirectDrawArgBuffer, indirectBufferByteOffset, 1, 32);
-
-            if (alpha)
+            if (1)
             {
                 tmp[0] = frameData->zeroDescrSetOfShadowPassAlpha;
                 tmp[1] = frameData->firstDescrSetOfShadowPassAlpha;
@@ -986,7 +1004,7 @@ void ShadowMap::base2()
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             info.renderTargetCount = 1;
             info.renderTargets[0].renderTarget =  visibilityBufferTarget;
-            info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+            info.renderTargets[0].clearColour = { 1.0f, 1.0f, 1.0f, 1.000000000f };
             info.depthTarget.depthStencil = winDepth;
             info.depthTarget.clearValue = { 0.0f, 0.0f };
 
@@ -1016,7 +1034,7 @@ void ShadowMap::base2()
             indirectBufferByteOffset =
                 GET_INDIRECT_DRAW_ELEM_INDEX(VIEW_CAMERA, 1, 0) * sizeof(uint32_t);
             rs->drawIndexedIndirect(frameData->indirectDrawArgBuffer, indirectBufferByteOffset, 1, 32);
-            
+            //rs->drawIndexed(1470735, 1, 5587923, 0, 0);
             rs->endRenderPass(info);
             rs->popGroupMarker();
             };
@@ -1192,7 +1210,7 @@ void ShadowMap::base2()
             rs->resourceBarrier(0, nullptr, 2, rtBarriers);
             info.renderTargetCount = 1;
             info.renderTargets[0].renderTarget = shadePassTarget;
-            info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+            info.renderTargets[0].clearColour = { 0.0f, 0.0f, 0.0f, 0.0f };
             info.depthTarget.depthStencil = nullptr;
             info.depthTarget.clearValue = { 0.0f, 0.0f };
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
@@ -1284,8 +1302,7 @@ void ShadowMap::base2()
                 mRenderWindow->getColorTarget(),
                 RESOURCE_STATE_RENDER_TARGET,
                 RESOURCE_STATE_PRESENT
-            }
-            ;
+            };
             rs->resourceBarrier(0, nullptr, 1, rtBarriers);
             };
         UpdatePassCallback updateCallback = [](float delta) {
