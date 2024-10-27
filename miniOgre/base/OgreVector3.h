@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 #include "OgreQuaternion.h"
 #include "OgreVector2.h"
+#include "OgreVector3i.h"
 
 namespace Ogre
 {
@@ -174,6 +175,14 @@ namespace Ogre
         }
 
         inline Vector3 operator - ( const Vector3& rkVector ) const
+        {
+            return Vector3(
+                x - rkVector.x,
+                y - rkVector.y,
+                z - rkVector.z);
+        }
+
+        inline Vector3 operator - (const Vector3i& rkVector) const
         {
             return Vector3(
                 x - rkVector.x,

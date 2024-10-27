@@ -25,7 +25,7 @@ namespace Ogre {
         mRasterState.depthTest = true;
         mRasterState.depthFunc = SamplerCompareFunc::GE;
         mRasterState.colorWrite = true;
-        mRasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+        mRasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
         mRasterState.renderTargetCount = 1;
     }
 

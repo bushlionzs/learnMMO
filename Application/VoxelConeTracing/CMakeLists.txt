@@ -14,9 +14,9 @@ endif()
 macro(add_subdir)
     set(SUBDIR_SRC_LIST)
     foreach(DIR ${ARGV})
-        list(APPEND GAMECLIENT_INC ${CMAKE_CURRENT_SOURCE_DIR}/${DIR})
+        list(APPEND VOXELCONETRACING_INC ${CMAKE_CURRENT_SOURCE_DIR}/${DIR})
 
-        list(APPEND GAMECLIENT_INC_SUBDIR ${DIR})
+        list(APPEND VOXELCONETRACING_INC_SUBDIR ${DIR})
 
         file(GLOB SRC_FILES 
             ${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/*.cpp 
@@ -31,7 +31,7 @@ macro(add_subdir)
 
     source_group(${ARGV0} FILES ${SUBDIR_SRC_LIST})
 
-    list(APPEND GAMECLIENT_SRC_LIST ${SUBDIR_SRC_LIST})
+    list(APPEND VOXELCONETRACING_SRC_LIST ${SUBDIR_SRC_LIST})
 
     unset(SUBDIR_SRC_LIST)
     unset(SRC_FILES)
@@ -45,7 +45,7 @@ add_subdir(../common)
 
 
 
-add_executable(${PROJECT_NAME} ${GAMECLIENT_SRC_LIST})
+add_executable(${PROJECT_NAME} ${VOXELCONETRACING_SRC_LIST})
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG  ${ROOT_INC}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ROOT_INC}/bin)
@@ -54,10 +54,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $
 target_include_directories(${PROJECT_NAME}
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${GAMECLIENT_INC}
+    ${VOXELCONETRACING_INC}
 	${GAMEUTIL_INC}
-	${GAMESHARE_INC}
-	${MIDDLE_INC}
 	${MINIOGRE_INC}
 	${ROOT_INC}/3rd/OIS/include
 	${ROOT_INC}/3rdSource/utils/include

@@ -27,11 +27,12 @@ public:
 	VulkanRenderSystemBase();
 	~VulkanRenderSystemBase();
 public:
-    bool engineInit();
+    virtual bool engineInit(bool raytracing) override;
 
     virtual OgreTexture* createTextureFromFile(
         const std::string& name,
         Ogre::TextureProperty* texProperty);
+    virtual Ogre::OgreTexture* createTexture(Ogre::TextureProperty* texProperty);
     virtual void ready();
     virtual Ogre::RenderWindow* createRenderWindow(
         const String& name, unsigned int width, unsigned int height,
@@ -43,11 +44,34 @@ public:
         uint32_t height, 
         Ogre::PixelFormat format, 
         uint32_t usage) override;
-    //
-    ICamera* _getCamera();
-protected:
-    void updateMainPassCB(ICamera* camera);
+    virtual void frameStart() override;
+    virtual void frameEnd() override;
+    virtual void beginRenderPass(RenderPassInfo& renderPassInfo) override;
+    virtual void endRenderPass(RenderPassInfo& renderPassInfo) override;
+    virtual void bindPipeline(
+        Handle<HwProgram> programHandle,
+        Handle<HwPipeline> pipelineHandle,
+        Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount) override;
+    virtual void draw(uint32_t vertexCount, uint32_t firstVertex) override;
+    virtual void drawIndexed(
+        uint32_t indexCount,
+        uint32_t instanceCount,
+        uint32_t firstIndex,
+        uint32_t vertexOffset,
+        uint32_t firstInstance);
+    virtual void drawIndexedIndirect(
+        Handle<HwBufferObject> drawBuffer,
+        uint32_t offset,
+        uint32_t drawCount,
+        uint32_t stride
+    );
+    virtual void beginComputePass(
+        ComputePassInfo& computePassInfo) override;
+    virtual void endComputePass() override;
 
+    virtual void present() override;
+protected:
     virtual Ogre::OgreTexture* generateCubeMap(
         const std::string& name,
         Ogre::OgreTexture* environmentCube,
@@ -132,7 +156,6 @@ protected:
     VulkanWindow* mRenderWindow;
     VkCommandBuffer mCommandBuffer = VK_NULL_HANDLE;
 
-    std::vector<Ogre::Renderable*> mRenderList;
 
     VkDescriptorPool       pEmptyDescriptorPool;
     VkDescriptorSetLayout  pEmptyDescriptorSetLayout;
@@ -152,4 +175,6 @@ protected:
     VulkanContext mVulkanContext;
 
     VulkanSettings* mVulkanSettings;
+
+    VkPipeline mLastPipeline;
 };

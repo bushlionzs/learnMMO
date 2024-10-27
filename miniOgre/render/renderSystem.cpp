@@ -20,9 +20,9 @@ RenderSystem::~RenderSystem()
 
 }
 
-bool RenderSystem::engineInit()
+bool RenderSystem::engineInit(bool raytracing)
 {
-    return true;
+    return false;
 }
 
 void RenderSystem::render(FrameGraphPassCallback cb)
@@ -118,6 +118,11 @@ void RenderSystem::renderJob(ArenaScope& arena, FrameGraphPassCallback cb)
 OgreTexture* RenderSystem::createTextureFromFile(
     const std::string& name,
     Ogre::TextureProperty* texProperty)
+{
+    return nullptr;
+}
+
+Ogre::OgreTexture* RenderSystem::createTexture(Ogre::TextureProperty* texProperty)
 {
     return nullptr;
 }

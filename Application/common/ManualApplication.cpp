@@ -8,7 +8,6 @@
 #include "OgreCamera.h"
 #include "OgreSceneManager.h"
 #include "OgreRoot.h"
-#include "engine_manager.h"
 #include "OgreRenderWindow.h"
 #include "OgreViewport.h"
 #include "GameTableManager.h"

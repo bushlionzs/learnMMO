@@ -1,6 +1,6 @@
 #ifndef __Math_H__
 #define __Math_H__
-//#include "OgrePrerequisites.h"
+
 namespace Ogre
 {
     class Radian
@@ -160,7 +160,7 @@ namespace Ogre
         ~Math();
 
         static inline int IAbs (int iValue) { return ( iValue >= 0 ? iValue : -iValue ); }
-        static inline int ICeil (float fValue) { return int(ceil(fValue)); }
+        static inline int ICeil (float fValue) { return int(::ceil(fValue)); }
         static inline int IFloor (float fValue) { return int(floor(fValue)); }
         static int ISign (int iValue);
         static inline Real Abs (Real fValue) { return Real(fabs(fValue)); }
@@ -178,7 +178,7 @@ namespace Ogre
 
         static inline Radian ATan2 (Real fY, Real fX) { return Radian(atan2(fY,fX)); }
 
-        static inline Real Ceil (Real fValue) { return Real(ceil(fValue)); }
+        static inline Real Ceil (Real fValue) { return Real(::ceil(fValue)); }
         static inline bool isNaN(Real f)
         {
             return f != f;
@@ -339,6 +339,8 @@ namespace Ogre
             return std::max(std::min(val, maxval), minval);
         }
 
+        static Vector3 trunc(const Vector3& v);
+        static Vector3 ceil(const Vector3& v);
         static Matrix4 makeTranslateMatrix(const Vector3& position);
         static Matrix4 makeRotateMatrix(const Matrix4& m, float degree, const Ogre::Vector3& v);
         static Matrix4 makeRotateMatrixYX(const float radiansX, const float radiansY);

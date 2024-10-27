@@ -35,12 +35,15 @@ private:
 		Handle<HwPipeline> pipelineHandle);
 	void updateObject(Ogre::Renderable* r, Handle<HwPipeline> pipelineHandle);
 private:
-	SceneManager* mSceneManager;
-	GameCamera* mGameCamera;
-	RenderSystem* mRenderSystem;
-	RenderWindow* mRenderWindow;
+	SceneManager* mSceneManager = nullptr;
+	GameCamera* mGameCamera = nullptr;
+	RenderSystem* mRenderSystem = nullptr;
+	RenderWindow* mRenderWindow = nullptr;
 	FrameConstantBuffer mFrameConstantBuffer;
 	std::vector<Handle<HwBufferObject>> mFrameBufferObjectList;
 
 	std::vector<FrameData> mFrameData;
+
+	OgreTexture* voxelOpacityTexture = nullptr;
+	OgreTexture* voxelRadianceTexture = nullptr;
 };

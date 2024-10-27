@@ -17,6 +17,8 @@
 #include "OgreRenderable.h"
 #include "OgreVertexData.h"
 #include "OgreTextureUnit.h"
+#include "VoxelDef.h"
+#include "VoxelizationPass.h"
 
 VoxelConeTracingApp::VoxelConeTracingApp()
 {
@@ -38,21 +40,25 @@ void VoxelConeTracingApp::setup(
 	mGameCamera   = gameCamera;
 	mSceneManager = sceneManager;
 	mRenderWindow = renderWindow;
-	std::string meshname = "Sponza.gltf";
+	std::string meshname = "sponza.gltf";
 	std::shared_ptr<Mesh> mesh = MeshManager::getSingletonPtr()->load(meshname);
 	auto rootNode = sceneManager->getRoot();
 	Entity* sponza = sceneManager->createEntity(meshname, meshname);
 	SceneNode* sponzaNode = rootNode->createChildSceneNode(meshname);
 	sponzaNode->attachObject(sponza);
-
-
-	gameCamera->updateCamera(Ogre::Vector3(0, -50, 0.0f), Ogre::Vector3(0.f, -90.f, 0.0f));
+	auto h = 20.0f;
+	auto camPos = Ogre::Vector3(0, h, 0.0f);
+	auto targetPos = Ogre::Vector3(-1, h, 0.0f);
+	gameCamera->lookAt(camPos, targetPos);
 	gameCamera->setMoveSpeed(200);
-	
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+		Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 5000.f);
+	gameCamera->getCamera()->updateProjectMatrix(m);
 	mRenderSystem = rs;
-	auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
-
-
+	
 	auto width = ogreConfig.width;
 	auto height = ogreConfig.height;
 	mFrameConstantBuffer.RenderTargetSize =
@@ -73,7 +79,7 @@ void VoxelConeTracingApp::setup(
 
 	auto* cam = gameCamera->getCamera();
 	auto* light = sceneManager->createLight("light");
-	if(1)
+	if(0)
 	{
 		RenderPassInput input;
 		input.color = renderWindow->getColorTarget();
@@ -91,6 +97,7 @@ void VoxelConeTracingApp::setup(
 	auto numFrame = ogreConfig.swapBufferCount;
 	mFrameData.resize(numFrame);
 	//SceneGeometryPass
+	if(1)
 	{
 		auto* albedoTarget = rs->createRenderTarget("albedoTarget",
 			width, height, Ogre::PixelFormat::PF_A8R8G8B8, Ogre::TextureUsage::COLOR_ATTACHMENT);
@@ -101,7 +108,7 @@ void VoxelConeTracingApp::setup(
 		auto* emissionTarget = rs->createRenderTarget("emissionTarget",
 			width, height, Ogre::PixelFormat::PF_A8R8G8B8, Ogre::TextureUsage::COLOR_ATTACHMENT);
 		auto* depthTarget = mRenderSystem->createRenderTarget(
-			"depthTarget", 2048, 2048, Ogre::PF_DEPTH32_STENCIL8,
+			"depthTarget", 2048, 2048, Ogre::PF_DEPTH32F,
 			Ogre::TextureUsage::DEPTH_ATTACHMENT);
 
 		ShaderInfo shaderInfo;
@@ -110,8 +117,11 @@ void VoxelConeTracingApp::setup(
 		auto programHandle = rs->createShaderProgram(shaderInfo, nullptr);
 		backend::RasterState rasterState{};
 		auto targetCount = 4;
+		rasterState.depthFunc = SamplerCompareFunc::GE;
 		rasterState.renderTargetCount = targetCount;
 		rasterState.depthWrite = true;
+		rasterState.depthTest = true;
+		rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
 		auto pipelineHandle = rs->createPipeline(rasterState, programHandle);
 		RenderPassCallback sceneGeometryPassCallback = [=, this](RenderPassInfo& info) {
 			info.renderTargetCount = targetCount;
@@ -125,7 +135,7 @@ void VoxelConeTracingApp::setup(
 			info.renderTargets[3].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
 			info.depthTarget.depthStencil = depthTarget;
 			
-			info.depthTarget.clearValue = { 1.0f, 0.0f };
+			info.depthTarget.clearValue = { 0.0f, 0.0f };
 			info.cam = cam;
 			static EngineRenderList engineRenerList;
 			sceneManager->getSceneRenderList(cam, engineRenerList, false);
@@ -140,7 +150,7 @@ void VoxelConeTracingApp::setup(
 			{
 				renderObject(r, programHandle, pipelineHandle);
 			}
-			rs->endRenderPass();
+			rs->endRenderPass(info);
 			};
 		UpdatePassCallback updateCallback = [=, this](float delta) {
 			};
@@ -150,6 +160,13 @@ void VoxelConeTracingApp::setup(
 			sceneGeometryPassCallback, updateCallback);
 		renderPipeline->addRenderPass(sceneGeometryPass);
 	}
+
+	//VoxelizationPass
+	VoxelizationPass::VoxelizationPassInfo voxelizaitonPassInfo;
+	voxelizaitonPassInfo.renderPipeline = renderPipeline;
+
+	VoxelizationPass* voxelizationPass = new VoxelizationPass(voxelizaitonPassInfo);
+	voxelizationPass->init(16.f);
 }
 
 void VoxelConeTracingApp::update(float delta)

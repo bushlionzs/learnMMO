@@ -206,22 +206,31 @@ PassBase* createUserDefineRenderPass(
 class ComputePass : public PassBase
 {
 public:
-	ComputePass(ComputePassCallback userCallback)
+	ComputePass(ComputePassCallback userCallback,
+		UpdatePassCallback updateCallback)
 	{
 		mCallback = userCallback;
+		mUpdateCallback = updateCallback;
 	}
 
 	void execute(RenderSystem* rs)
 	{
 		mCallback(mComputePassInfo);
-		
+	}
+
+	void update(float delta)
+	{
+		mUpdateCallback(delta);
 	}
 private:
 	ComputePassInfo mComputePassInfo;
 	ComputePassCallback mCallback;
+	UpdatePassCallback  mUpdateCallback;
 };
 
-PassBase* createComputePass(ComputePassCallback userCallback)
+PassBase* createComputePass(
+	ComputePassCallback userCallback,
+	UpdatePassCallback updateCallback)
 {
-	return new ComputePass(userCallback);
+	return new ComputePass(userCallback, updateCallback);
 }

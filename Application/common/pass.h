@@ -1,6 +1,7 @@
 #pragma once 
 #include <DriverBase.h>
 #include <OgreCommon.h>
+#include <engine_struct.h>
 class GameCamera;
 class RenderSystem;
 namespace Ogre
@@ -49,4 +50,6 @@ PassBase* createUserDefineRenderPass(
 	RenderPassCallback renderCallback, 
 	UpdatePassCallback updateCallback);
 
-PassBase* createComputePass(ComputePassCallback userCallback);
+PassBase* createComputePass(
+	ComputePassCallback userCallback,
+	UpdatePassCallback updateCallback);

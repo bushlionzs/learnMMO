@@ -925,6 +925,16 @@ namespace Ogre
 
     }
 
+    Vector3 Math::trunc(const Vector3& v)
+    {
+        return Vector3(::trunc(v.x), ::trunc(v.y), ::trunc(v.z));
+    }
+
+    Vector3 Math::ceil(const Vector3& v)
+    {
+        return Vector3(::ceil(v.x), ::ceil(v.y), ::ceil(v.z));
+    }
+
     Matrix4 Math::makeTranslateMatrix(const Vector3& position)
     {
         Matrix4 m = Ogre::Matrix4::IDENTITY;

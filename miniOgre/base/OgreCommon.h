@@ -49,30 +49,10 @@ THE SOFTWARE.
 #include <DriverBase.h>
 
 namespace Ogre {
-    struct Vector3i
-    {
-        int32_t _x, _y, _z;
-        Vector3i()
-        {
-
-        }
-        Vector3i(int32_t x, int32_t y, int32_t z)
-        {
-            _x = x;
-            _y = y;
-            _z = z;
-        }
-
-        bool operator != (Vector3i& other)
-        {
-            return _x != other._x ||
-                _y != other._y ||
-                _z != other._z;
-        }
-    };
+    
 
     /// Fast general hashing algorithm
-    inline uint32_t FastHash (const char * data, int len, uint32 hashSoFar = 0) {
+    inline uint32_t FastHash (const char * data, int len, uint32_t hashSoFar = 0) {
         assert(false);
         /*uint32 ret;
         MurmurHash3_x86_32(data, len, hashSoFar, &ret);
@@ -81,7 +61,7 @@ namespace Ogre {
     }
     /// Combine hashes with same style as boost::hash_combine
     template <typename T>
-    uint32 HashCombine (uint32 hashSoFar, const T& data)
+    uint32_t HashCombine (uint32_t hashSoFar, const T& data)
     {
         return FastHash((const char*)&data, sizeof(T), hashSoFar);
     }
@@ -956,7 +936,7 @@ namespace Ogre {
             }
             
             explicit Box(const Vector3i& size)
-                : left(0), top(0), right(size._x), bottom(size._y), front(0), back(size._z)
+                : left(0), top(0), right(size.x), bottom(size.y), front(0), back(size.z)
             {
             }
 

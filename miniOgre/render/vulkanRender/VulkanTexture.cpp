@@ -213,6 +213,10 @@ void VulkanTexture::createImage(
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     
+    if (mTextureProperty._texType == TEX_TYPE_3D)
+    {
+        imageInfo.imageType = VK_IMAGE_TYPE_3D;
+    }
     imageInfo.extent = { width, height, 1 };
 
     imageInfo.mipLevels = mMipLevels;
@@ -282,6 +286,10 @@ VkImageView VulkanTexture::createImageView(VkImage image, VkFormat format)
     else
     {
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        if (mTextureProperty._texType == TEX_TYPE_3D)
+        {
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_3D;
+        }
     }
     
     viewInfo.format = format;

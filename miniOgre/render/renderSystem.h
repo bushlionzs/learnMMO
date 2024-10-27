@@ -33,14 +33,14 @@ class RenderSystem
 public:
     RenderSystem();
     ~RenderSystem();
-    virtual bool engineInit();
+    virtual bool engineInit(bool raytracing = false);
     virtual void frameStart() = 0;
     virtual void frameEnd() = 0;
     virtual void render(FrameGraphPassCallback cb);
     virtual Ogre::OgreTexture* createTextureFromFile(
         const std::string& name,
         Ogre::TextureProperty* texProperty);
-
+    virtual Ogre::OgreTexture* createTexture(Ogre::TextureProperty* texProperty);
     virtual Ogre::RenderWindow* createRenderWindow(
         const String& name, unsigned int width, unsigned int height,
         const NameValuePairList* miscParams) = 0;

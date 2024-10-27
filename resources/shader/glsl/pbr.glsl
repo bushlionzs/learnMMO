@@ -32,7 +32,6 @@ void main()
     outNormal = mat3(cbPerObject.gWorld) * normal;
     outUV0 = texcoord;
 	gl_Position = cbPass.gViewProj * float4(outWorldPos, 1.0f);
-	gl_Position.y = -gl_Position.y;
 }
 
 #endif //VERTEX_SHADER
@@ -364,6 +363,14 @@ void main()
 #ifdef HAS_BASECOLORMAP
     float4 baseColorSource = texture(albedo_pbr, inUV0);
     float4 baseColor = SRGBtoLINEAR(baseColorSource) * pbrMaterial.u_BaseColorFactor;
+	
+	if (pbrMaterial.alpha_mask > 0)
+	{
+		if (baseColor.a < pbrMaterial.alpha_mask_cutoff)
+		{
+			discard;
+		}
+	}
 #else
     float4 baseColor = vec4(0.04f, 0.04f, 0.04f, 1.0f);
 #endif
