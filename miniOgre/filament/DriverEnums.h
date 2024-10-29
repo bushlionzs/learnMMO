@@ -498,6 +498,30 @@ enum  BufferObjectBinding
     BufferObjectBinding_Uniform = BufferObjectBinding_Index << 1,
     BufferObjectBinding_Storge = BufferObjectBinding_Uniform << 1,
     BufferObjectBinding_InDirectBuffer = BufferObjectBinding_Storge << 1,
+    BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
+};
+
+enum BufferCreationFlags :uint16_t
+{
+    /// Default flag (Buffer will use aliased memory, buffer will not be cpu accessible until mapBuffer is called)
+    BUFFER_CREATION_FLAG_NONE = 0x0,
+    /// Buffer will allocate its own memory (COMMITTED resource)
+    BUFFER_CREATION_FLAG_OWN_MEMORY_BIT = 0x1,
+    /// Buffer will be persistently mapped
+    BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT = 0x2,
+    /// Use ESRAM to store this buffer
+    BUFFER_CREATION_FLAG_ESRAM = 0x4,
+    /// Flag to specify not to allocate descriptors for the resource
+    BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION = 0x8,
+
+    BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT = 0x10,
+    BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS = 0x20,
+    BUFFER_CREATION_FLAG_SHADER_BINDING_TABLE = 0x40,
+    BUFFER_CREATION_FLAG_MARKER = 0x80,
+
+
+    BUFFER_CREATION_FLAG_HOST_COHERENT = 0x100, //vulkan only
+    BUFFER_CREATION_FLAG_HOST_VISIBLE = 0x200,  // vulkan only
 };
 
 //! Face culling Mode

@@ -67,7 +67,9 @@ namespace Ogre {
             FrameResourceInfo* resourceInfo = &mFrameResourceInfoList[i];
             resourceInfo->update = false;
             Handle<HwBufferObject> objectBufferHandle =
-                rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, BufferUsage::DYNAMIC,
+                rs->createBufferObject(
+                    BufferObjectBinding::BufferObjectBinding_Uniform, 
+                    0,
                     sizeof(ObjectConstantBuffer));
             resourceInfo->modelObjectHandle = objectBufferHandle;
 
@@ -75,14 +77,14 @@ namespace Ogre {
             if (mat->isPbr())
             {
                 matBufferHandle =
-                    rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, BufferUsage::DYNAMIC,
+                    rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, 0,
                         sizeof(PbrMaterialConstanceBuffer));
             }
             else
             {
                 matBufferHandle =
                     rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform,
-                        BufferUsage::DYNAMIC, sizeof(GeneralMaterialConstantBuffer));
+                        0, sizeof(GeneralMaterialConstantBuffer));
             }
 
             resourceInfo->matObjectHandle = matBufferHandle;
@@ -105,7 +107,7 @@ namespace Ogre {
                 resourceInfo->skinObjectHandle =
                     rs->createBufferObject(
                         BufferObjectBinding::BufferObjectBinding_Uniform,
-                        BufferUsage::DYNAMIC,
+                        0,
                         sizeof(SkinnedConstantBuffer));
 
                 rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 3,
@@ -161,7 +163,7 @@ namespace Ogre {
                         tex = defaultTex.get();
                     }
                     rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, i, &tex, 1, false);
+                        resourceInfo->firstSet, i, &tex, 1, TextureBindType_Combined_Image_Sampler);
                 }
                 
             }
@@ -174,7 +176,7 @@ namespace Ogre {
                     OgreTexture* tex = texs[i]->getRaw();
 
                     rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, index, &tex, 1, false);
+                        resourceInfo->firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
                     index++;
                 }
 
@@ -186,7 +188,7 @@ namespace Ogre {
                     OgreTexture* tex = texs[i]->getRaw();
 
                     rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, index, &tex, 1, false);
+                        resourceInfo->firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
                 }
             }
         }

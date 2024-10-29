@@ -102,7 +102,6 @@ static  std::vector<const char*> deviceExtensions =
 
 void VulkanHelper::_initialise(VulkanPlatform* platform)
 {
-    this->mSettings.mRayPipelineSupported = false;
     mPlatform = platform;
 
     if (mSettings.mRayPipelineSupported)
@@ -116,6 +115,8 @@ void VulkanHelper::_initialise(VulkanPlatform* platform)
    
 
     Platform::DriverConfig config;
+
+    config.enableRayTracing = mSettings.mRayPipelineSupported;
 
     mPlatform->createDriver(nullptr, config);
 
@@ -190,38 +191,40 @@ std::shared_ptr<OgreTexture>& VulkanHelper::getDefaultTexture()
     return mDefaultTexture;
 }
 
-VkCommandBuffer VulkanHelper::beginSingleTimeCommands()
+VkCommandBuffer VulkanHelper::beginTransferCommand()
 {
-    VkCommandBuffer commandBuffer;
+    if (mTransfercommandBuffer == VK_NULL_HANDLE)
+    {
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = mSingleCommandPool;
 
-    VkCommandBufferAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = mSingleCommandPool;
+        // 
+        allocInfo.commandBufferCount = 1;
 
-    // 
-    allocInfo.commandBufferCount = 1;
-
-    vkAllocateCommandBuffers(mVKDevice, &allocInfo, &commandBuffer);
+        vkAllocateCommandBuffers(mVKDevice, &allocInfo, &mTransfercommandBuffer);
+    }
+    
 
 
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     //beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    return commandBuffer;
+    vkBeginCommandBuffer(mTransfercommandBuffer, &beginInfo);
+    return mTransfercommandBuffer;
 }
 
-void VulkanHelper::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+void VulkanHelper::endTransferCommand(VkCommandBuffer commandBuffer)
 {
+    assert_invariant(commandBuffer == mTransfercommandBuffer);
     vkEndCommandBuffer(commandBuffer);
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    auto queue = mPlatform->getGraphicsQueue();
+    auto queue = mPlatform->getTransferQueue();
 
     auto result = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 
@@ -232,13 +235,19 @@ void VulkanHelper::endSingleTimeCommands(VkCommandBuffer commandBuffer)
     vkQueueWaitIdle(queue);
 }
 
+uint32_t VulkanHelper::getTransferFamilyIndex()
+{
+    return mPlatform->getTransferQueueFamilyIndex();
+}
+
+
 void VulkanHelper::createCommandPool()
 {
     VkCommandPoolCreateInfo cmdPoolInfo = {};
 
 
     cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmdPoolInfo.queueFamilyIndex = mPlatform->getGraphicsQueueIndex();
+    cmdPoolInfo.queueFamilyIndex = mPlatform->getTransferQueueIndex();
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     if (vkCreateCommandPool(mVKDevice, &cmdPoolInfo, nullptr, &mSingleCommandPool) != VK_SUCCESS)

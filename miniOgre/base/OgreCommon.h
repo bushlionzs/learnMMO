@@ -388,6 +388,12 @@ namespace Ogre {
       SMT_FRAME_SEQUENTIAL
     };
 
+    enum IndexType
+    {
+        INDEX_TYPE_UINT32 = 0,
+        INDEX_TYPE_UINT16,
+    };
+
     enum ShaderType
     {
         VertexShader,
@@ -424,6 +430,13 @@ namespace Ogre {
         QUEUE_TYPE_COMPUTE,
         MAX_QUEUE_TYPE
     } QueueType;
+
+    enum TextureBindType
+    {
+        TextureBindType_Image = 0,
+        TextureBindType_Combined_Image_Sampler,
+        TextureBindType_RW_Image
+    };
     /** Flags for the Instance Manager when calculating ideal number of instances per batch */
     enum InstanceManagerFlags
     {
@@ -992,6 +1005,77 @@ namespace Ogre {
         NameValuePairList   miscParams;
     };
 
+    enum VertexElementType
+    {
+        VET_FLOAT1 = 0,
+        VET_FLOAT2 = 1,
+        VET_FLOAT3 = 2,
+        VET_FLOAT4 = 3,
+
+        VET_SHORT1 = 5,  ///< @deprecated (see #VertexElementType note)
+        VET_SHORT2 = 6,
+        VET_SHORT3 = 7,  ///< @deprecated (see #VertexElementType note)
+        VET_SHORT4 = 8,
+        VET_UBYTE4 = 9,
+        _DETAIL_SWAP_RB = 10,
+
+        // the following are not universally supported on all hardware:
+        VET_DOUBLE1 = 12,
+        VET_DOUBLE2 = 13,
+        VET_DOUBLE3 = 14,
+        VET_DOUBLE4 = 15,
+        VET_USHORT1 = 16,  ///< @deprecated (see #VertexElementType note)
+        VET_USHORT2 = 17,
+        VET_USHORT3 = 18,  ///< @deprecated (see #VertexElementType note)
+        VET_USHORT4 = 19,
+        VET_INT1 = 20,
+        VET_INT2 = 21,
+        VET_INT3 = 22,
+        VET_INT4 = 23,
+        VET_UINT1 = 24,
+        VET_UINT2 = 25,
+        VET_UINT3 = 26,
+        VET_UINT4 = 27,
+        VET_BYTE4 = 28,  ///< signed bytes
+        VET_BYTE4_NORM = 29,   ///< signed bytes (normalized to -1..1)
+        VET_UBYTE4_NORM = 30,  ///< unsigned bytes (normalized to 0..1)
+        VET_SHORT2_NORM = 31,  ///< signed shorts (normalized to -1..1)
+        VET_SHORT4_NORM = 32,
+        VET_USHORT2_NORM = 33, ///< unsigned shorts (normalized to 0..1)
+        VET_USHORT4_NORM = 34,
+        VET_INT_10_10_10_2_NORM = 35, ///< signed int (normalized to 0..1)
+        VET_COLOUR = VET_UBYTE4_NORM,  ///< @deprecated use VET_UBYTE4_NORM
+        VET_COLOUR_ARGB = VET_UBYTE4_NORM,  ///< @deprecated use VET_UBYTE4_NORM
+        VET_COLOUR_ABGR = VET_UBYTE4_NORM,  ///< @deprecated use VET_UBYTE4_NORM
+    };
+
+    enum VertexElementSemantic {
+        /// Position, typically VET_FLOAT3
+        VES_POSITION = 1,
+        /// Blending weights
+        VES_BLEND_WEIGHTS = 2,
+        /// Blending indices
+        VES_BLEND_INDICES = 3,
+        /// Normal, typically VET_FLOAT3
+        VES_NORMAL = 4,
+        /// Colour, typically VET_UBYTE4
+        VES_COLOUR = 5,
+        /// Secondary colour. Generally free for custom data. Means specular with OpenGL FFP.
+        VES_COLOUR2 = 6,
+        /// Texture coordinates, typically VET_FLOAT2
+        VES_TEXTURE_COORDINATES = 7,
+        /// Binormal (Y axis if normal is Z)
+        VES_BINORMAL = 8,
+        /// Tangent (X axis if normal is Z)
+        VES_TANGENT = 9,
+        /// The  number of VertexElementSemantic elements (note - the first value VES_POSITION is 1) 
+        VES_COUNT = 9,
+        /// @deprecated use VES_COLOUR
+        VES_DIFFUSE = VES_COLOUR,
+        /// @deprecated use VES_COLOUR2
+        VES_SPECULAR = VES_COLOUR2
+    };
+
     enum BackendResourceState
     {
         RESOURCE_STATE_UNDEFINED = 0,
@@ -1022,6 +1106,23 @@ namespace Ogre {
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
     } BufferBarrier;
+
+    typedef struct TextureBarrier
+    {
+        OgreTexture* pTexture;
+        uint32_t mCurrentState;
+        uint32_t mNewState;
+        uint8_t       mBeginOnly : 1;
+        uint8_t       mEndOnly : 1;
+        uint8_t       mAcquire : 1;
+        uint8_t       mRelease : 1;
+        uint8_t       mQueueType : 5;
+        /// Specifiy whether following barrier targets particular subresource
+        uint8_t       mSubresourceBarrier : 1;
+        /// Following values are ignored if mSubresourceBarrier is false
+        uint8_t       mMipLevel : 7;
+        uint16_t      mArrayLayer;
+    } TextureBarrier;
 
     typedef struct RenderTargetBarrier
     {

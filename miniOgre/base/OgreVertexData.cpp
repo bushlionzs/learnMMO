@@ -16,7 +16,7 @@ void VertexSlotInfo::createBuffer(uint32_t vertexSize, uint32_t vertexCount)
 
     mVertexBufferHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding::BufferObjectBinding_Vertex,
-        BufferUsage::DYNAMIC,
+        BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
         vertexSize * vertexCount,
         "VertexBuffer");
 }

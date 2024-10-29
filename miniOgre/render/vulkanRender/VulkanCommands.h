@@ -192,7 +192,7 @@ namespace filament::backend {
 
         // Submits the current command buffer if it exists, then sets "current" to null.
         // If there are no outstanding commands then nothing happens and this returns false.
-        bool flush();
+        bool flush(bool waitCmd);
 
         // Returns the "rendering finished" semaphore for the most recent flush and removes
         // it from the existing dependency chain. This is especially useful for setting up

@@ -171,7 +171,7 @@ void RenderSystem::present()
 
 Handle<HwBufferObject> RenderSystem::createBufferObject(
     uint32_t bindingType,
-    BufferUsage usage,
+    uint32_t bufferCreationFlags,
     uint32_t byteCount,
     const char* debugName)
 {
@@ -231,7 +231,7 @@ Handle<HwSampler> RenderSystem::createTextureSampler(filament::backend::SamplerP
     return Handle<HwSampler>();
 }
 
-Handle<HwComputeProgram> RenderSystem::createComputeProgram(const ShaderInfo& mShaderInfo)
+Handle<HwComputeProgram> RenderSystem::createComputeProgram(const ShaderInfo& shaderInfo)
 {
     assert(false);
     return Handle<HwComputeProgram>();
@@ -262,13 +262,4 @@ void RenderSystem::updateDescriptorSetBuffer(
     
 }
 
-void RenderSystem::updateDescriptorSetTexture(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    OgreTexture** tex,
-    uint32_t count,
-    bool onlyImage)
-{
-
-}
 

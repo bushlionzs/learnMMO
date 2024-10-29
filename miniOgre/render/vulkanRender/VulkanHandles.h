@@ -482,8 +482,12 @@ struct VulkanIndexBuffer : public HwIndexBuffer, VulkanResource {
 };
 
 struct VulkanBufferObject : public HwBufferObject, VulkanResource {
-    VulkanBufferObject(VmaAllocator allocator, VulkanStagePool& stagePool, uint32_t byteCount,
-            uint32_t bindingType);
+    VulkanBufferObject(
+        VmaAllocator allocator, 
+        VulkanStagePool& stagePool, 
+        uint32_t byteCount,
+        uint32_t bindingType,
+        uint32_t bufferCreationFlags);
 
     VulkanBuffer buffer;
     const VkBufferUsageFlags bindingType;
@@ -550,7 +554,9 @@ private:
 
 
 inline  VkBufferUsageFlags getBufferObjectUsage(
-        uint32_t bindingType) noexcept {
+        uint32_t bindingType,
+        uint32_t creationFlags) noexcept
+{
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (bindingType & BufferObjectBinding::BufferObjectBinding_Vertex)
     {
@@ -576,6 +582,23 @@ inline  VkBufferUsageFlags getBufferObjectUsage(
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
     }
 
+    if (bindingType & BufferObjectBinding::BufferObjectBinding_AccelerationStructure)
+    {
+        flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+    }
+
+    if (creationFlags & BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT)
+    {
+        flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+    }
+    if (creationFlags & BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS)
+    {
+        flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    }
+    if (creationFlags & BUFFER_CREATION_FLAG_SHADER_BINDING_TABLE)
+    {
+        flags |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR;
+    }
     return flags;
 }
 

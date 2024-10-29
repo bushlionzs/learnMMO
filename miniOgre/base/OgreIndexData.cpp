@@ -30,7 +30,7 @@ void IndexData::createBuffer(uint32_t indexSize, uint32_t indexCount)
     auto* rs = Ogre::Root::getSingleton().getRenderSystem();
     mIndexBufferHandle = rs->createBufferObject(
         backend::BufferObjectBinding_Storge | backend::BufferObjectBinding_Index,
-        BufferUsage::DYNAMIC,
+        BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
         indexSize * indexCount,
         "IndexBuffer");
     

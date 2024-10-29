@@ -139,6 +139,18 @@ namespace vks
 			VkBuffer buffer,
 			VkImage image,
 			VulkanTexture* tex);
+
+		void resourceBarrier(
+			uint32_t numBufferBarriers,
+			BufferBarrier* pBufferBarriers,
+			uint32_t numTextureBarriers,
+			TextureBarrier* pTextureBarriers,
+			uint32_t numRtBarriers,
+			RenderTargetBarrier* pRtBarriers,
+			QueueType queueType,
+			uint32_t queueFamilyIndex,
+			VkCommandBuffer cmdBuf
+		);
 		void generateMipmaps(VkCommandBuffer commandBuffer, VulkanTexture* tex);
 
 		using BingdingInfo = std::map<uint8_t, std::vector<VkDescriptorSetLayoutBinding>>;

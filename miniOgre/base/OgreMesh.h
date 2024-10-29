@@ -45,16 +45,6 @@ namespace Ogre {
 
         const SkeletonPtr& getSkeleton(void) const { return mSkeleton; }
 
-        VertexBuffer* getVertexBuffer()
-        {
-            return mVertexBuffer;
-        }
-
-        IndexBuffer* getIndexbuffer()
-        {
-            return mIndexBuffer;
-        }
-
     private:
         std::vector<SubMesh*> mSubMeshList;
         SkeletonPtr mSkeleton;
@@ -63,8 +53,6 @@ namespace Ogre {
         VertexData* mVertexData;
         IndexData* mIndexData;
 
-        VertexBuffer* mVertexBuffer = nullptr;
-        IndexBuffer* mIndexBuffer = nullptr;
 
         AxisAlignedBox mAABB;
 

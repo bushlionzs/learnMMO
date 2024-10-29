@@ -49,7 +49,7 @@ VulkanSwapChain::VulkanSwapChain(VulkanPlatform* platform, VulkanContext const& 
 VulkanSwapChain::~VulkanSwapChain() {
     // Must wait for the inflight command buffers to finish since they might contain the images
     // we're about to destroy.
-    mCommands->flush();
+    mCommands->flush(false);
 
     mPlatform->destroy(swapChain);
 }
@@ -88,7 +88,7 @@ void VulkanSwapChain::present() {
         mColors[mCurrentSwapIndex]->transitionLayout(commands.buffer(), subresources, VulkanLayout::PRESENT);
     }
 
-    mCommands->flush();
+    mCommands->flush(false);
     
     // call the image ready wait function
     if (mExplicitImageReadyWait != nullptr) {
@@ -115,7 +115,7 @@ void VulkanSwapChain::acquire(bool& resized) {
     // Check if the swapchain should be resized.
     if ((resized = mPlatform->hasResized(swapChain))) {
         if (mFlushAndWaitOnResize) {
-            mCommands->flush();
+            mCommands->flush(false);
             assert(false);
             //mCommands->wait(); zhousha
         }

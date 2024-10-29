@@ -14,6 +14,8 @@
 #include "glslUtil.h"
 #include <spirv.hpp>
 #include <platform_file.h>
+#include "VulkanMappings.h"
+#include "VulkanRenderTarget.h"
 #include <SPIRV_Cross/spirv_glsl.hpp>
 
 namespace vks
@@ -477,6 +479,186 @@ namespace vks
 				subresourceRange);
 		}
 
+		void resourceBarrier(
+			uint32_t numBufferBarriers,
+			BufferBarrier* pBufferBarriers,
+			uint32_t numTextureBarriers,
+			TextureBarrier* pTextureBarriers,
+			uint32_t numRtBarriers,
+			RenderTargetBarrier* pRtBarriers,
+			QueueType queueType,
+			uint32_t queueFamilyIndex,
+			VkCommandBuffer cmdBuf
+		)
+		{
+			VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+
+			VkAccessFlags srcAccessFlags = 0;
+			VkAccessFlags dstAccessFlags = 0;
+
+			for (uint32_t i = 0; i < numBufferBarriers; ++i)
+			{
+				BufferBarrier* pTrans = &pBufferBarriers[i];
+
+				if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
+				{
+					memoryBarrier.srcAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
+					memoryBarrier.dstAccessMask |= VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+				}
+				else
+				{
+					memoryBarrier.srcAccessMask |= VulkanMappings::util_to_vk_access_flags(pTrans->mCurrentState);
+					memoryBarrier.dstAccessMask |= VulkanMappings::util_to_vk_access_flags(pTrans->mNewState);
+				}
+
+				srcAccessFlags |= memoryBarrier.srcAccessMask;
+				dstAccessFlags |= memoryBarrier.dstAccessMask;
+			}
+
+			VkImageMemoryBarrier imageBarriers[256];
+			uint32_t imageBarrierCount = 0;
+			for (uint32_t i = 0; i < numTextureBarriers; ++i)
+			{
+				TextureBarrier* pTrans = &pTextureBarriers[i];
+				VulkanTexture* pTexture = (VulkanTexture*)pTrans->pTexture;
+				VkImageMemoryBarrier* pImageBarrier = NULL;
+
+				if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
+				{
+					pImageBarrier = &imageBarriers[imageBarrierCount++];           //-V522
+					pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER; //-V522
+					pImageBarrier->pNext = NULL;
+
+					pImageBarrier->srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+					pImageBarrier->dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+					pImageBarrier->oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+					pImageBarrier->newLayout = VK_IMAGE_LAYOUT_GENERAL;
+				}
+				else
+				{
+					pImageBarrier = &imageBarriers[imageBarrierCount++];
+					pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					pImageBarrier->pNext = NULL;
+
+					pImageBarrier->srcAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mCurrentState);
+					pImageBarrier->dstAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mNewState);
+					pImageBarrier->oldLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mCurrentState);
+					pImageBarrier->newLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mNewState);
+					assert_invariant(pImageBarrier->newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
+				}
+
+				if (pImageBarrier)
+				{
+					pImageBarrier->image = pTexture->getVkImage();
+					pImageBarrier->subresourceRange.aspectMask = (VkImageAspectFlags)pTexture->getAspectFlag();
+					pImageBarrier->subresourceRange.baseMipLevel = pTrans->mSubresourceBarrier ? pTrans->mMipLevel : 0;
+					pImageBarrier->subresourceRange.levelCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_MIP_LEVELS;
+					pImageBarrier->subresourceRange.baseArrayLayer = pTrans->mSubresourceBarrier ? pTrans->mArrayLayer : 0;
+					pImageBarrier->subresourceRange.layerCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_ARRAY_LAYERS;
+
+					if (pTrans->mAcquire && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
+					{
+						pImageBarrier->srcQueueFamilyIndex = queueFamilyIndex;
+						pImageBarrier->dstQueueFamilyIndex = queueFamilyIndex;
+					}
+					else if (pTrans->mRelease && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
+					{
+						pImageBarrier->srcQueueFamilyIndex = queueFamilyIndex;
+						pImageBarrier->dstQueueFamilyIndex = queueFamilyIndex;
+					}
+					else
+					{
+						pImageBarrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+						pImageBarrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					}
+
+					srcAccessFlags |= pImageBarrier->srcAccessMask;
+					dstAccessFlags |= pImageBarrier->dstAccessMask;
+				}
+			}
+
+			for (uint32_t i = 0; i < numRtBarriers; ++i)
+			{
+				RenderTargetBarrier* pTrans = &pRtBarriers[i];
+				Ogre::VulkanRenderTarget* vulkanRenderTarget = (Ogre::VulkanRenderTarget*)pTrans->pRenderTarget;
+
+				VkImageMemoryBarrier* pImageBarrier = NULL;
+
+				if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
+				{
+					pImageBarrier = &imageBarriers[imageBarrierCount++];
+					pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					pImageBarrier->pNext = NULL;
+
+					pImageBarrier->srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+					pImageBarrier->dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+					pImageBarrier->oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+					pImageBarrier->newLayout = VK_IMAGE_LAYOUT_GENERAL;
+				}
+				else
+				{
+					pImageBarrier = &imageBarriers[imageBarrierCount++];
+					pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					pImageBarrier->pNext = NULL;
+
+					pImageBarrier->srcAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mCurrentState);
+					pImageBarrier->dstAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mNewState);
+					pImageBarrier->oldLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mCurrentState);
+					pImageBarrier->newLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mNewState);
+					assert_invariant(pImageBarrier->newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
+				}
+
+				if (pImageBarrier)
+				{
+					pImageBarrier->image = vulkanRenderTarget->getImage();
+					pImageBarrier->subresourceRange.aspectMask = vulkanRenderTarget->getAspectFlag();
+					pImageBarrier->subresourceRange.baseMipLevel = pTrans->mSubresourceBarrier ? pTrans->mMipLevel : 0;
+					pImageBarrier->subresourceRange.levelCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_MIP_LEVELS;
+					pImageBarrier->subresourceRange.baseArrayLayer = pTrans->mSubresourceBarrier ? pTrans->mArrayLayer : 0;
+					pImageBarrier->subresourceRange.layerCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_ARRAY_LAYERS;
+
+					if (pTrans->mAcquire && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
+					{
+						pImageBarrier->srcQueueFamilyIndex =
+							queueFamilyIndex;
+						pImageBarrier->dstQueueFamilyIndex =
+							queueFamilyIndex;
+					}
+					else if (pTrans->mRelease && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
+					{
+						pImageBarrier->srcQueueFamilyIndex =
+							queueFamilyIndex;
+						pImageBarrier->dstQueueFamilyIndex =
+							queueFamilyIndex;
+					}
+					else
+					{
+						pImageBarrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+						pImageBarrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					}
+
+					srcAccessFlags |= pImageBarrier->srcAccessMask;
+					dstAccessFlags |= pImageBarrier->dstAccessMask;
+				}
+			}
+
+			auto& setting = VulkanHelper::getSingleton().getVulkanSettings();
+
+			VkPipelineStageFlags srcStageMask = vks::tools::util_determine_pipeline_stage_flags(
+				&setting, srcAccessFlags, queueType);
+			VkPipelineStageFlags dstStageMask = vks::tools::util_determine_pipeline_stage_flags(
+				&setting, dstAccessFlags, queueType);
+
+			if (srcAccessFlags || dstAccessFlags)
+			{
+				vkCmdPipelineBarrier(
+					cmdBuf,
+					srcStageMask, dstStageMask, 0, memoryBarrier.srcAccessMask ? 1 : 0,
+					memoryBarrier.srcAccessMask ? &memoryBarrier : NULL, 0, NULL,
+					imageBarrierCount, imageBarriers);
+			}
+		}
+
 		void generateMipmaps(VkCommandBuffer commandBuffer, VulkanTexture* tex)
 		{
 			auto mipLevels = tex->getMipLevels();
@@ -680,6 +862,30 @@ namespace vks
 				result[set].push_back(layout);
 			}
 
+			auto storage_images = glsl.get_shader_resources().storage_images;
+
+			for (int32_t i = 0; i < storage_images.size(); i++)
+			{
+				auto& input = storage_images[i];
+				const std::string& name = glsl.get_name(input.id);
+
+				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
+				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
+
+				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
+
+				if (type.array.size())
+					layout.descriptorCount = type.array[0];
+				else
+					layout.descriptorCount = 1;
+
+				layout.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				layout.binding = binding;
+				layout.stageFlags = stageFlags;
+
+				result[set].push_back(layout);
+			}
+
 			auto sampled_images = glsl.get_shader_resources().sampled_images;
 
 			for (int32_t i = 0; i < sampled_images.size(); i++)
@@ -705,6 +911,32 @@ namespace vks
 				result[set].push_back(layout);
 			}
 
+
+			auto acceleration_structures = glsl.get_shader_resources().acceleration_structures;
+
+			for (int32_t i = 0; i < acceleration_structures.size(); i++)
+			{
+				auto& input = acceleration_structures[i];
+				const std::string& name = glsl.get_name(input.id);
+
+				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
+				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
+
+				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
+
+				if (type.array.size())
+					layout.descriptorCount = type.array[0];
+				else
+					layout.descriptorCount = 1;
+
+				layout.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+
+				layout.binding = binding;
+				layout.stageFlags = stageFlags;
+
+				result[set].push_back(layout);
+			}
+
 			return result;
 		}
 
@@ -714,6 +946,18 @@ namespace vks
 			QueueType queueType)
 		{
 			VkPipelineStageFlags flags = 0;
+
+			if (settings->mRayPipelineSupported)
+			{
+				if (accessFlags & (VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR))
+				{
+					flags |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+				}
+				if (accessFlags & (VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR))
+				{
+					flags |= VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+				}
+			}
 
 			switch (queueType)
 			{
@@ -767,6 +1011,8 @@ namespace vks
 
 				break;
 			}
+			case QUEUE_TYPE_TRANSFER:
+				return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			}
 
 			// Compatible with both compute and graphics queues

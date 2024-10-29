@@ -19,6 +19,7 @@ namespace Ogre {
 		uint32_t height = 720;
 		uint32_t frameConstantBufferSize = sizeof(FrameConstantBuffer);
 		uint32_t swapBufferCount = 2;
+		bool     enableRaytracing = false;
 	};
 
 	class Root : public Ogre::Singleton<Root>

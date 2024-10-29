@@ -267,6 +267,10 @@ public:
      */
     VkQueue getGraphicsQueue() const noexcept;
 
+
+    uint32_t getTransferQueueFamilyIndex() const noexcept;
+    uint32_t getTransferQueueIndex() const noexcept;
+    VkQueue getTransferQueue() const noexcept;
 private:
     static ExtensionSet getSwapchainInstanceExtensions();
 

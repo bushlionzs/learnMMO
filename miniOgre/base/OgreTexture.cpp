@@ -44,6 +44,11 @@ namespace Ogre {
 		{
 			return true;
 		}
+
+		if (_tex_usage & Ogre::TextureUsage::WRITEABLE)
+		{
+			return true;
+		}
 		return false;
 	}
 

@@ -7,14 +7,6 @@
 #include "shader.h"
 #include "OgreMaterial.h"
 
-
-
-typedef enum IndexType
-{
-    INDEX_TYPE_UINT32 = 0,
-    INDEX_TYPE_UINT16,
-} IndexType;
-
 typedef enum ShaderSemantic
 {
     SEMANTIC_UNDEFINED = 0,

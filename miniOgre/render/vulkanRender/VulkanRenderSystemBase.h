@@ -93,7 +93,7 @@ protected:
     virtual void bindIndexBuffer(Handle<HwBufferObject>, uint32_t indexSize);
     virtual Handle<HwBufferObject> createBufferObject(
         uint32_t bindingType,
-        BufferUsage usage,
+        uint32_t bufferCreationFlags,
         uint32_t byteCount,
         const char* debugName) override;
 
@@ -126,7 +126,7 @@ protected:
         backend::descriptor_binding_t binding,
         OgreTexture** tex,
         uint32_t count,
-        bool onlyImage) override;
+        TextureBindType type) override;
     virtual void updateDescriptorSetSampler(
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
@@ -135,14 +135,22 @@ protected:
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
         OgreTexture* tex) override;
-
+    
     virtual void resourceBarrier(
         uint32_t numBufferBarriers,
         BufferBarrier* pBufferBarriers,
+        uint32_t textureBarrierCount,
+        TextureBarrier* pTextureBarriers,
         uint32_t numRtBarriers,
         RenderTargetBarrier* pRtBarriers
     )  override;
+    virtual void beginCmd();
+    virtual void flushCmd(bool waitCmd);
+
+
+    virtual void destroyBufferObject(Handle<HwBufferObject> bufHandle);
 private:
+    
     void parseInputBindingDescription(
         VertexDeclaration* decl,
         std::vector<GlslInputDesc>& inputDesc,

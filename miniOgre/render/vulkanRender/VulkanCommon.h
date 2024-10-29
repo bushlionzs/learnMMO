@@ -128,13 +128,6 @@ struct RayTracingScratchBuffer
     VkDeviceMemory memory = VK_NULL_HANDLE;
 };
 
-// Ray tracing acceleration structure
-struct AccelerationStructure {
-    VkAccelerationStructureKHR handle;
-    uint64_t deviceAddress = 0;
-    VkDeviceMemory memory;
-    VkBuffer buffer;
-};
 
 #define VULKAN_FRAME_RESOURCE_COUNT 3
 #define VULKAN_TEXTURE_COUNT 6

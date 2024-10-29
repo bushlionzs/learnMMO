@@ -200,9 +200,6 @@ ExtensionSet getDeviceExtensions(VkPhysicalDevice device) {
             VK_KHR_MAINTENANCE2_EXTENSION_NAME,
             VK_KHR_MAINTENANCE3_EXTENSION_NAME,
             VK_KHR_MULTIVIEW_EXTENSION_NAME,
-            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-            VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
-            VK_KHR_SPIRV_1_4_EXTENSION_NAME,
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
             VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
             VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
@@ -227,38 +224,13 @@ ExtensionSet getDeviceExtensions(VkPhysicalDevice device) {
     return exts;
 }
 
-VkInstance createInstance(ExtensionSet const& requiredExts) {
+VkInstance createInstance(
+    ExtensionSet const& requiredExts,
+    const Platform::DriverConfig& driverConfig)
+{
     VkInstance instance;
     VkInstanceCreateInfo instanceCreateInfo = {};
     bool validationFeaturesSupported = false;
-
-#if FVK_ENABLED(FVK_DEBUG_VALIDATION)
-    auto const enabledLayers = getEnabledLayers();
-    if (!enabledLayers.empty()) {
-        // If layers are supported, Check if VK_EXT_validation_features is supported.
-        FixedCapacityVector<VkExtensionProperties> const availableValidationExts
-                = filament::backend::enumerate(vkEnumerateInstanceExtensionProperties,
-                        "VK_LAYER_KHRONOS_validation");
-        for (auto const& extProps: availableValidationExts) {
-            if (!strcmp(extProps.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME)) {
-                validationFeaturesSupported = true;
-                break;
-            }
-        }
-        instanceCreateInfo.enabledLayerCount = (uint32_t) enabledLayers.size();
-        instanceCreateInfo.ppEnabledLayerNames = enabledLayers.data();
-    } else {
-#if defined(__ANDROID__)
-        FVK_LOGD << "Validation layers are not available; did you set jniLibs in your "
-                 << "gradle file?" << utils::io::endl;
-#else
-        FVK_LOGD << "Validation layer not available; did you install the Vulkan SDK?\n"
-                 << "Please ensure that VK_LAYER_PATH is set correctly." << utils::io::endl;
-#endif // __ANDROID__
-
-    }
-#endif // FVK_ENABLED(FVK_DEBUG_VALIDATION)
-
     // The Platform class can require 1 or 2 instance extensions, plus we'll request at most 5
     // instance extensions here in the common code. So that's a max of 7.
     static constexpr uint32_t MAX_INSTANCE_EXTENSION_COUNT = 8;
@@ -288,8 +260,7 @@ VkInstance createInstance(ExtensionSet const& requiredExts) {
         instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
     }
 
-    bool enableDebug = true;
-    if (enableDebug)
+    if (driverConfig.enalbeDebug)
     {
         static const std::vector<const char*> validationLayers =
         {
@@ -314,19 +285,34 @@ VkInstance createInstance(ExtensionSet const& requiredExts) {
 
 VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         VkPhysicalDeviceFeatures const& features, uint32_t graphicsQueueFamilyIndex,
-        ExtensionSet const& deviceExtensions) {
+        ExtensionSet const& deviceExtensions,
+    const Platform::DriverConfig& driverConfig) {
     VkDevice device;
     VkDeviceQueueCreateInfo deviceQueueCreateInfo[1] = {};
     const float queuePriority[] = {1.0f};
     VkDeviceCreateInfo deviceCreateInfo = {};
     FixedCapacityVector<const char*> requestExtensions;
-    requestExtensions.reserve(deviceExtensions.size() + 1);
+    requestExtensions.reserve(deviceExtensions.size() + 10);
 
     // TODO: We don't really need this if we only ever expect headless swapchains.
     requestExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     for (auto const& ext: deviceExtensions) {
         requestExtensions.push_back(ext.data());
     }
+
+    if (driverConfig.enableRayTracing)
+    {
+        requestExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        requestExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+        
+    }
+
+    
     deviceQueueCreateInfo->sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     deviceQueueCreateInfo->queueFamilyIndex = graphicsQueueFamilyIndex;
     deviceQueueCreateInfo->queueCount = 1;
@@ -353,7 +339,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
     deviceCreateInfo.enabledExtensionCount = (uint32_t) requestExtensions.size();
     deviceCreateInfo.ppEnabledExtensionNames = requestExtensions.data();
 
-    void* pNext = nullptr;
+    VkBaseOutStructure* base = (VkBaseOutStructure*)&deviceCreateInfo;
     bool dynamicRendering = true;
     VkPhysicalDeviceDynamicRenderingFeaturesKHR enabledDynamicRenderingFeaturesKHR{};
     if (dynamicRendering)
@@ -361,10 +347,40 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         
         enabledDynamicRenderingFeaturesKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         enabledDynamicRenderingFeaturesKHR.dynamicRendering = VK_TRUE;
-        pNext = &enabledDynamicRenderingFeaturesKHR;
+        base->pNext = (VkBaseOutStructure*)&enabledDynamicRenderingFeaturesKHR;
+        base = (VkBaseOutStructure*)base->pNext;
     }
 
-    deviceCreateInfo.pNext = pNext;
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES
+    };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
+    };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
+    };
+
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = 
+    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+    if (driverConfig.enableRayTracing)
+    {
+        bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+        base->pNext = (VkBaseOutStructure*)&bufferDeviceAddressFeatures;
+        base = (VkBaseOutStructure*)base->pNext;
+
+        rayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
+        base->pNext = (VkBaseOutStructure*)&rayTracingPipelineFeatures;
+        base = (VkBaseOutStructure*)base->pNext;
+        accelerationStructureFeatures.accelerationStructure = VK_TRUE;
+        base->pNext = (VkBaseOutStructure*)&accelerationStructureFeatures;
+        base = (VkBaseOutStructure*)base->pNext;
+
+        rayQueryFeatures.rayQuery = VK_TRUE;
+        base->pNext = (VkBaseOutStructure*)&rayQueryFeatures;
+        base = (VkBaseOutStructure*)base->pNext;
+    }
+    
     VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, VKALLOC, &device);
     return device;
 }
@@ -421,6 +437,19 @@ uint32_t identifyGraphicsQueueFamilyIndex(VkPhysicalDevice physicalDevice) {
     return graphicsQueueFamilyIndex;
 }
 
+uint32_t identifyTransferQueueFamilyIndex(VkPhysicalDevice physicalDevice) {
+    const FixedCapacityVector<VkQueueFamilyProperties> queueFamiliesProperties
+        = getPhysicalDeviceQueueFamilyPropertiesHelper(physicalDevice);
+    uint32_t transferQueueFamilyIndex = INVALID_VK_INDEX;
+    for (uint32_t j = 0; j < queueFamiliesProperties.size(); ++j) {
+        VkQueueFamilyProperties props = queueFamiliesProperties[j];
+        if (props.queueCount != 0 && props.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+            transferQueueFamilyIndex = j;
+            break;
+        }
+    }
+    return transferQueueFamilyIndex;
+}
 // Provide a preference ordering of device types.
 // Enum based on:
 // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceType.html
@@ -578,6 +607,10 @@ struct VulkanPlatformPrivate {
     uint32_t mGraphicsQueueFamilyIndex = INVALID_VK_INDEX;
     uint32_t mGraphicsQueueIndex = INVALID_VK_INDEX;
     VkQueue mGraphicsQueue = VK_NULL_HANDLE;
+
+    uint32_t mTransferQueueFamilyIndex = INVALID_VK_INDEX;
+    uint32_t mTransferQueueIndex = INVALID_VK_INDEX;
+    VkQueue mTransferQueue = VK_NULL_HANDLE;
     VulkanContext mContext = {};
 
     // We use a map to both map a handle (i.e. SwapChainPtr) to the concrete type and also to
@@ -608,11 +641,10 @@ void VulkanPlatform::terminate() {
 
 // This is the main entry point for context creation.
 Driver* VulkanPlatform::createDriver(void* sharedContext,
-        const Platform::DriverConfig& driverConfig) noexcept {
+    const Platform::DriverConfig& driverConfig) noexcept {
     // Load Vulkan entry points.
-
     if (sharedContext) {
-        VulkanSharedContext const* scontext = (VulkanSharedContext const*) sharedContext;
+        VulkanSharedContext const* scontext = (VulkanSharedContext const*)sharedContext;
         // All fields of VulkanSharedContext should be present.
         mImpl->mInstance = scontext->instance;
         mImpl->mPhysicalDevice = scontext->physicalDevice;
@@ -638,11 +670,11 @@ Driver* VulkanPlatform::createDriver(void* sharedContext,
         // we force XCB surface creation.  This workaround is needed for the default swiftshader
         // build where only XCB is available.
         if (setContains(swapchainExts, VK_KHR_XCB_SURFACE_EXTENSION_NAME) &&
-                setContains(swapchainExts, VK_KHR_XLIB_SURFACE_EXTENSION_NAME)) {
+            setContains(swapchainExts, VK_KHR_XLIB_SURFACE_EXTENSION_NAME)) {
             // Assume only XCB is left, then we force the XCB path in the swapchain creation.
             mImpl->mForceXCBSwapchain = !setContains(instExts, VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
             assert_invariant(!mImpl->mForceXCBSwapchain ||
-                             setContains(instExts, VK_KHR_XCB_SURFACE_EXTENSION_NAME));
+                setContains(instExts, VK_KHR_XCB_SURFACE_EXTENSION_NAME));
         }
 #endif
 
@@ -650,24 +682,28 @@ Driver* VulkanPlatform::createDriver(void* sharedContext,
     }
 
     mImpl->mInstance
-            = mImpl->mInstance == VK_NULL_HANDLE ? createInstance(instExts) : mImpl->mInstance;
+        = mImpl->mInstance == VK_NULL_HANDLE ? createInstance(instExts, driverConfig) : mImpl->mInstance;
     assert_invariant(mImpl->mInstance != VK_NULL_HANDLE);
     bluevk::bindInstance(mImpl->mInstance);
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-    debugCreateInfo.pfnUserCallback = debugCallback;
-    debugCreateInfo.flags = 0;
-    debugCreateInfo.pUserData = NULL;
+
+    if (driverConfig.enalbeDebug)
+    {
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+        debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+        debugCreateInfo.pfnUserCallback = debugCallback;
+        debugCreateInfo.flags = 0;
+        debugCreateInfo.pUserData = NULL;
 
 
-    static VkDebugUtilsMessengerEXT debugUtilsMessenger;
+        static VkDebugUtilsMessengerEXT debugUtilsMessenger;
 
-    VkResult debugCallbackRes = bluevk::vkCreateDebugUtilsMessengerEXT(mImpl->mInstance, &debugCreateInfo,
-        nullptr,
-        &debugUtilsMessenger);
+        VkResult debugCallbackRes = bluevk::vkCreateDebugUtilsMessengerEXT(mImpl->mInstance, &debugCreateInfo,
+            nullptr,
+            &debugUtilsMessenger);
+    }
 
     VulkanPlatform::Customization::GPUPreference const pref = getCustomization().gpu;
     bool const hasGPUPreference = pref.index >= 0 || !pref.deviceName.empty();
@@ -698,6 +734,10 @@ Driver* VulkanPlatform::createDriver(void* sharedContext,
     // within the family hasn't been provided by the client, we assume it to be 0.
     mImpl->mGraphicsQueueIndex
             = mImpl->mGraphicsQueueIndex == INVALID_VK_INDEX ? 0 : mImpl->mGraphicsQueueIndex;
+
+    mImpl->mTransferQueueFamilyIndex = identifyTransferQueueFamilyIndex(mImpl->mPhysicalDevice);
+    mImpl->mTransferQueueIndex = 0;
+
     ExtensionSet deviceExts;
     // If using a shared context, we do not assume any extensions.
     if (!mImpl->mSharedContext) {
@@ -709,12 +749,16 @@ Driver* VulkanPlatform::createDriver(void* sharedContext,
     }
     mImpl->mDevice
             = mImpl->mDevice == VK_NULL_HANDLE ? createLogicalDevice(mImpl->mPhysicalDevice,
-                      context.mPhysicalDeviceFeatures, mImpl->mGraphicsQueueFamilyIndex, deviceExts)
+                      context.mPhysicalDeviceFeatures, mImpl->mGraphicsQueueFamilyIndex, deviceExts, driverConfig)
                                                : mImpl->mDevice;
     assert_invariant(mImpl->mDevice != VK_NULL_HANDLE);
     vkGetDeviceQueue(mImpl->mDevice, mImpl->mGraphicsQueueFamilyIndex, mImpl->mGraphicsQueueIndex,
             &mImpl->mGraphicsQueue);
     assert_invariant(mImpl->mGraphicsQueue != VK_NULL_HANDLE);
+
+    vkGetDeviceQueue(mImpl->mDevice, mImpl->mTransferQueueFamilyIndex, mImpl->mTransferQueueIndex,
+        &mImpl->mTransferQueue);
+    assert_invariant(mImpl->mTransferQueue != VK_NULL_HANDLE);
 
     // Store the extension support in the context
     context.mDebugUtilsSupported = setContains(instExts, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -821,6 +865,21 @@ uint32_t VulkanPlatform::getGraphicsQueueIndex() const noexcept {
 
 VkQueue VulkanPlatform::getGraphicsQueue() const noexcept {
     return mImpl->mGraphicsQueue;
+}
+
+uint32_t VulkanPlatform::getTransferQueueFamilyIndex() const noexcept
+{
+    return mImpl->mTransferQueueFamilyIndex;
+}
+
+uint32_t VulkanPlatform::getTransferQueueIndex() const noexcept
+{
+    return mImpl->mTransferQueueIndex;
+}
+
+VkQueue VulkanPlatform::getTransferQueue() const noexcept
+{
+    return mImpl->mTransferQueue;
 }
 
 #undef SWAPCHAIN_RET_FUNC

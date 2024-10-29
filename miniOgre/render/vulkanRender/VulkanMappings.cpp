@@ -120,6 +120,19 @@ namespace Ogre {
             return PF_A8B8G8R8;
         }
     }
+    //TIF_VK_FORMAT_R32G32B32_SFLOAT
+    VkFormat VulkanMappings::getVertexFormat(VertexElementType elementType)
+    {
+        switch (elementType)
+        {
+        case VET_FLOAT3:
+            return VK_FORMAT_R32G32B32_SFLOAT;
+            break;
+        default:
+            assert(false);
+        }
+        return VK_FORMAT_R32G32B32_SFLOAT;
+    }
 
     VkFormat VulkanMappings::_getPF(PixelFormat ogrePF)
     {
@@ -384,4 +397,59 @@ namespace Ogre {
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
+
+    VkGeometryFlagsKHR VulkanMappings::util_to_vk_geometry_flags(
+        AccelerationStructureGeometryFlags flags)
+    {
+        VkGeometryFlagsKHR ret = 0;
+        if (flags & ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE)
+            ret |= VK_GEOMETRY_OPAQUE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION)
+            ret |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+
+        return ret;
+    }
+
+    VkGeometryInstanceFlagsKHR VulkanMappings::util_to_vk_instance_flags(
+        AccelerationStructureInstanceFlags flags)
+    {
+        VkGeometryInstanceFlagsKHR ret = 0;
+        if (flags & ACCELERATION_STRUCTURE_INSTANCE_FLAG_FORCE_OPAQUE)
+            ret |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_INSTANCE_FLAG_FORCE_NON_OPAQUE)
+            ret |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE)
+            ret |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE)
+            ret |= VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR;
+
+        return ret;
+    }
+
+    VkBuildAccelerationStructureFlagsKHR VulkanMappings::ToVkBuildASFlags(
+        AccelerationStructureBuildFlags flags)
+    {
+        VkBuildAccelerationStructureFlagsKHR ret = 0;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+        if (flags & ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE)
+            ret |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+
+        return ret;
+    }
+
+    VkAccelerationStructureTypeKHR VulkanMappings::ToVkASType(AccelerationStructureType type)
+    {
+        return ACCELERATION_STRUCTURE_TYPE_BOTTOM == 
+            type ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
+            : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    }
 }

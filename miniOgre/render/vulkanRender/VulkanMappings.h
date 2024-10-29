@@ -23,7 +23,7 @@ namespace Ogre
 		static LPCSTR getSemanticName(VertexElementSemantic sem);
 
 		static PixelFormat _getClosestSupportedPF(PixelFormat ogrePF);
-
+		static VkFormat getVertexFormat(VertexElementType elementType);
 		static VkFormat _getPF(PixelFormat ogrePF);
 		static PixelFormat getPixelFormat(VkFormat format);
 		static VkFormat _getGammaFormat(VkFormat format, bool appendSRGB);
@@ -37,6 +37,14 @@ namespace Ogre
 		static VkCompareOp getCompareOp(filament::backend::SamplerCompareFunc func);
 		static VkAccessFlags util_to_vk_access_flags(uint32_t state);
 		static VkImageLayout util_to_vk_image_layout(uint32_t state);
+		static VkGeometryFlagsKHR util_to_vk_geometry_flags(
+			AccelerationStructureGeometryFlags flags);
+		static VkGeometryInstanceFlagsKHR util_to_vk_instance_flags(
+			AccelerationStructureInstanceFlags flags);
+		static VkBuildAccelerationStructureFlagsKHR ToVkBuildASFlags(
+			AccelerationStructureBuildFlags flags);
+
+		static VkAccelerationStructureTypeKHR ToVkASType(AccelerationStructureType type);
 	};
 }
 

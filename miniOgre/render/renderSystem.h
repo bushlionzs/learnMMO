@@ -13,7 +13,7 @@
 #include <fg/FrameGraphTexture.h>
 #include <fg/Allocators.h>
 #include <fg/ResourceAllocator.h>
-
+#include "rayTracing.h"
 
 class GraphicsCommandList;
 class RenderableData;
@@ -153,8 +153,8 @@ public:
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes) { return nullptr; }
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle) {}
     virtual Handle<HwBufferObject> createBufferObject(
-        uint32_t bindingType, 
-        BufferUsage usage, 
+        uint32_t bindingType,
+        uint32_t bufferCreationFlags,
         uint32_t byteCount,
         const char* debugName = nullptr);
     virtual void updateBufferObject(
@@ -170,7 +170,7 @@ public:
         Handle<HwComputeProgram> programHandle, 
         uint32_t set);
     virtual Handle<HwSampler> createTextureSampler(filament::backend::SamplerParams& samplerParams);
-    virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& mShaderInfo);
+    virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& shaderInfo);
     virtual Handle<HwPipeline> createPipeline(
         backend::RasterState& rasterState,
         Handle<HwProgram>& program);
@@ -189,7 +189,7 @@ public:
         backend::descriptor_binding_t binding,
         OgreTexture** tex,
         uint32_t count,
-        bool onlyImage = true);
+        TextureBindType type = TextureBindType_Image) {}
 
     virtual void updateDescriptorSetSampler(
         Handle<HwDescriptorSet> dsh,
@@ -200,13 +200,35 @@ public:
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
         OgreTexture* tex) {}
-
+    virtual void updateDescriptorSetAccelerationStructure(
+        Handle<HwDescriptorSet> dsh,
+        backend::descriptor_binding_t binding,
+        AccelerationStructure* accStructure) {}
     virtual void resourceBarrier(
         uint32_t numBufferBarriers, 
         BufferBarrier* pBufferBarriers,
+        uint32_t textureBarrierCount, 
+        TextureBarrier* pTextureBarriers,
         uint32_t numRtBarriers, 
         RenderTargetBarrier* pRtBarriers
     ) {}
+
+
+    virtual void beginCmd() {}
+    virtual void flushCmd(bool waitCmd) {}
+    //raytracing
+
+    virtual void addAccelerationStructure(
+        const AccelerationStructureDesc* pDesc,
+        AccelerationStructure** ppAccelerationStructure) {}
+
+    virtual void buildAccelerationStructure(RaytracingBuildASDesc* pDesc) {}
+
+    virtual void removeAccelerationStructureScratch(
+        AccelerationStructure* pAccelerationStructure) {}
+
+    //destroy
+    virtual void destroyBufferObject(Handle<HwBufferObject> bufHandle) {}
 private:
     void renderJob(ArenaScope& arena, FrameGraphPassCallback cb);
 

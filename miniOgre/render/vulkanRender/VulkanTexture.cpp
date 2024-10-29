@@ -132,6 +132,21 @@ void VulkanTexture::createInternalResourcesImpl(void)
     createTextureSampler();
 
     _createSurfaceList();
+
+    if (mTextureProperty._tex_usage & WRITEABLE)
+    {
+        VkCommandBuffer cmdBuf = VulkanHelper::getSingleton().beginTransferCommand();
+        TextureBarrier uavBarriers[] = {
+                {
+                this,
+                RESOURCE_STATE_UNDEFINED,
+                RESOURCE_STATE_UNORDERED_ACCESS},
+        };
+
+        auto queueFamilyIndex = VulkanHelper::getSingleton().getTransferFamilyIndex();
+        vks::tools::resourceBarrier(0, nullptr, 1, uavBarriers, 0, nullptr, QUEUE_TYPE_TRANSFER, 0, cmdBuf);
+        VulkanHelper::getSingleton().endTransferCommand(cmdBuf);
+    }
 }
 
 
@@ -161,7 +176,7 @@ void VulkanTexture::postLoad()
     auto frameIndex = 0;
 
     VkCommandBuffer commandBuffer = mCommands->get().buffer();
-    commandBuffer = VulkanHelper::getSingleton().beginSingleTimeCommands();
+    commandBuffer = VulkanHelper::getSingleton().beginTransferCommand();
     if (!mSurfaceList.empty())
     {
         vks::tools::copyBufferToImage(
@@ -178,7 +193,7 @@ void VulkanTexture::postLoad()
         vks::tools::generateMipmaps(commandBuffer, this);
     }
 
-    VulkanHelper::getSingleton().endSingleTimeCommands(commandBuffer);
+    VulkanHelper::getSingleton().endTransferCommand(commandBuffer);
 }
 
 void VulkanTexture::createImage(
@@ -241,7 +256,10 @@ void VulkanTexture::createImage(
         imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
     
-
+    if (mUsage & Ogre::TextureUsage::WRITEABLE)
+    {
+        imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    }
 
 
     if (isCubeTexture())

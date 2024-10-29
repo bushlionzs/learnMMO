@@ -46,7 +46,7 @@ namespace Ogre {
         STENCIL_ATTACHMENT = 0x0004,          //!< Texture can be used as a stencil attachment
         UPLOADABLE = 0x0008,                  //!< Data can be uploaded into this texture (default)
         SAMPLEABLE = 0x0010,                  //!< Texture can be sampled (default)
-       
+        WRITEABLE  = 0x0020,
         TU_DEFAULT = UPLOADABLE | SAMPLEABLE,
     };
 

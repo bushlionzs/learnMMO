@@ -22,6 +22,7 @@
 #include "shaderManager.h"
 #include "glslUtil.h"
 #include "VulkanMappings.h"
+#include <vk_mem_alloc.h>
 
 static VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevice,
     VkDevice device) {
@@ -52,12 +53,21 @@ static VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physic
         .vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR
 #endif
     };
-    VmaAllocatorCreateInfo const allocatorInfo{
+    VmaAllocatorCreateInfo  allocatorInfo{
         .physicalDevice = physicalDevice,
         .device = device,
         .pVulkanFunctions = &funcs,
         .instance = instance,
     };
+    VulkanSettings& settings = VulkanHelper::getSingleton().getVulkanSettings();
+    if (settings.mRayPipelineSupported)
+    {
+        allocatorInfo.flags |= 
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    }
+    
     vmaCreateAllocator(&allocatorInfo, &allocator);
     return allocator;
 }
@@ -80,12 +90,14 @@ bool VulkanRenderSystemBase::engineInit(bool raytracing)
 
 
     VulkanHelper& helper = VulkanHelper::getSingleton();
+
+    helper.getVulkanSettings().mRayPipelineSupported = raytracing;
+
     helper._initialise(mVulkanPlatform);
 
     auto device = mVulkanPlatform->getDevice();
     mAllocator = createAllocator(
         mVulkanPlatform->getInstance(), mVulkanPlatform->getPhysicalDevice(), device);
-
     
     auto queue = mVulkanPlatform->getGraphicsQueue();
     auto queueIndex = mVulkanPlatform->getGraphicsQueueIndex();
@@ -217,7 +229,11 @@ void VulkanRenderSystemBase::frameStart()
     mTriangleCount = 0;
     mBatchCount = 0;
     mLastPipeline = VK_NULL_HANDLE;
-    mCommandBuffer = mCommands->get().buffer();
+    if (mCommandBuffer == nullptr)
+    {
+        mCommandBuffer = mCommands->get().buffer();
+    }
+    
     bool resized = false;
     mSwapChain->acquire(resized);
 }
@@ -227,6 +243,7 @@ void VulkanRenderSystemBase::frameStart()
 void VulkanRenderSystemBase::frameEnd()
 {
     mStagePool->gc();
+    mCommandBuffer = nullptr;
 }
 
 void VulkanRenderSystemBase::beginRenderPass(
@@ -1263,14 +1280,14 @@ void VulkanRenderSystemBase::bindIndexBuffer(Handle<HwBufferObject> bufferHandle
 
 Handle<HwBufferObject> VulkanRenderSystemBase::createBufferObject(
     uint32_t bindingType,
-    BufferUsage usage,
+    uint32_t bufferCreationFlags,
     uint32_t byteCount,
     const char* debugName)
 {
     Handle<HwBufferObject> boh =  mResourceAllocator.allocHandle<VulkanBufferObject>();
 
     VulkanBufferObject* bufferObject = mResourceAllocator.construct<VulkanBufferObject>(boh, mAllocator,
-        *mStagePool, byteCount, bindingType);
+        *mStagePool, byteCount, bindingType, bufferCreationFlags);
 
     if (mVulkanSettings->mDebugUtilsExtension)
     {
@@ -1971,33 +1988,44 @@ void VulkanRenderSystemBase::updateDescriptorSetTexture(
     backend::descriptor_binding_t binding,
     OgreTexture** tex,
     uint32_t count,
-    bool onlyImage)
+    TextureBindType bindType)
 {
     VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
 
     
     VkDescriptorImageInfo infos[256];
-
+    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    if (bindType == TextureBindType_RW_Image)
+    {
+        layout = VK_IMAGE_LAYOUT_GENERAL;
+    }
     for (auto i = 0; i < count; i++)
     {
         VulkanTexture* vulkanTexture = (VulkanTexture*)tex[i];
-        infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        infos[i].imageLayout = layout;
         infos[i].imageView = vulkanTexture->getVkImageView();
-        if (!onlyImage)
+        if (bindType == TextureBindType_Combined_Image_Sampler)
         {
             infos[i].sampler = vulkanTexture->getSampler();
         }
     }
     
-    
-    
+    VkDescriptorType type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    if (bindType == TextureBindType_Combined_Image_Sampler)
+    {
+        type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    }
+    else if (bindType == TextureBindType_RW_Image)
+    {
+        type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    }
     VkWriteDescriptorSet const descriptorWrite = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
             .dstSet = set->vkSet,
             .dstBinding = binding,
             .descriptorCount = count,
-            .descriptorType = onlyImage?VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorType = type,
             .pImageInfo = &infos[0],
         };
 
@@ -2058,127 +2086,52 @@ void VulkanRenderSystemBase::updateDescriptorSetSampler(
             .pImageInfo = &info,
     };
 
-    vkUpdateDescriptorSets(
+    bluevk::vkUpdateDescriptorSets(
         mVulkanPlatform->getDevice(),
         1,
         &descriptorWrite, 0, nullptr);
 }
 
 
+
 void VulkanRenderSystemBase::resourceBarrier(
     uint32_t numBufferBarriers,
     BufferBarrier* pBufferBarriers,
+    uint32_t numTextureBarriers,
+    TextureBarrier* pTextureBarriers,
     uint32_t numRtBarriers,
     RenderTargetBarrier* pRtBarriers
 )
 {
-
-    VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-
-    VkAccessFlags srcAccessFlags = 0;
-    VkAccessFlags dstAccessFlags = 0;
-
-    for (uint32_t i = 0; i < numBufferBarriers; ++i)
-    {
-        BufferBarrier* pTrans = &pBufferBarriers[i];
-
-        if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
-        {
-            memoryBarrier.srcAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
-            memoryBarrier.dstAccessMask |= VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-        }
-        else
-        {
-            memoryBarrier.srcAccessMask |= VulkanMappings::util_to_vk_access_flags(pTrans->mCurrentState);
-            memoryBarrier.dstAccessMask |= VulkanMappings::util_to_vk_access_flags(pTrans->mNewState);
-        }
-
-        srcAccessFlags |= memoryBarrier.srcAccessMask;
-        dstAccessFlags |= memoryBarrier.dstAccessMask;
-    }
-    VkImageMemoryBarrier imageBarriers[10];
-    uint32_t imageBarrierCount = 0;
-
-    assert_invariant(numRtBarriers <= 10);
-    for (uint32_t i = 0; i < numRtBarriers; ++i)
-    {
-        RenderTargetBarrier* pTrans = &pRtBarriers[i];
-        Ogre::VulkanRenderTarget* vulkanRenderTarget = (Ogre::VulkanRenderTarget*)pTrans->pRenderTarget;
-        
-        VkImageMemoryBarrier* pImageBarrier = NULL;
-
-        if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
-        {
-            pImageBarrier = &imageBarriers[imageBarrierCount++];
-            pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            pImageBarrier->pNext = NULL;
-
-            pImageBarrier->srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-            pImageBarrier->dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-            pImageBarrier->oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            pImageBarrier->newLayout = VK_IMAGE_LAYOUT_GENERAL;
-        }
-        else
-        {
-            pImageBarrier = &imageBarriers[imageBarrierCount++];
-            pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            pImageBarrier->pNext = NULL;
-
-            pImageBarrier->srcAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mCurrentState);
-            pImageBarrier->dstAccessMask = VulkanMappings::util_to_vk_access_flags(pTrans->mNewState);
-            pImageBarrier->oldLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mCurrentState);
-            pImageBarrier->newLayout = VulkanMappings::util_to_vk_image_layout(pTrans->mNewState);
-            assert_invariant(pImageBarrier->newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
-        }
-
-        if (pImageBarrier)
-        {
-            pImageBarrier->image = vulkanRenderTarget->getImage();
-            pImageBarrier->subresourceRange.aspectMask = vulkanRenderTarget->getAspectFlag();
-            pImageBarrier->subresourceRange.baseMipLevel = pTrans->mSubresourceBarrier ? pTrans->mMipLevel : 0;
-            pImageBarrier->subresourceRange.levelCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_MIP_LEVELS;
-            pImageBarrier->subresourceRange.baseArrayLayer = pTrans->mSubresourceBarrier ? pTrans->mArrayLayer : 0;
-            pImageBarrier->subresourceRange.layerCount = pTrans->mSubresourceBarrier ? 1 : VK_REMAINING_ARRAY_LAYERS;
-
-            if (pTrans->mAcquire && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
-            {
-                pImageBarrier->srcQueueFamilyIndex = 
-                    mVulkanPlatform->getGraphicsQueueFamilyIndex();
-                pImageBarrier->dstQueueFamilyIndex = 
-                    mVulkanPlatform->getGraphicsQueueFamilyIndex();
-            }
-            else if (pTrans->mRelease && pTrans->mCurrentState != RESOURCE_STATE_UNDEFINED)
-            {
-                pImageBarrier->srcQueueFamilyIndex = 
-                    mVulkanPlatform->getGraphicsQueueFamilyIndex();
-                pImageBarrier->dstQueueFamilyIndex = 
-                    mVulkanPlatform->getGraphicsQueueFamilyIndex();
-            }
-            else
-            {
-                pImageBarrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                pImageBarrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            }
-
-            srcAccessFlags |= pImageBarrier->srcAccessMask;
-            dstAccessFlags |= pImageBarrier->dstAccessMask;
-        }
-    }
-
-    VkPipelineStageFlags srcStageMask = vks::tools::util_determine_pipeline_stage_flags(
-        mVulkanSettings, srcAccessFlags, QUEUE_TYPE_GRAPHICS);
-    VkPipelineStageFlags dstStageMask = vks::tools::util_determine_pipeline_stage_flags(
-        mVulkanSettings, dstAccessFlags, QUEUE_TYPE_GRAPHICS);
+    vks::tools::resourceBarrier(
+        numBufferBarriers, pBufferBarriers,
+        numTextureBarriers, pTextureBarriers,
+        numRtBarriers, pRtBarriers,
+        QUEUE_TYPE_GRAPHICS,
+        mVulkanPlatform->getGraphicsQueueFamilyIndex(),
+        mCommandBuffer
+    );
+}
 
 
-    if (srcAccessFlags || dstAccessFlags)
-    {
-        vkCmdPipelineBarrier(
-            mCommandBuffer,
-            srcStageMask, dstStageMask, 0, memoryBarrier.srcAccessMask ? 1 : 0,
-            memoryBarrier.srcAccessMask ? &memoryBarrier : NULL, 0, NULL,
-            imageBarrierCount, imageBarriers);
-    }
+
+void VulkanRenderSystemBase::beginCmd()
+{
+    mCommandBuffer = mCommands->get().buffer();
+}
+
+void VulkanRenderSystemBase::flushCmd(bool waitCmd)
+{
+    mCommands->flush(waitCmd);
+    mCommandBuffer = nullptr;
+}
+
+
+void VulkanRenderSystemBase::destroyBufferObject(Handle<HwBufferObject> bufHandle)
+{
+    VulkanBufferObject* bo = mResourceAllocator.handle_cast<VulkanBufferObject*>(bufHandle);
+
+    mResourceAllocator.destruct<VulkanBufferObject>(bufHandle);
 }
 
 void VulkanRenderSystemBase::parseInputBindingDescription(

@@ -98,6 +98,11 @@ namespace filament::backend {
              * Sets the technique for stereoscopic rendering.
              */
             StereoscopicType stereoscopicType = StereoscopicType::NONE;
+
+
+            bool enableRayTracing = false;
+
+            bool enalbeDebug = true;
         };
 
         Platform() noexcept;

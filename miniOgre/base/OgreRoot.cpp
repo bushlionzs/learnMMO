@@ -85,13 +85,6 @@ namespace Ogre {
             mRenderSystem = ans;
 
         }
-        else if (et == EngineType_VulkanRaytracing)
-        {
-            /*VulkanRaytracingRenderSystem* engine = new VulkanRaytracingRenderSystem(wnd);
-            std::shared_ptr<RenderSystem> ans(engine);
-
-            mRenderSystem = ans;*/
-        }
         else if (et == EngineType_Dx11)
         {
             Dx11RenderSystem* engine = new Dx11RenderSystem(wnd);
@@ -106,7 +99,7 @@ namespace Ogre {
             return nullptr;
         }
 
-        mRenderSystem->engineInit();
+        mRenderSystem->engineInit(mEngineConfig.enableRaytracing);
         return mRenderSystem.get();
     }
 

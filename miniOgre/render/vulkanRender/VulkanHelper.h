@@ -63,9 +63,9 @@ public:
     VkSampler getSampler(const filament::backend::SamplerParams& samplerParams);
 
     std::shared_ptr<OgreTexture>& getDefaultTexture();
-    VkCommandBuffer beginSingleTimeCommands();
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-
+    VkCommandBuffer beginTransferCommand();
+    void endTransferCommand(VkCommandBuffer commandBuffer);
+    uint32_t getTransferFamilyIndex();
     bool haveRayTracing()
     {
         return mSettings.mRayPipelineSupported;
@@ -108,7 +108,7 @@ private:
  
 
     VkCommandPool mSingleCommandPool;
-
+    VkCommandBuffer mTransfercommandBuffer = VK_NULL_HANDLE;
     //default texture
 
     std::shared_ptr<OgreTexture> mDefaultTexture;
