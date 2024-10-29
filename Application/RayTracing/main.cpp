@@ -8,7 +8,7 @@ int main()
 	RayTracingApp instance;
 
 	AppInfo info;
-
+	info.enableRayTracing = true;
 	ManualApplication app;
 
 	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {

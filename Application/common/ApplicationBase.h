@@ -27,6 +27,7 @@ struct AppInfo
 	FrameGraphPassCallback  fgpass;
     CleanupCallback cleanup;
     UpdateCallback update;
+    bool enableRayTracing = false;
 };
 
 

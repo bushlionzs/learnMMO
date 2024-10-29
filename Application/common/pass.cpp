@@ -25,7 +25,7 @@ public:
 			mFrameBufferObjectList[i] =
 				rs->createBufferObject(
 					BufferObjectBinding::BufferObjectBinding_Uniform, 
-					BufferUsage::DYNAMIC, sizeof(mFrameConstantBuffer));
+					0, sizeof(mFrameConstantBuffer));
 		}
 		auto width = ogreConfig.width;
 		auto height = ogreConfig.height;
@@ -104,7 +104,7 @@ public:
 				RESOURCE_STATE_PRESENT
 			}
 		};
-		rs->resourceBarrier(0, nullptr, 1, rtBarriers);
+		rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
 	}
 	virtual void update(float delta)
 	{
@@ -220,7 +220,8 @@ public:
 
 	void update(float delta)
 	{
-		mUpdateCallback(delta);
+		if(mUpdateCallback)
+			mUpdateCallback(delta);
 	}
 private:
 	ComputePassInfo mComputePassInfo;

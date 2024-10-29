@@ -90,7 +90,18 @@ vec3 mul(vec3 a, mat3 b)  { return a * b; }
 vec2 mul(mat2 a, vec2 b)  { return a * b; }
 vec3 mul(vec3 a, float b) { return a * b; }
 
+
+#define UNROLL_N(X)
+#define UNROLL
+#define LOOP
+#define FLATTEN
+#define sincos(angle, s, c) { (s) = sin(angle); (c) = cos(angle); }
+
 #define RES(TYPE, NAME, FREQ, REG, BINDING) layout(FREQ, BINDING) uniform TYPE NAME
+
+#define RWTex1D(T)           VK_T_##T(image1D)
+#define RWTex2D(T)           VK_T_##T(image2D)
+#define RWTex3D(T)           VK_T_##T(image3D)
 
 #define SampleLvlTex2D(NAME, SAMPLER, COORD, LEVEL) \
 textureLod(sampler2D(NAME, SAMPLER), COORD, LEVEL)
@@ -108,11 +119,31 @@ vec4 _LoadTex2D( texture2D TEX, sampler SMP, ivec2 P, int lod) { return texelFet
 uvec4 _LoadTex2D(utexture2D TEX, sampler SMP, ivec2 P, int lod) { return texelFetch(usampler2D(TEX, SMP), P, lod); }
 ivec4 _LoadTex2D(itexture2D TEX, sampler SMP, ivec2 P, int lod) { return texelFetch(isampler2D(TEX, SMP), P, lod); }
 
+#define LoadRWTex2D(TEX, P) imageLoad(TEX, ivec2(P))
+#define LoadRWTex3D(TEX, P) imageLoad(TEX, ivec3(P))
+
 #define SampleGradTex2D(TEX, SMP, P, DX, DY) \
 textureGrad(sampler2D(TEX, SMP), P, DX, DY)
 
 #define SampleTex2D(TEX, SMP, P) \
 texture(sampler2D(TEX, SMP), P)
+
+vec4  _to4(in(vec4)  x)  { return x; }
+vec4  _to4(in(vec3)  x)  { return vec4(x, 0); }
+vec4  _to4(in(vec2)  x)  { return vec4(x, 0, 0); }
+vec4  _to4(in(float) x)  { return vec4(x, 0, 0, 0); }
+uvec4 _to4(in(uvec4) x)  { return x; }
+uvec4 _to4(in(uvec3) x)  { return uvec4(x, 0); }
+uvec4 _to4(in(uvec2) x)  { return uvec4(x, 0, 0); }
+uvec4 _to4(in(uint)  x)  { return uvec4(x, 0, 0, 0); }
+ivec4 _to4(in(ivec4) x)  { return x; }
+ivec4 _to4(in(ivec3) x)  { return ivec4(x, 0); }
+ivec4 _to4(in(ivec2) x)  { return ivec4(x, 0, 0); }
+ivec4 _to4(in(int)   x)  { return ivec4(x, 0, 0, 0); }
+
+#define Write2D(TEX, P, V) imageStore(TEX, ivec2((P).xy),  _to4(V))
+#define Write3D(TEX, P, V) imageStore(TEX, ivec3((P.xyz)), _to4(V))
+#define Write2DArray(TEX, P, I, V) imageStore(TEX, ivec3(P, I), _to4(V))
 
 #define make_f2x2_cols(C0, C1) f2x2(C0, C1)
 #define make_f2x2_rows(R0, R1) transpose(f2x2(R0, R1))
@@ -153,6 +184,7 @@ f4x4 Identity() { return f4x4(1.0f); }
 #define setElem(M, I, J, V) {M[I][J] = V;}
 #define getElem(M, I, J) (M[I][J])
 
+#define frac(VALUE)			fract(VALUE)
 #define lerp mix
 #define rsqrt(VALUE)		inversesqrt(VALUE)
 float saturate(float VALUE) { return clamp(VALUE, 0.0f, 1.0f); }
@@ -319,4 +351,12 @@ STRUCT(VertexData)
     DATA(vec3, vertexPosition, None);
 	DATA(vec3, vertexNormal, None);
 	DATA(vec2, vertexTextureUV, None);
+};
+
+struct RayDesc
+{
+	float3 Origin;
+	float3 Direction;
+	float TMin;
+	float TMax;
 };

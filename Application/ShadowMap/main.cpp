@@ -7,7 +7,6 @@
 int main()
 {
 	platform_log_init();
-
 	ShadowMap instance;
 	
     AppInfo info;

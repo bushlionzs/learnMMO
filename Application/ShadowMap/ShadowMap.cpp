@@ -390,7 +390,7 @@ void ShadowMap::base2()
     meshConstantsBuffer =
         rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Storge,
-            BufferUsage::DYNAMIC,
+            0,
             meshConstantsBufferSize,
             "meshConstantsBuffer");
 
@@ -428,7 +428,7 @@ void ShadowMap::base2()
         filteredIndexBuffer[i] =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding::BufferObjectBinding_Index,
-                BufferUsage::DYNAMIC,
+                0,
                 maxIndices * sizeof(uint32_t));
     }
     uint32_t computeThread = 256;
@@ -446,7 +446,7 @@ void ShadowMap::base2()
     filterDispatchGroupDataBuffer =
         rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Storge,
-            BufferUsage::DYNAMIC,
+            0,
             filterDispatchGroupSize);
     BufferHandleLockGuard lockGuard(filterDispatchGroupDataBuffer);
 
@@ -497,13 +497,13 @@ void ShadowMap::base2()
 
     vbConstantsBuffer =
         mRenderSystem->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, 
-            BufferUsage::STATIC, sizeof(VBConstants) * 2);
+            0, sizeof(VBConstants) * 2);
 
     rs->updateBufferObject(vbConstantsBuffer, (const char*)&constants[0], sizeof(VBConstants) * 2);
 
     renderSettingsUniformHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
-        BufferUsage::STATIC,
+        0,
         sizeof(renderSetting)
     );
 
@@ -512,7 +512,7 @@ void ShadowMap::base2()
 
     esmInputConstantsHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
-        BufferUsage::STATIC,
+        0,
         sizeof(ESMInputConstants)
     );
 
@@ -520,7 +520,7 @@ void ShadowMap::base2()
         (const char*)&esmConstants, sizeof(esmConstants));
     sssEnabledHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
-        BufferUsage::STATIC,
+        0,
         sizeof(uint32_t)
     );
     rs->updateBufferObject(sssEnabledHandle, (const char*)&sssEnabled, sizeof(sssEnabled));
@@ -535,49 +535,49 @@ void ShadowMap::base2()
         frameData.frameBufferObject =
             mRenderSystem->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
-                BufferUsage::DYNAMIC, sizeof(FrameConstantBuffer));
+                0, sizeof(FrameConstantBuffer));
 
         frameData.indirectDrawArgBuffer =
             mRenderSystem->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding_InDirectBuffer,
-                BufferUsage::DYNAMIC,
+                0,
                 indirectDrawArgBufferSize);
 
         frameData.objectUniformBlockHandle =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
-                BufferUsage::DYNAMIC,
+                0,
                 sizeof(MeshInfoUniformBlock),
                 "objectUniformBlock Buffer");
 
         frameData.indirectDataBuffer =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Storge,
-                BufferUsage::DYNAMIC,
+                0,
                 maxIndices * sizeof(uint32_t));
 
         frameData.perFrameConstantsBuffer =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
-                BufferUsage::DYNAMIC,
+                0,
                 sizeof(PerFrameVBConstants),
                 "PerFrameVBConstants Buffer Desc");
 
         frameData.esmUniformBlockHandle =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
-                BufferUsage::DYNAMIC,
+                0,
                 sizeof(MeshInfoUniformBlock),
                 "esmUniformBlock Buffer");
 
         frameData.cameraUniformHandle = rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Uniform,
-            BufferUsage::STATIC,
+            0,
             sizeof(cameraUniform)
         );
         frameData.ligthUniformHandle = rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Uniform,
-            BufferUsage::STATIC,
+            0,
             sizeof(lightUniformBlock)
         );
     }
@@ -634,10 +634,10 @@ void ShadowMap::base2()
                     RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_UNORDERED_ACCESS
                 };
 
-                rs->resourceBarrier(2, &barriers[0], 0, nullptr);
+                rs->resourceBarrier(2, &barriers[0], 0, nullptr, 0, nullptr);
             }
             };
-        auto clearBufferPass = createComputePass(callback);
+        auto clearBufferPass = createComputePass(callback, nullptr);
         mRenderPipeline->addRenderPass(clearBufferPass);
 
     }
@@ -728,11 +728,11 @@ void ShadowMap::base2()
                 }
                 
 
-                rs->resourceBarrier(barrierCount, barriers, 0, nullptr);
+                rs->resourceBarrier(barrierCount, barriers, 0, nullptr, 0, nullptr);
             }
             };
 
-        auto filterTrianglesPass = createComputePass(callback);
+        auto filterTrianglesPass = createComputePass(callback, nullptr);
         mRenderPipeline->addRenderPass(filterTrianglesPass);
 
     }
@@ -863,7 +863,7 @@ void ShadowMap::base2()
                     RESOURCE_STATE_DEPTH_WRITE
                 }
             };
-            rs->resourceBarrier(0, nullptr, 1, rtBarriers);
+            rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             info.renderTargetCount = 0;
             info.depthTarget.depthStencil = esmShadowMap;
@@ -1207,7 +1207,7 @@ void ShadowMap::base2()
                     RESOURCE_STATE_SHADER_RESOURCE 
                 }
             };
-            rs->resourceBarrier(0, nullptr, 2, rtBarriers);
+            rs->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
             info.renderTargetCount = 1;
             info.renderTargets[0].renderTarget = shadePassTarget;
             info.renderTargets[0].clearColour = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -1260,7 +1260,7 @@ void ShadowMap::base2()
             auto zeroSet = rs->createDescriptorSet(zeroLayout);
             frameData.zeroDescrSetOfPresentPass = zeroSet;
             auto* tex = shadePassTarget->getTarget();
-            rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, true);
+            rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Combined_Image_Sampler);
             rs->updateDescriptorSetSampler(zeroSet, 1, repeatBillinearSampler);
         }
 
@@ -1282,7 +1282,7 @@ void ShadowMap::base2()
                     RESOURCE_STATE_SHADER_RESOURCE
                 }
             };
-            rs->resourceBarrier(0, nullptr, 1, rtBarriers);
+            rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
             info.renderTargetCount = 1;
             info.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();
             info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
@@ -1303,7 +1303,7 @@ void ShadowMap::base2()
                 RESOURCE_STATE_RENDER_TARGET,
                 RESOURCE_STATE_PRESENT
             };
-            rs->resourceBarrier(0, nullptr, 1, rtBarriers);
+            rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
             };
         UpdatePassCallback updateCallback = [](float delta) {
             };
@@ -1391,7 +1391,7 @@ void ShadowMap::execute(RenderSystem* rs)
             RESOURCE_STATE_PRESENT
         }
     };
-    rs->resourceBarrier(0, nullptr, 1, rtBarriers);
+    rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
 }
 
 void ShadowMap::base3()
