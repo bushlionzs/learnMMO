@@ -145,4 +145,6 @@ struct LightCpuSettings
 std::shared_ptr<Mesh> loadSanMiguel(const std::string& name);
 
 #define INDIRECT_DRAW_ARGUMENTS_ELEMENTS 8
+#define SAN_MIGUEL_OFFSETX          150.f
+#define MESH_SCALE                  10.f
 #define GET_INDIRECT_DRAW_ELEM_INDEX(VIEW, GEOM, ELEM) (((((VIEW) * NUM_GEOMETRY_SETS) + (GEOM)) * INDIRECT_DRAW_ARGUMENTS_ELEMENTS) + (ELEM))

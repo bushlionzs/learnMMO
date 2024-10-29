@@ -98,7 +98,7 @@ void BasicApplication::base1()
 	auto& mat = subEntry->getMaterial();
 	ShaderInfo& info = mat->getShaderInfo();
 	//info.shaderName = "testShader";
-	mSceneManager->setSkyBox(true, "SkyLan", 5000);
+	mSceneManager->setSkyBox(true, "SkyMap", 5000);
 	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, -5.f), Ogre::Vector3::ZERO);
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();

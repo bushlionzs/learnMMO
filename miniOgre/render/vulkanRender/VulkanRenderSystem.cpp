@@ -326,8 +326,6 @@ void VulkanRenderSystem::removeAccelerationStructureScratch(
 {
     destroyBufferObject(pAccelerationStructure->scratchBufferHandle);
     pAccelerationStructure->scratchBufferHandle.clear();
-    vkDestroyAccelerationStructureKHR(mVulkanPlatform->getDevice(), 
-        pAccelerationStructure->mAccelerationStructure, nullptr);
 }
 
 uint64_t VulkanRenderSystem::getBufferDeviceAddress(VkBuffer vkBuffer)

@@ -26,8 +26,7 @@
 #include "OgreTextureUnit.h"
 #include "OgreRenderable.h"
 
-#define SAN_MIGUEL_OFFSETX          150.f
-#define MESH_SCALE                  10.f
+
 ShadowMap::ShadowMap()
 {
 

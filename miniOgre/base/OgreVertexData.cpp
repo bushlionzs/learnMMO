@@ -14,9 +14,16 @@ void VertexSlotInfo::createBuffer(uint32_t vertexSize, uint32_t vertexCount)
     mVertexCount = vertexCount;
     auto* rs = Ogre::Root::getSingleton().getRenderSystem();
 
+    uint32_t bufferCreationFlags = 0;
+
+    if (Ogre::Root::getSingleton().getEngineConfig().enableRaytracing)
+    {
+        bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | 
+            BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
+    }
     mVertexBufferHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding::BufferObjectBinding_Vertex,
-        BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
+        bufferCreationFlags,
         vertexSize * vertexCount,
         "VertexBuffer");
 }

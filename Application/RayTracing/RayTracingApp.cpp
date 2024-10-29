@@ -22,6 +22,7 @@
 #include "game_camera.h"
 #include "OgreMurmurHash3.h"
 #include "OgreTextureManager.h"
+#include "forgeCommon.h"
 
 RayTracingApp::RayTracingApp()
 {
@@ -305,7 +306,7 @@ void RayTracingApp::setup(
 			rs->beginRenderPass(info);
 			auto* frameData = getFrameInfo(frameIndex);
 			rs->bindPipeline(presentHandle, pipelineHandle,
-				&frameData->zeroDescriptorSet, 1);
+				&frameData->zeroDescriptorSetOfPresent, 1);
 			rs->draw(3, 0);
 			rs->endRenderPass(info);
 			rs->popGroupMarker();
@@ -322,6 +323,13 @@ void RayTracingApp::setup(
 		auto presentPass = createUserDefineRenderPass(presentCallback, updateCallback);
 		renderPipeline->addRenderPass(presentPass);
 	}
+
+	Ogre::Vector3 camPos2(80.0f, 60.0f, 50.0f);
+
+	mGameCamera->setMoveSpeed(50.0f);
+
+	Ogre::Vector3 lookAt = Ogre::Vector3(1.0f, 0.5f, 0.0f);
+	mGameCamera->lookAt(camPos2, lookAt);
 }
 static float haltonSequence(uint32_t index, uint32_t base)
 {

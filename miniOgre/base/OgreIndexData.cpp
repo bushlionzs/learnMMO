@@ -28,9 +28,18 @@ void IndexData::createBuffer(uint32_t indexSize, uint32_t indexCount)
     mIndexSize = indexSize;
     mIndexCount = indexCount;
     auto* rs = Ogre::Root::getSingleton().getRenderSystem();
+
+    uint32_t bufferCreationFlags = 0;
+
+    if (Ogre::Root::getSingleton().getEngineConfig().enableRaytracing)
+    {
+        bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT |
+            BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
+    }
+
     mIndexBufferHandle = rs->createBufferObject(
         backend::BufferObjectBinding_Storge | backend::BufferObjectBinding_Index,
-        BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
+        bufferCreationFlags,
         indexSize * indexCount,
         "IndexBuffer");
     
