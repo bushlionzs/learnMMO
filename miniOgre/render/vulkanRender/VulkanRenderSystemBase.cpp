@@ -1503,7 +1503,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
     VkDescriptorSetLayoutBinding toBind[VulkanDescriptorSetLayout::MAX_BINDINGS];
     uint32_t bindIndex = 0;
     VulkanPipelineLayoutCache::PipelineLayoutKey keys;
-    for (auto set = 0; set < 4; set++)
+    for (auto set = 0; set < VulkanDescriptorSetLayout::MAX_BINDING_SET; set++)
     {
         bindIndex = 0;
         auto vertexItor = vertexMap.find(set);
@@ -1730,6 +1730,9 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
                     break;
                 case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
                     info.uboCount++;
+                    break;
+                default:
+                    assert(false);
                     break;
                 }
             }

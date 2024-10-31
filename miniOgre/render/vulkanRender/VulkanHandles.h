@@ -25,6 +25,7 @@
 #include "VulkanSwapChain.h"
 #include "VulkanTexture.h"
 #include "VulkanUtility.h"
+#include "FVulkanBuffer.h"
 #include <SamplerGroup.h>
 #include <Program.h>
 
@@ -57,6 +58,7 @@ struct VulkanBufferObject;
 
 struct VulkanDescriptorSetLayout : public VulkanResource, HwDescriptorSetLayout {
     static constexpr uint8_t UNIQUE_DESCRIPTOR_SET_COUNT = 4;
+    static constexpr uint8_t MAX_BINDING_SET = 4;
     static constexpr uint8_t MAX_BINDINGS = 25;
 
     using VulkanLayoutKey = std::array<uint32_t, MAX_BINDINGS>;
@@ -67,6 +69,8 @@ struct VulkanDescriptorSetLayout : public VulkanResource, HwDescriptorSetLayout 
         uint32_t storeCount = 0;
         uint32_t samplerCount = 0;
         uint32_t combinedImage = 0;
+        uint32_t storeImage = 0;
+        uint32_t accelerationStructure = 0;
         uint32_t inputAttachmentCount = 0;
     };
     VulkanDescriptorSetLayout(const VulkanDescriptorSetLayoutInfo& info);
@@ -124,6 +128,26 @@ struct VulkanDescriptorSetLayout : public VulkanResource, HwDescriptorSetLayout 
     uint32_t getInputAttachmentCount()
     {
         return mVulkanDescriptorSetLayoutInfo.inputAttachmentCount;
+    }
+
+    bool hasStoreImage()
+    {
+        return mVulkanDescriptorSetLayoutInfo.storeImage > 0;
+    }
+
+    uint32_t getStoreImageCount()
+    {
+        return mVulkanDescriptorSetLayoutInfo.storeImage;
+    }
+
+    bool hasAccelerationStructure()
+    {
+        return mVulkanDescriptorSetLayoutInfo.accelerationStructure > 0;
+    }
+
+    uint32_t getAccelerationStructureCount()
+    {
+        return mVulkanDescriptorSetLayoutInfo.accelerationStructure;
     }
 private:
     VkDescriptorSetLayout mVkLayout = VK_NULL_HANDLE;
@@ -282,6 +306,50 @@ struct VulkanTextureSampler : public HwSampler, VulkanResource {
     }
 private:
     VkSampler mVkSampler;
+};
+
+struct VulkanRaytracingProgram : public HwRaytracingProgram, VulkanResource {
+    VulkanRaytracingProgram(const std::string& name) noexcept;
+    ~VulkanRaytracingProgram();
+    void updatePipelineLayout(VkPipelineLayout pipelineLayout)
+    {
+        mVkPipelineLayout = pipelineLayout;
+    }
+    void updatePipeline(VkPipeline pipeline)
+    {
+        mVkPipeline = pipeline;
+    }
+
+    VkPipelineLayout getPipelineLayout()
+    {
+        return mVkPipelineLayout;
+    }
+
+    VkPipeline getPipeline()
+    {
+        return mVkPipeline;
+    }
+
+    void updateLayout(uint32_t set, Handle<HwDescriptorSetLayout> layoutHandle)
+    {
+        mLayouts[set] = layoutHandle;
+    }
+
+    Handle<HwDescriptorSetLayout> getLayout(uint32_t set)
+    {
+        return mLayouts[set];
+    }
+
+    ShaderBindingTables& getShaderBindingTables()
+    {
+        return mShaderBindingTables;
+    }
+private:
+    VkPipelineLayout mVkPipelineLayout;
+    VkPipeline mVkPipeline;
+    Handle<HwDescriptorSetLayout> mLayouts[VulkanDescriptorSetLayout::MAX_BINDING_SET];
+
+    ShaderBindingTables mShaderBindingTables;
 };
 struct VulkanComputeProgram : public HwComputeProgram, VulkanResource {
     VulkanComputeProgram(const std::string& name) noexcept;

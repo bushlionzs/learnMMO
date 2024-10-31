@@ -16,7 +16,7 @@ class VulkanTexture;
 class VulkanLayoutCache;
 class VulkanPipelineCache;
 class VulkanPipelineLayoutCache;
-
+struct FVulkanBuffer;
 
 struct CommandHelper
 {
@@ -46,6 +46,12 @@ public:
         VkBuffer& buffer,
         VkDeviceMemory& bufferMemory);
 
+    VkResult createBuffer(
+        VkBufferUsageFlags usageFlags, 
+        VkMemoryPropertyFlags memoryPropertyFlags, 
+        FVulkanBuffer* buffer, 
+        VkDeviceSize size, 
+        void* data = nullptr);
     VkDevice getDevcie()
     {
         return mVKDevice;

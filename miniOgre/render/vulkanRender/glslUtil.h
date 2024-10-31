@@ -7,9 +7,9 @@
 
 bool glslCompileShader
 (
-	std::string& shaderName,
-	std::string& shaderContent,
-	std::string& entryPoint,
+	const std::string& shaderName,
+	const std::string& shaderContent,
+	const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
 	VkShaderModuleInfo& shaderModuleInfo
 );

@@ -5,9 +5,8 @@
 #include "VulkanHelper.h"
 #include "VulkanRenderSystem.h"
 #include "VulkanTools.h"
-#include "VulkanBuffer.h"
 #include "VulkanHardwareBufferManager.h"
-#include "VulkanBuffer.h"
+#include "FVulkanBuffer.h"
 #include "VulkanMappings.h"
 #include "VulkanLayoutCache.h"
 #include "VulkanPipelineCache.h"
@@ -173,7 +172,57 @@ void VulkanHelper::_createBuffer(
     vkBindBufferMemory(mVKDevice, buffer, bufferMemory, 0);
 }
 
+VkResult VulkanHelper::createBuffer(
+    VkBufferUsageFlags usageFlags,
+    VkMemoryPropertyFlags memoryPropertyFlags,
+    FVulkanBuffer* buffer,
+    VkDeviceSize size,
+    void* data)
+{
+    buffer->device = mVKDevice;
 
+    // Create the buffer handle
+    VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
+    VK_CHECK_RESULT(vkCreateBuffer(mVKDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
+
+    // Create the memory backing up the buffer handle
+    VkMemoryRequirements memReqs;
+    VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+    vkGetBufferMemoryRequirements(mVKDevice, buffer->buffer, &memReqs);
+    memAlloc.allocationSize = memReqs.size;
+    // Find a memory type index that fits the properties of the buffer
+    memAlloc.memoryTypeIndex = _findMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+    // If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set we also need to enable the appropriate flag during allocation
+    VkMemoryAllocateFlagsInfoKHR allocFlagsInfo{};
+    if (usageFlags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+        allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+        allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+        memAlloc.pNext = &allocFlagsInfo;
+    }
+    VK_CHECK_RESULT(vkAllocateMemory(mVKDevice, &memAlloc, nullptr, &buffer->memory));
+
+    buffer->alignment = memReqs.alignment;
+    buffer->size = size;
+    buffer->usageFlags = usageFlags;
+    buffer->memoryPropertyFlags = memoryPropertyFlags;
+
+    // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+    if (data != nullptr)
+    {
+        VK_CHECK_RESULT(buffer->map());
+        memcpy(buffer->mapped, data, size);
+        if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+            buffer->flush();
+
+        buffer->unmap();
+    }
+
+    // Initialize a default descriptor that covers the whole buffer size
+    buffer->setupDescriptor();
+
+    // Attach the memory to the buffer object
+    return buffer->bind();
+}
 
 VkPhysicalDeviceProperties& VulkanHelper::_getVkPhysicalDeviceProperties()
 {

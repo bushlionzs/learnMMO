@@ -92,6 +92,7 @@ void GameCamera::injectMouseMove(int _absx, int _absy, int _absz)
 {
     if (!mPickup)
         return;
+    mChanged = true;
     mMouseDeltaX = _absx - mMousePickX;
     mMouseDeltaY = _absy - mMousePickY;
 
@@ -212,6 +213,7 @@ bool GameCamera::update(float delta)
     
     if (mGoingForward || mGoingBack || mGoingLeft || mGoingRight || mGoingUp || mGoingDown)
     {
+        mChanged = true;
         auto rot = Ogre::Math::makeRotateMatrixYX(x, y);
 
         auto right = rot.getRight();
@@ -262,6 +264,15 @@ bool GameCamera::update(float delta)
     mCamera->updatePosition(position);
     mCamera->updateViewMatrix(m);
     return true;
+}
+
+bool GameCamera::changed()
+{
+    return mChanged;
+}
+void GameCamera::updateChanged(bool change)
+{
+    mChanged = change;
 }
 
 Ogre::String GameCamera::getCameraString()

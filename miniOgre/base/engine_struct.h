@@ -239,9 +239,13 @@ struct ShaderInfo
 {
     String shaderName;
     std::vector<std::pair<std::string, std::string>> shaderMacros;
-    uint32_t uboVertexMask;
-    uint32_t uboFragMask;
-    uint32_t samplerFragMask;
+};
+
+struct RaytracingShaderInfo
+{
+    String rayGenShaderName;
+    String missShaderName;
+    String closeHitShaderName;
 };
 
 class SkinnedData

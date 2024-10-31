@@ -58,7 +58,7 @@ private:
 };
 
 std::string getGlslKey(
-    std::string& shaderName,
+    const std::string& shaderName,
     const std::vector<std::pair<std::string, std::string>>& shaderMacros,
     Ogre::ShaderType shaderType)
 {
@@ -93,9 +93,9 @@ static std::unordered_map<std::string, ShaderContent> gShaderCacheMap;
 static std::mutex gShaderMutex;
 
 bool glslCompileShader(
-    std::string& shaderName,
-    std::string& shaderContent,
-    std::string& entryPoint,
+    const std::string& shaderName,
+    const std::string& shaderContent,
+    const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
     VkShaderModuleInfo& shaderModuleInfo
 )
@@ -118,7 +118,7 @@ bool glslCompileShader(
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
 
-
+    options.SetTargetSpirv(shaderc_spirv_version_1_4);
     auto pos = shaderName.find_last_of("\\");
     std::string rootpath = shaderName.substr(0, pos+1);
 
@@ -130,26 +130,38 @@ bool glslCompileShader(
         options.AddMacroDefinition(pair.first, pair.second);
     }
 
-    shaderc_shader_kind kind = shaderc_glsl_vertex_shader;
-
-    if (shaderModuleInfo.shaderType == Ogre::ShaderType::VertexShader)
+    shaderc_shader_kind kind;
+    switch (shaderModuleInfo.shaderType)
     {
+    case Ogre::ShaderType::VertexShader:
         options.AddMacroDefinition("VERTEX_SHADER", "1");
-    }
-    else if (shaderModuleInfo.shaderType == Ogre::ShaderType::PixelShader)
-    {
+        kind = shaderc_glsl_vertex_shader;
+        break;
+    case Ogre::ShaderType::PixelShader:
         options.AddMacroDefinition("FRAGMENT_SHADER", "1");
         kind = shaderc_glsl_fragment_shader;
-    }
-    else if (shaderModuleInfo.shaderType == Ogre::ShaderType::GeometryShader)
-    {
+        break;
+    case Ogre::ShaderType::GeometryShader:
         options.AddMacroDefinition("GEOMETRY_SHADER", "1");
         kind = shaderc_glsl_geometry_shader;
-    }
-    else
-    {
-        assert(shaderModuleInfo.shaderType == Ogre::ShaderType::ComputeShader);
+        break;
+    case Ogre::ShaderType::ComputeShader:
         kind = shaderc_glsl_compute_shader;
+        break;
+    case Ogre::ShaderType::RayGenShader:
+        kind = shaderc_glsl_raygen_shader;
+        break;
+    case Ogre::ShaderType::MissShader:
+        kind = shaderc_glsl_miss_shader;
+        break;
+     case Ogre::ShaderType::AnyHitShader:
+         kind = shaderc_glsl_anyhit_shader;
+        break;
+     case Ogre::ShaderType::ClosestHitShader:
+         kind = shaderc_glsl_closesthit_shader;
+         break;
+    default:
+        assert_invariant(false);
     }
 
 

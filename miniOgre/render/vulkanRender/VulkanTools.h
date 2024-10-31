@@ -127,6 +127,10 @@ namespace vks
 		VkShaderModule loadShaderAssic(const char* fileName, VkDevice device, Ogre::ShaderType type);
 
 		VkShaderModule loadShaderMemory(const std::string& code, VkDevice device);
+
+		VkPipelineShaderStageCreateInfo loadShader(
+			const std::string& fileName, 
+			VkShaderStageFlagBits stage);
 		/** @brief Checks if a file exists */
 		bool fileExists(const std::string &filename);
 

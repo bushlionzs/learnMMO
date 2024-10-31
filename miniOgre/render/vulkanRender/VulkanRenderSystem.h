@@ -2,6 +2,8 @@
 
 #include "VulkanRenderSystemBase.h"
 #include "rayTracing.h"
+#include "FVulkanBuffer.h"
+
 
 
 class VulkanRenderSystem : public VulkanRenderSystemBase
@@ -26,10 +28,29 @@ public:
         backend::descriptor_binding_t binding,
         AccelerationStructure* accStructure) override;
     /// 
+
+    virtual Handle<HwRaytracingProgram> createRaytracingProgram(
+        const ShaderInfo& mShaderInfo);
+    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
+        Handle<HwRaytracingProgram> programHandle, uint32_t set);
+
+    virtual void bindPipeline(
+        Handle<HwRaytracingProgram> programHandle,
+        Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount
+    );
+
+    virtual void traceRay(Handle<HwRaytracingProgram> programHandle);
+    virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src);
 private:
     uint64_t getBufferDeviceAddress(VkBuffer vkBuffer);
 
     VkBuffer getVkBuffer(Handle<HwBufferObject> bufferHandle);
+
+    VkStridedDeviceAddressRegionKHR getSbtEntryStridedDeviceAddressRegion(
+        VkBuffer buffer, uint32_t handleCount);
+    void createShaderBindingTable(
+        ShaderBindingTable& shaderBindingTable, uint32_t handleCount);
 private:
     
     

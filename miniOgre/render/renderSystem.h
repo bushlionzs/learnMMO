@@ -95,7 +95,15 @@ public:
     {
     }
 
+    virtual void bindPipeline(
+        Handle<HwRaytracingProgram> programHandle,
+        Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount
+    ) {}
 
+    virtual void traceRay(Handle<HwRaytracingProgram> programHandle) {}
+
+    virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src) {}
     virtual void drawIndexed(
         uint32_t indexCount,
         uint32_t instanceCount,
@@ -167,8 +175,10 @@ public:
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts);
     virtual Handle<HwProgram> createShaderProgram(const ShaderInfo& mShaderInfo, VertexDeclaration* decl);
     virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwComputeProgram> programHandle, 
-        uint32_t set);
+        Handle<HwComputeProgram> programHandle, uint32_t set);
+    virtual Handle<HwRaytracingProgram> createRaytracingProgram(const ShaderInfo& mShaderInfo);
+    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
+        Handle<HwRaytracingProgram> programHandle, uint32_t set);
     virtual Handle<HwSampler> createTextureSampler(filament::backend::SamplerParams& samplerParams);
     virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& shaderInfo);
     virtual Handle<HwPipeline> createPipeline(

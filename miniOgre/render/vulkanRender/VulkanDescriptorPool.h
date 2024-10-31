@@ -37,6 +37,22 @@ public:
                 .descriptorCount = layout->getInputAttachmentCount(),
             };
         }
+
+        if (layout->hasStoreImage())
+        {
+            sizes[npools++] = {
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .descriptorCount = layout->getStoreImageCount(),
+            };
+        }
+
+        if (layout->hasAccelerationStructure())
+        {
+            sizes[npools++] = {
+                .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                .descriptorCount = layout->getAccelerationStructureCount(),
+            };
+        }
         VkDescriptorPoolCreateInfo info{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .pNext = nullptr,

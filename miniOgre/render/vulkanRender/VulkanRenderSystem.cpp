@@ -1,10 +1,13 @@
 #include "OgreHeader.h"
+#include <platform_file.h>
 #include "VulkanRenderSystem.h"
 #include "OgreRenderable.h"
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
 #include "OgreMaterial.h"
 #include "OgreRoot.h"
+#include "OgreResourceManager.h"
+#include "glslUtil.h"
 #include "VulkanRenderTarget.h"
 #include "VulkanMappings.h"
 #include <VulkanPipelineCache.h>
@@ -15,6 +18,7 @@
 #include "VulkanTools.h"
 #include "VulkanHelper.h"
 #include "VulkanWindow.h"
+#include "VulkanLayoutCache.h"
 
 struct AccelerationStructure
 {
@@ -370,6 +374,396 @@ void VulkanRenderSystem::updateDescriptorSetAccelerationStructure(
         &descriptorWrite, 0, nullptr);
 }
 
+Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
+    const ShaderInfo& mShaderInfo)
+{
+    Handle<HwRaytracingProgram> program = mResourceAllocator.allocHandle<HwRaytracingProgram>();
+    VulkanRaytracingProgram* vulkanProgram = 
+        mResourceAllocator.construct<VulkanRaytracingProgram>(program, mShaderInfo.shaderName);
+
+    std::string rayGenShaderName = "raygen.rgen";
+    std::string missShaderName = "miss.rmiss";
+    std::string shadowMissShaderName = "shadow.rmiss";
+    std::string closeHitShaderName = "closesthit.rchit";
+    std::string anyHitShaderName = "anyhit.rahit";
+
+    std::string entryPoint("main");
+    std::vector<std::pair<std::string, std::string>> shaderMacros;
+    VkShaderModuleInfo shaderModuleInfo;
+    std::string content;
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups{};
+
+    vks::tools::BingdingInfo bindingMap;
+
+    auto bingingUpdate = [](
+        vks::tools::BingdingInfo& bindingMap,
+        vks::tools::BingdingInfo& results,
+        VkShaderStageFlagBits flagBits
+        )
+        {
+            auto findLayout = [](
+                std::vector<VkDescriptorSetLayoutBinding>& bindingList,
+                VkDescriptorSetLayoutBinding binding)
+                {
+                    for (auto i = 0; i < bindingList.size(); i++)
+                    {
+                        if (bindingList.at(i).binding == binding.binding)
+                        {
+                            return i;
+                        }
+                    }
+                    return -1;
+                };
+            for (auto& pair : results)
+            {
+                auto& bingdingList = bindingMap[pair.first];
+                for (auto& layoutBingding : pair.second)
+                {
+                    auto i = findLayout(bingdingList, layoutBingding);
+                    if (i >= 0)
+                    {
+                        bingdingList[i].stageFlags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+                    }
+                    else
+                    {
+                        bingdingList.push_back(layoutBingding);
+                    }
+                }
+            }
+        };
+    // Ray generation group
+    {
+        shaderModuleInfo.shaderType = Ogre::ShaderType::RayGenShader;
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource("raygen.rgen");
+        assert_invariant(resInfo != nullptr);
+        get_file_content(resInfo->_fullname.c_str(), content);
+        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
+        VkPipelineShaderStageCreateInfo shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        shaderStage.module = shaderModuleInfo.shaderModule;
+        shaderStage.pName = entryPoint.c_str();
+        shaderStages.push_back(shaderStage);
+
+        auto results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+        for (auto& pair : results)
+        {
+            for (auto& layoutBingding : pair.second)
+            {
+                bindingMap[pair.first].push_back(layoutBingding);
+            }
+        }
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+        shaderGroups.push_back(shaderGroup);
+    }
+    // Miss group
+    {
+        shaderModuleInfo.shaderType = Ogre::ShaderType::MissShader;
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource("miss.rmiss");
+        assert_invariant(resInfo != nullptr);
+        get_file_content(resInfo->_fullname.c_str(), content);
+        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
+        VkPipelineShaderStageCreateInfo shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+        shaderStage.module = shaderModuleInfo.shaderModule;
+        shaderStage.pName = entryPoint.c_str();
+        shaderStages.push_back(shaderStage);
+
+        auto results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_MISS_BIT_KHR);
+        bingingUpdate(bindingMap, results, VK_SHADER_STAGE_MISS_BIT_KHR);
+
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+        shaderGroups.push_back(shaderGroup);
+        // Second shader for shadows
+
+        resInfo = ResourceManager::getSingleton().getResource("shadow.rmiss");
+        assert_invariant(resInfo != nullptr);
+        get_file_content(resInfo->_fullname.c_str(), content);
+        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
+        shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+        shaderStage.module = shaderModuleInfo.shaderModule;
+        shaderStage.pName = entryPoint.c_str();
+        shaderStages.push_back(shaderStage);
+        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroups.push_back(shaderGroup);
+    }
+    // Closest hit group for doing texture lookups
+    {
+        shaderModuleInfo.shaderType = Ogre::ShaderType::ClosestHitShader;
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource("closesthit.rchit");
+        assert_invariant(resInfo != nullptr);
+        get_file_content(resInfo->_fullname.c_str(), content);
+        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
+        VkPipelineShaderStageCreateInfo shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        shaderStage.module = shaderModuleInfo.shaderModule;
+        shaderStage.pName = entryPoint.c_str();
+        shaderStages.push_back(shaderStage);
+
+        auto results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+        bingingUpdate(bindingMap, results, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+        shaderGroup.generalShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+        shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
+        resInfo = ResourceManager::getSingleton().getResource("anyhit.rahit");
+        assert_invariant(resInfo != nullptr);
+        get_file_content(resInfo->_fullname.c_str(), content);
+        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
+        results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+        bingingUpdate(bindingMap, results, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+        
+        shaderStage = {};
+        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+        shaderStage.module = shaderModuleInfo.shaderModule;
+        shaderStage.pName = entryPoint.c_str();
+        shaderStages.push_back(shaderStage);
+        shaderGroup.anyHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroups.push_back(shaderGroup);
+    }
+   
+    VkDescriptorSetLayoutBinding toBind[VulkanDescriptorSetLayout::MAX_BINDINGS];
+    uint32_t bindIndex = 0;
+    VulkanPipelineLayoutCache::PipelineLayoutKey keys;
+    for (auto set = 0; set < VulkanDescriptorSetLayout::MAX_BINDING_SET; set++)
+    {
+        bindIndex = 0;
+        auto itor = bindingMap.find(set);
+
+        if (itor != bindingMap.end())
+        {
+            for (auto& layoutBingding : itor->second)
+            {
+                toBind[bindIndex].binding = layoutBingding.binding;
+                toBind[bindIndex].descriptorType = layoutBingding.descriptorType;
+                toBind[bindIndex].descriptorCount = layoutBingding.descriptorCount;
+                toBind[bindIndex].stageFlags = layoutBingding.stageFlags;
+                toBind[bindIndex].pImmutableSamplers = nullptr;
+                bindIndex++;
+            }
+
+            Handle<HwDescriptorSetLayout> layoutHandle = mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
+            VulkanDescriptorSetLayout::VulkanDescriptorSetLayoutInfo info;
+
+            for (auto i = 0; i < bindIndex; i++)
+            {
+                switch (toBind[i].descriptorType)
+                {
+                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+                    info.combinedImage++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                    info.inputAttachmentCount++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_SAMPLER:
+                    info.samplerCount++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+                    info.storeCount++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+                    info.uboCount++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                    info.storeImage++;
+                    break;
+                case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+                    info.accelerationStructure++;
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
+            }
+            VulkanDescriptorSetLayout* vulkanLayout = 
+                mResourceAllocator.construct<VulkanDescriptorSetLayout>(layoutHandle, info);
+
+            VkDescriptorSetLayout vkLayout = mVulkanLayoutCache->getLayout(&toBind[0], bindIndex);
+            vulkanLayout->setVkLayout(vkLayout);
+            keys[set] = vkLayout;
+            vulkanProgram->updateLayout(set, layoutHandle);
+        }
+        else
+        {
+            keys[set] = pEmptyDescriptorSetLayout;
+        }
+    }
+
+    VkPipelineLayout pipelineLayout = mPipelineLayoutCache->getLayout(keys);
+    
+    VkPipeline pipeline;
+    VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCI{};
+    rayTracingPipelineCI.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+    rayTracingPipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+    rayTracingPipelineCI.pStages = shaderStages.data();
+    rayTracingPipelineCI.groupCount = static_cast<uint32_t>(shaderGroups.size());
+    rayTracingPipelineCI.pGroups = shaderGroups.data();
+    rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
+    rayTracingPipelineCI.layout = pipelineLayout;
+    VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(
+        mVulkanPlatform->getDevice(), VK_NULL_HANDLE, VK_NULL_HANDLE, 
+        1, &rayTracingPipelineCI, nullptr, &pipeline));
+
+    vulkanProgram->updatePipelineLayout(pipelineLayout);
+    vulkanProgram->updatePipeline(pipeline);
+
+    //create shader binding table
+    auto& rayTracingPipelineProperties = 
+        mVulkanPlatform->getRayTracingPipelineProperties();
+
+    const uint32_t handleSize = rayTracingPipelineProperties.shaderGroupHandleSize;
+    const uint32_t handleSizeAligned = 
+        vks::tools::alignedSize(
+            rayTracingPipelineProperties.shaderGroupHandleSize, 
+            rayTracingPipelineProperties.shaderGroupHandleAlignment);
+    const uint32_t groupCount = static_cast<uint32_t>(shaderGroups.size());
+    const uint32_t sbtSize = groupCount * handleSizeAligned;
+
+    std::vector<uint8_t> shaderHandleStorage(sbtSize);
+    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(
+        mVulkanPlatform->getDevice(), pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data()));
+
+    ShaderBindingTables& shaderBindingTables = vulkanProgram->getShaderBindingTables();
+
+    createShaderBindingTable(shaderBindingTables.raygen, 1);
+    createShaderBindingTable(shaderBindingTables.miss, 2);
+    createShaderBindingTable(shaderBindingTables.hit, 1);
+
+    // Copy handles
+    memcpy(shaderBindingTables.raygen.mapped, shaderHandleStorage.data(), handleSize);
+    // We are using two miss shaders, so we need to get two handles for the miss shader binding table
+    memcpy(shaderBindingTables.miss.mapped, shaderHandleStorage.data() + handleSizeAligned, handleSize * 2);
+    memcpy(shaderBindingTables.hit.mapped, shaderHandleStorage.data() + handleSizeAligned * 3, handleSize);
+    return program;
+}
+
+Handle<HwDescriptorSetLayout> VulkanRenderSystem::getDescriptorSetLayout(
+    Handle<HwRaytracingProgram> programHandle, uint32_t set)
+{
+    VulkanRaytracingProgram* program = mResourceAllocator.handle_cast<VulkanRaytracingProgram*>(programHandle);
+
+    return program->getLayout(set);
+}
+
+void VulkanRenderSystem::bindPipeline(
+    Handle<HwRaytracingProgram> programHandle,
+    Handle<HwDescriptorSet>* descSets,
+    uint32_t setCount
+)
+{
+    VulkanRaytracingProgram* program = mResourceAllocator.handle_cast<VulkanRaytracingProgram*>(programHandle);
+    auto pipeline = program->getPipeline();
+    auto pipelineLayout = program->getPipelineLayout();
+    vkCmdBindPipeline(mCommandBuffer,
+        VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline);
+
+    VkDescriptorSet descriptorSet[4];
+
+    for (auto i = 0; i < setCount; i++)
+    {
+        if (descSets[i])
+        {
+            VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(descSets[i]);
+            descriptorSet[i] = set->vkSet;
+        }
+        else
+        {
+            descriptorSet[i] = pEmptyDescriptorSet;
+        }
+    }
+    vkCmdBindDescriptorSets(mCommandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+        pipelineLayout, 0, setCount, &descriptorSet[0], 0, nullptr);
+}
+
+void VulkanRenderSystem::traceRay(Handle<HwRaytracingProgram> programHandle)
+{
+    auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+    VulkanRaytracingProgram* program = 
+        mResourceAllocator.handle_cast<VulkanRaytracingProgram*>(programHandle);
+    ShaderBindingTables& shaderBindingTables = program->getShaderBindingTables();
+    VkStridedDeviceAddressRegionKHR emptySbtEntry = {};
+    vkCmdTraceRaysKHR(
+        mCommandBuffer,
+        &shaderBindingTables.raygen.stridedDeviceAddressRegion,
+        &shaderBindingTables.miss.stridedDeviceAddressRegion,
+        &shaderBindingTables.hit.stridedDeviceAddressRegion,
+        &emptySbtEntry,
+        ogreConfig.width,
+        ogreConfig.height,
+        1);
+}
+
+void VulkanRenderSystem::copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src)
+{
+    auto width = src->getWidth();
+    auto height = src->getHeight();
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.srcOffset = { 0, 0, 0 };
+    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.dstOffset = { 0, 0, 0 };
+    copyRegion.extent = { width, height, 1 };
+
+    VulkanTexture* srcImage = (VulkanTexture*)src->getTarget();
+    VulkanTexture* dstImage = (VulkanTexture*)dst->getTarget();
+    vkCmdCopyImage(mCommandBuffer, srcImage->getVkImage(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+        dstImage->getVkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+}
+
+VkStridedDeviceAddressRegionKHR VulkanRenderSystem::getSbtEntryStridedDeviceAddressRegion(
+    VkBuffer buffer, uint32_t handleCount)
+{
+    auto& rayTracingPipelineProperties =
+        mVulkanPlatform->getRayTracingPipelineProperties();
+    const uint32_t handleSizeAligned = vks::tools::alignedSize(rayTracingPipelineProperties.shaderGroupHandleSize, rayTracingPipelineProperties.shaderGroupHandleAlignment);
+    VkStridedDeviceAddressRegionKHR stridedDeviceAddressRegionKHR{};
+    stridedDeviceAddressRegionKHR.deviceAddress = getBufferDeviceAddress(buffer);
+    stridedDeviceAddressRegionKHR.stride = handleSizeAligned;
+    stridedDeviceAddressRegionKHR.size = handleCount * handleSizeAligned;
+    return stridedDeviceAddressRegionKHR;
+}
+
+void VulkanRenderSystem::createShaderBindingTable(
+    ShaderBindingTable& shaderBindingTable, uint32_t handleCount)
+{
+    auto& rayTracingPipelineProperties =
+        mVulkanPlatform->getRayTracingPipelineProperties();
+    // Create buffer to hold all shader handles for the SBT
+    VK_CHECK_RESULT(VulkanHelper::getSingleton().createBuffer(
+        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &shaderBindingTable,
+        rayTracingPipelineProperties.shaderGroupHandleSize * handleCount));
+    // Get the strided address to be used when dispatching the rays
+    shaderBindingTable.stridedDeviceAddressRegion = 
+        getSbtEntryStridedDeviceAddressRegion(shaderBindingTable.buffer, handleCount);
+    // Map persistent 
+    shaderBindingTable.map();
+}
 
 
 

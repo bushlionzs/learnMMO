@@ -153,6 +153,8 @@ void VertexData::updateBindBuffer(uint32_t binding, uint32_t vertexCount)
 
 void VertexData::addBoneInfo(std::vector<VertexBoneAssignment>& assignInfoList)
 {
+    if (assignInfoList.empty())
+        return;
     uint32_t binding = 0;
 
     for (auto i = 0; i < vertexSlotInfo.size(); i++)

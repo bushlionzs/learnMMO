@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2018 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 #include "OgreHeader.h"
 #include "FVulkanBuffer.h"
 #include "VulkanMemory.h"
@@ -20,80 +5,115 @@
 #include <utils/Panic.h>
 
 
-namespace filament::backend {
-
-    FVulkanBuffer::FVulkanBuffer(VmaAllocator allocator, VulkanStagePool& stagePool,
-        VkBufferUsageFlags usage, uint32_t numBytes)
-    : mAllocator(allocator),
-      mStagePool(stagePool),
-      mUsage(usage) {
-
-    // for now make sure that only 1 bit is set in usage
-    // (because loadFromCpu() assumes that somewhat)
-    assert_invariant(usage && !(usage & (usage - 1)));
-
-    // Create the VkBuffer.
-    VkBufferCreateInfo bufferInfo {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = numBytes,
-        .usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-    };
-
-    VmaAllocationCreateInfo allocInfo { .usage = VMA_MEMORY_USAGE_GPU_ONLY };
-    vmaCreateBuffer(mAllocator, &bufferInfo, &allocInfo, &mGpuBuffer, &mGpuMemory, nullptr);
+VkResult FVulkanBuffer::map(VkDeviceSize size, VkDeviceSize offset)
+{
+	return vkMapMemory(device, memory, offset, size, 0, &mapped);
 }
 
-    FVulkanBuffer::~FVulkanBuffer() {
-    vmaDestroyBuffer(mAllocator, mGpuBuffer, mGpuMemory);
+/**
+* Unmap a mapped memory range
+*
+* @note Does not return a result as vkUnmapMemory can't fail
+*/
+void FVulkanBuffer::unmap()
+{
+	if (mapped)
+	{
+		vkUnmapMemory(device, memory);
+		mapped = nullptr;
+	}
 }
 
-void FVulkanBuffer::loadFromCpu(VkCommandBuffer cmdbuf, const void* cpuData, uint32_t byteOffset,
-        uint32_t numBytes) const {
-    assert_invariant(byteOffset == 0);
-    VulkanStage const* stage = mStagePool.acquireStage(numBytes);
-    void* mapped;
-    vmaMapMemory(mAllocator, stage->memory, &mapped);
-    memcpy(mapped, cpuData, numBytes);
-    vmaUnmapMemory(mAllocator, stage->memory);
-    vmaFlushAllocation(mAllocator, stage->memory, byteOffset, numBytes);
-
-    VkBufferCopy region{ .size = numBytes };
-    vkCmdCopyBuffer(cmdbuf, stage->buffer, mGpuBuffer, 1, &region);
-
-    // Firstly, ensure that the copy finishes before the next draw call.
-    // Secondly, in case the user decides to upload another chunk (without ever using the first one)
-    // we need to ensure that this upload completes first (hence
-    // dstStageMask=VK_PIPELINE_STAGE_TRANSFER_BIT).
-    VkAccessFlags dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    if (mUsage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {
-        dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-        dstStageMask |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-    } else if (mUsage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) {
-        dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
-        dstStageMask |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-    } else if (mUsage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
-        dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
-        // NOTE: ideally dstStageMask would include VERTEX_SHADER_BIT | FRAGMENT_SHADER_BIT, but
-        // this seems to be insufficient on Mali devices. To work around this we are using a more
-        // aggressive ALL_GRAPHICS_BIT barrier.
-        dstStageMask |= VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-    } else if (mUsage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
-        // TODO: implement me
-    }
-
-    VkBufferMemoryBarrier barrier{
-	    .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-	    .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-	    .dstAccessMask = dstAccessMask,
-	    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .buffer = mGpuBuffer,
-	    .size = VK_WHOLE_SIZE,
-    };
-
-    vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, dstStageMask, 0, 0, nullptr, 1,
-	    &barrier, 0, nullptr);
+/**
+* Attach the allocated memory block to the buffer
+*
+* @param offset (Optional) Byte offset (from the beginning) for the memory region to bind
+*
+* @return VkResult of the bindBufferMemory call
+*/
+VkResult FVulkanBuffer::bind(VkDeviceSize offset)
+{
+	return vkBindBufferMemory(device, buffer, memory, offset);
 }
 
-} // namespace filament::backend
+/**
+* Setup the default descriptor for this buffer
+*
+* @param size (Optional) Size of the memory range of the descriptor
+* @param offset (Optional) Byte offset from beginning
+*
+*/
+void FVulkanBuffer::setupDescriptor(VkDeviceSize size, VkDeviceSize offset)
+{
+	descriptor.offset = offset;
+	descriptor.buffer = buffer;
+	descriptor.range = size;
+}
+
+/**
+* Copies the specified data to the mapped buffer
+*
+* @param data Pointer to the data to copy
+* @param size Size of the data to copy in machine units
+*
+*/
+void FVulkanBuffer::copyTo(void* data, VkDeviceSize size)
+{
+	assert(mapped);
+	memcpy(mapped, data, size);
+}
+
+/**
+* Flush a memory range of the buffer to make it visible to the device
+*
+* @note Only required for non-coherent memory
+*
+* @param size (Optional) Size of the memory range to flush. Pass VK_WHOLE_SIZE to flush the complete buffer range.
+* @param offset (Optional) Byte offset from beginning
+*
+* @return VkResult of the flush call
+*/
+VkResult FVulkanBuffer::flush(VkDeviceSize size, VkDeviceSize offset)
+{
+	VkMappedMemoryRange mappedRange = {};
+	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mappedRange.memory = memory;
+	mappedRange.offset = offset;
+	mappedRange.size = size;
+	return vkFlushMappedMemoryRanges(device, 1, &mappedRange);
+}
+
+/**
+* Invalidate a memory range of the buffer to make it visible to the host
+*
+* @note Only required for non-coherent memory
+*
+* @param size (Optional) Size of the memory range to invalidate. Pass VK_WHOLE_SIZE to invalidate the complete buffer range.
+* @param offset (Optional) Byte offset from beginning
+*
+* @return VkResult of the invalidate call
+*/
+VkResult FVulkanBuffer::invalidate(VkDeviceSize size, VkDeviceSize offset)
+{
+	VkMappedMemoryRange mappedRange = {};
+	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mappedRange.memory = memory;
+	mappedRange.offset = offset;
+	mappedRange.size = size;
+	return vkInvalidateMappedMemoryRanges(device, 1, &mappedRange);
+}
+
+/**
+* Release all Vulkan resources held by this buffer
+*/
+void FVulkanBuffer::destroy()
+{
+	if (buffer)
+	{
+		vkDestroyBuffer(device, buffer, nullptr);
+	}
+	if (memory)
+	{
+		vkFreeMemory(device, memory, nullptr);
+	}
+}

@@ -225,6 +225,20 @@ Handle<HwDescriptorSetLayout> RenderSystem::getDescriptorSetLayout(
     return Handle<HwDescriptorSetLayout>();
 }
 
+Handle<HwRaytracingProgram> RenderSystem::createRaytracingProgram(
+    const ShaderInfo& mShaderInfo)
+{
+    assert(false);
+    return Handle<HwRaytracingProgram>();
+}
+
+Handle<HwDescriptorSetLayout> RenderSystem::getDescriptorSetLayout(
+    Handle<HwRaytracingProgram> programHandle, uint32_t set)
+{
+    assert(false);
+    return Handle<HwDescriptorSetLayout>();
+}
+
 Handle<HwSampler> RenderSystem::createTextureSampler(filament::backend::SamplerParams& samplerParams)
 {
     assert(false);

@@ -271,6 +271,9 @@ public:
     uint32_t getTransferQueueFamilyIndex() const noexcept;
     uint32_t getTransferQueueIndex() const noexcept;
     VkQueue getTransferQueue() const noexcept;
+
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR& getRayTracingPipelineProperties();
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR& getAccelerationStructureFeatures();
 private:
     static ExtensionSet getSwapchainInstanceExtensions();
 

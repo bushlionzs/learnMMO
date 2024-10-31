@@ -361,6 +361,9 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
     };
 
+    VkPhysicalDeviceDescriptorIndexingFeaturesEXT physicalDeviceDescriptorIndexingFeatures =
+    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT };
+
     VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = 
     { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
     if (driverConfig.enableRayTracing)
@@ -374,6 +377,12 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         base = (VkBaseOutStructure*)base->pNext;
         accelerationStructureFeatures.accelerationStructure = VK_TRUE;
         base->pNext = (VkBaseOutStructure*)&accelerationStructureFeatures;
+        base = (VkBaseOutStructure*)base->pNext;
+
+        physicalDeviceDescriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        physicalDeviceDescriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+        physicalDeviceDescriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+        base->pNext = (VkBaseOutStructure*)&physicalDeviceDescriptorIndexingFeatures;
         base = (VkBaseOutStructure*)base->pNext;
 
         rayQueryFeatures.rayQuery = VK_TRUE;
@@ -620,6 +629,10 @@ struct VulkanPlatformPrivate {
 
     bool mSharedContext = false;
     bool mForceXCBSwapchain = false;
+
+    //raytracing
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR  mRayTracingPipelineProperties{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR mAccelerationStructureFeatures{};
 };
 
 void VulkanPlatform::terminate() {
@@ -760,6 +773,22 @@ Driver* VulkanPlatform::createDriver(void* sharedContext,
         &mImpl->mTransferQueue);
     assert_invariant(mImpl->mTransferQueue != VK_NULL_HANDLE);
 
+    if (driverConfig.enableRayTracing)
+    {
+        mImpl->mRayTracingPipelineProperties.sType = 
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        VkPhysicalDeviceProperties2 deviceProperties2{};
+        deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        deviceProperties2.pNext = &mImpl->mRayTracingPipelineProperties;
+        vkGetPhysicalDeviceProperties2(mImpl->mPhysicalDevice, &deviceProperties2);
+        mImpl->mAccelerationStructureFeatures.sType = 
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        VkPhysicalDeviceFeatures2 deviceFeatures2{};
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.pNext = &mImpl->mAccelerationStructureFeatures;
+        vkGetPhysicalDeviceFeatures2(mImpl->mPhysicalDevice, &deviceFeatures2);
+    }
+
     // Store the extension support in the context
     context.mDebugUtilsSupported = setContains(instExts, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     context.mDebugMarkersSupported = setContains(deviceExts, VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
@@ -880,6 +909,16 @@ uint32_t VulkanPlatform::getTransferQueueIndex() const noexcept
 VkQueue VulkanPlatform::getTransferQueue() const noexcept
 {
     return mImpl->mTransferQueue;
+}
+
+VkPhysicalDeviceRayTracingPipelinePropertiesKHR& VulkanPlatform::getRayTracingPipelineProperties()
+{
+    return mImpl->mRayTracingPipelineProperties;
+}
+
+VkPhysicalDeviceAccelerationStructureFeaturesKHR& VulkanPlatform::getAccelerationStructureFeatures()
+{
+    return mImpl->mAccelerationStructureFeatures;
 }
 
 #undef SWAPCHAIN_RET_FUNC

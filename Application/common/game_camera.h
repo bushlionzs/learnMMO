@@ -40,6 +40,8 @@ private:
     Ogre::Vector3 rotation = Ogre::Vector3::ZERO;
     Ogre::Vector3 position = Ogre::Vector3::ZERO;
     Ogre::Vector4 viewPos = Ogre::Vector4::ZERO;
+
+    bool mChanged = false;
 public:
     GameCamera(Ogre::Camera* camera, SceneManager* sceneMgr);
 
@@ -73,4 +75,7 @@ public:
 
     virtual void injectMouseWheel(int _absz);
     virtual bool update(float delta);
+
+    bool changed();
+    void updateChanged(bool change);
 };

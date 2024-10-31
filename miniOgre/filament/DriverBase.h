@@ -104,8 +104,14 @@ struct HwProgram : public HwBase {
 
 struct HwComputeProgram : public HwBase {
     utils::CString name;
-    explicit HwComputeProgram(utils::CString name) noexcept : name(std::move(name)) { }
+    explicit HwComputeProgram(utils::CString _name) noexcept : name(std::move(_name)) { }
     HwComputeProgram() noexcept = default;
+};
+
+struct HwRaytracingProgram : public HwBase {
+    utils::CString name;
+    explicit HwRaytracingProgram(utils::CString _name) noexcept : name(std::move(_name)) { }
+    HwRaytracingProgram() noexcept = default;
 };
 
 struct HwDescriptorSetLayout : public HwBase {

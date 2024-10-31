@@ -400,9 +400,10 @@ namespace Ogre {
         PixelShader,
         GeometryShader,
         ComputeShader,
-        HullShader,
-        DomainShader,
-        NumShaderTypes
+        RayGenShader,
+        MissShader,
+        AnyHitShader,
+        ClosestHitShader,
     };
 
     enum CubeType

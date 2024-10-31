@@ -48,6 +48,19 @@ struct PropData
 	Ogre::Matrix4      mWorldMatrix;
 };
 
+struct UniformData {
+	Ogre::Matrix4 viewInverse;
+	Ogre::Matrix4 projInverse;
+	uint32_t frame{ 0 };
+} ;
+
+struct GeometryNode {
+	uint64_t vertexBufferDeviceAddress;
+	uint64_t indexBufferDeviceAddress;
+	int32_t textureIndexBaseColor;
+	int32_t textureIndexOcclusion;
+};
+
 class RayTracingApp
 {
 public:
@@ -61,10 +74,25 @@ public:
 
 		//for present pass
 		Handle <HwDescriptorSet> zeroDescriptorSetOfPresent;
+
+		//raytracing pass
+		Handle<HwDescriptorSet>zeroDescSetOfRaytracing;
 	};
 	RayTracingApp();
 	~RayTracingApp();
 	void setup(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
+	void RayQuery(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
+	void RayTracing(
 		RenderPipeline* renderPipeline,
 		RenderSystem* renderSystem,
 		Ogre::RenderWindow* renderWindow,
@@ -87,5 +115,6 @@ private:
 
 	PropData sanMiguelProp;
 	GameCamera* mGameCamera;
-
+	UniformData mUniformData;
+	GeometryNode mGeometryNode;
 };

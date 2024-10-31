@@ -17,9 +17,6 @@ namespace Ogre {
     {
         mMaterialName = name;
         mPbr = pbr;
-        mShaderInfo.uboVertexMask = 1 | 2 | 8;
-        mShaderInfo.uboFragMask = 1 | 2 | 4;
-        mShaderInfo.samplerFragMask = 1 | 2 | 4 | 8 | 16;
 
         mRasterState.depthWrite = true;
         mRasterState.depthTest = true;
@@ -185,10 +182,6 @@ namespace Ogre {
     void Material::addShader(ShaderInfo& sinfo)
     {
         mShaderInfo = sinfo;
-
-        mShaderInfo.uboVertexMask = 1 | 2 | 8;
-        mShaderInfo.uboFragMask = 1 | 2 | 4;
-        mShaderInfo.samplerFragMask = 1 | 2 | 4 | 8 | 16;
     }
 
     ShaderInfo& Material::getShaderInfo()

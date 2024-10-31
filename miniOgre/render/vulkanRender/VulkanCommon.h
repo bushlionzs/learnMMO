@@ -119,7 +119,6 @@ struct VkShaderModuleInfo
     std::vector<GlslInputDesc> inputDesc;
 };
 
-
 // Holds data for a ray tracing scratch buffer that is used as a temporary storage
 struct RayTracingScratchBuffer
 {

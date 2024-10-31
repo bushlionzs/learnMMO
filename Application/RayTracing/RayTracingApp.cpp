@@ -22,6 +22,7 @@
 #include "game_camera.h"
 #include "OgreMurmurHash3.h"
 #include "OgreTextureManager.h"
+#include "OgreMeshManager.h"
 #include "forgeCommon.h"
 
 RayTracingApp::RayTracingApp()
@@ -41,295 +42,14 @@ void RayTracingApp::setup(
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
-	mGameCamera = gameCamera;
-	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	auto rootNode = sceneManager->getRoot();
-	RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
-	ShaderInfo shaderInfo;
-	shaderInfo.shaderName = "RayQuery";
-	auto programHandle = rs->createComputeProgram(shaderInfo);
-
-	auto zeroLayout = rs->getDescriptorSetLayout(programHandle, 0);
-	auto firstLayout = rs->getDescriptorSetLayout(programHandle, 1);
-
-
-	std::string meshname = "SanMiguel.bin";
-	std::shared_ptr<Mesh> mesh = loadSanMiguel(meshname);
-
-	Entity* sanMiguel = sceneManager->createEntity(meshname, meshname);
-	SceneNode* sanMiguelNode = rootNode->createChildSceneNode(meshname);
-	sanMiguelNode->attachObject(sanMiguel);
-
-	auto subMeshCount = mesh->getSubMeshCount();
-	/************************************************************************/
-			// 02 Creation Acceleration Structure
-   /************************************************************************/
-	AccelerationStructureDesc         asDesc = {};
-	AccelerationStructureGeometryDesc geomDescs[1024] = {};
-	VertexData* vertexData = mesh->getVertexData();
-	IndexData* indexData = mesh->getIndexData();
-	for (uint32_t i = 0; i < subMeshCount; i++)
+	if (0)
 	{
-		SubMesh* subMesh = mesh->getSubMesh(i);
-		auto& mat = subMesh->getMaterial();
-
-		auto materialFlag = mat->getMaterialFlags();
-
-		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
-			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
-			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
-		geomDescs[i].vertexBufferHandle = vertexData->getBuffer(0);
-		geomDescs[i].mVertexCount = (uint32_t)vertexData->getVertexCount();
-		geomDescs[i].mVertexStride = vertexData->getVertexSize(0);
-		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
-		geomDescs[i].indexBufferHandle = indexData->getHandle();
-
-		IndexDataView* indexView = subMesh->getIndexView();
-		geomDescs[i].mIndexCount = indexView->mIndexCount;
-		geomDescs[i].mIndexOffset = indexView->mIndexLocation * sizeof(uint32_t);
-		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
+		RayQuery(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
 	}
-
-	asDesc.mBottom.mDescCount = subMeshCount;
-	asDesc.mBottom.pGeometryDescs = geomDescs;
-	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
-	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-
-
-	AccelerationStructure* pSanMiguelBottomAS;
-	AccelerationStructure* pSanMiguelAS = NULL;
-
-	rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
-
-	sanMiguelProp.mWorldMatrix = Ogre::Math::makeScaleMatrix(Ogre::Vector3(10.0f, 10.0f, 10.0f));
-
-	AccelerationStructureInstanceDesc instanceDesc = {};
-	instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
-	instanceDesc.mInstanceContributionToHitGroupIndex = 0;
-	instanceDesc.mInstanceID = 0;
-	instanceDesc.mInstanceMask = 1;
-	memcpy(instanceDesc.mTransform, &sanMiguelProp.mWorldMatrix, sizeof(float[12]));
-	instanceDesc.pBottomAS = pSanMiguelBottomAS;
-
-
-	rs->beginCmd();
-	asDesc = {};
-	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
-	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-	asDesc.mTop.mDescCount = 1;
-	asDesc.mTop.pInstanceDescs = &instanceDesc;
-
-	rs->addAccelerationStructure(&asDesc, &pSanMiguelAS);
-
-	// Build Acceleration Structures
-	RaytracingBuildASDesc buildASDesc = {};
-	buildASDesc.pAccelerationStructure = pSanMiguelBottomAS;
-	buildASDesc.mIssueRWBarrier = true;
-	rs->buildAccelerationStructure(&buildASDesc);
-
-	buildASDesc = {};
-	buildASDesc.pAccelerationStructure = pSanMiguelAS;
-
-	rs->buildAccelerationStructure(&buildASDesc);
-	rs->flushCmd(true);
-	rs->removeAccelerationStructureScratch(pSanMiguelBottomAS);
-	rs->removeAccelerationStructureScratch(pSanMiguelAS);
-
-	backend::SamplerParams samplerParams;
-
-	samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
-	samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
-	samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
-	samplerParams.compareMode = backend::SamplerCompareMode::NONE;
-	samplerParams.compareFunc = backend::SamplerCompareFunc::N;
-	samplerParams.wrapS = backend::SamplerWrapMode::REPEAT;
-	samplerParams.wrapT = backend::SamplerWrapMode::REPEAT;
-	samplerParams.wrapR = backend::SamplerWrapMode::REPEAT;
-	samplerParams.anisotropyLog2 = 0;
-	samplerParams.padding0 = 0;
-	samplerParams.padding1 = 0;
-	samplerParams.padding2 = 0;
-	auto linearSamplerHandle = rs->createTextureSampler(samplerParams);
-
-	auto outPutTarget = rs->createRenderTarget("outputTarget",
-		ogreConfig.width, ogreConfig.height, Ogre::PixelFormat::PF_FLOAT16_RGBA, Ogre::TextureUsage::WRITEABLE);
-	OgreTexture* outputTexture = outPutTarget->getTarget();
-
-	auto numFrame = ogreConfig.swapBufferCount;
-	mFrameInfoList.resize(numFrame);
-
-	indexOffsetsBuffer = 
-		rs->createBufferObject(
-			BufferObjectBinding::BufferObjectBinding_Storge,
-			0,
-			subMeshCount * sizeof(uint32_t));
-	
-	
-	Handle<HwBufferObject> vertexDataHandle = vertexData->getBuffer(0);
-	Handle<HwBufferObject> indexDataHandle = indexData->getHandle();
-	for (auto i = 0; i < numFrame; i++)
+	else
 	{
-		FrameInfo& frameInfo = mFrameInfoList[i];
-		auto genConfigBuffer =
-			rs->createBufferObject(
-				BufferObjectBinding::BufferObjectBinding_Uniform,
-				BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT,
-				sizeof(ShadersConfigBlock));
-		frameInfo.genConfigBuffer = genConfigBuffer;
-
-		auto zeroSet = rs->createDescriptorSet(zeroLayout);
-		auto firstSet = rs->createDescriptorSet(firstLayout);
-		frameInfo.zeroDescriptorSet = zeroSet;
-		frameInfo.firstDescriptorSet = firstSet;
-		rs->updateDescriptorSetAccelerationStructure(zeroSet, 0, pSanMiguelAS);
-		rs->updateDescriptorSetBuffer(zeroSet, 1, &indexDataHandle, 1);
-		rs->updateDescriptorSetBuffer(zeroSet, 2, &vertexDataHandle, 1);
-		rs->updateDescriptorSetBuffer(zeroSet, 5, &indexOffsetsBuffer, 1);
-		rs->updateDescriptorSetSampler(zeroSet, 6, linearSamplerHandle);
-		rs->updateDescriptorSetTexture(zeroSet, 8, &outputTexture, 1, TextureBindType_RW_Image);
-		rs->updateDescriptorSetBuffer(firstSet, 0, &genConfigBuffer, 1);
+		RayTracing(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
 	}
-
-	BufferHandleLockGuard lockGuard(indexOffsetsBuffer);
-	uint32_t* offsetsData = (uint32_t*)lockGuard.data();
-
-	std::vector<OgreTexture*> diffuseList;
-
-	diffuseList.reserve(256);
-
-	for (auto i = 0; i < subMeshCount; i++)
-	{
-		auto* subEntity = sanMiguel->getSubEntity(i);
-		IndexDataView* indexDataView = subEntity->getIndexView();
-		offsetsData[i] = indexDataView->mIndexLocation;
-		auto& mat = subEntity->getMaterial();
-		mat->load(nullptr);
-		auto& unitList = mat->getAllTexureUnit();
-		auto* diffuseTex = unitList[0]->getRaw();
-		diffuseList.push_back(diffuseTex);
-	}
-	std::shared_ptr<OgreTexture> defaultTex =
-		TextureManager::getSingleton().getByName("white1x1.dds");
-	for (auto i = subMeshCount; i < 256; i++)
-	{
-		diffuseList.push_back(defaultTex.get());
-	}
-	for (auto i = 0; i < numFrame; i++)
-	{
-		FrameInfo& frameInfo = mFrameInfoList[i];
-		rs->updateDescriptorSetTexture(frameInfo.zeroDescriptorSet, 7, diffuseList.data(), diffuseList.size());
-	}
-
-	ComputePassCallback callback = [=](ComputePassInfo& info) {
-		TextureBarrier uavBarriers[] = {
-				{ 
-				outPutTarget->getTarget(), 
-				RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 
-				RESOURCE_STATE_UNORDERED_ACCESS},
-		};
-		rs->resourceBarrier( 0,  nullptr,  1, uavBarriers,  0,  nullptr);
-		info.programHandle = programHandle;
-		info.computeGroup = Ogre::Vector3i(180, 180, 1);
-		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-		FrameInfo* frameInfo = this->getFrameInfo(frameIndex);
-		
-		info.descSets.clear();
-		info.descSets.push_back(frameInfo->zeroDescriptorSet);
-		info.descSets.push_back(frameInfo->firstDescriptorSet);
-		rs->pushGroupMarker("RayQuery");
-		rs->beginComputePass(info);
-		rs->endComputePass();
-		rs->popGroupMarker();
-		};
-
-	auto clearBufferPass = createComputePass(callback, nullptr);
-	renderPipeline->addRenderPass(clearBufferPass);
-
-	if (1)
-	{
-		backend::SamplerParams samplerParams;
-
-		samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
-		samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
-		samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
-		samplerParams.wrapS = backend::SamplerWrapMode::REPEAT;
-		samplerParams.wrapT = backend::SamplerWrapMode::REPEAT;
-		samplerParams.wrapR = backend::SamplerWrapMode::REPEAT;
-		samplerParams.compareMode = backend::SamplerCompareMode::NONE;
-		samplerParams.compareFunc = backend::SamplerCompareFunc::N;
-		samplerParams.anisotropyLog2 = 0;
-		samplerParams.padding0 = 0;
-		samplerParams.padding1 = 0;
-		samplerParams.padding2 = 0;
-		auto repeatBillinearSampler = rs->createTextureSampler(samplerParams);
-		auto winDepth = renderWindow->getDepthTarget();
-		ShaderInfo shaderInfo;
-		shaderInfo.shaderName = "presentShade";
-		auto presentHandle = rs->createShaderProgram(shaderInfo, nullptr);
-		auto zeroLayout = rs->getDescriptorSetLayout(presentHandle, 0);
-		for (auto i = 0; i < numFrame; i++)
-		{
-			auto& frameData = mFrameInfoList[i];
-			auto zeroSet = rs->createDescriptorSet(zeroLayout);
-			frameData.zeroDescriptorSetOfPresent = zeroSet;
-			auto* tex = outPutTarget->getTarget();
-			rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Image);
-			rs->updateDescriptorSetSampler(zeroSet, 1, repeatBillinearSampler);
-		}
-
-		backend::RasterState rasterState{};
-		rasterState.depthWrite = false;
-		rasterState.depthTest = false;
-		rasterState.depthFunc = SamplerCompareFunc::A;
-		rasterState.colorWrite = true;
-		rasterState.renderTargetCount = 1;
-		rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
-		auto pipelineHandle = rs->createPipeline(rasterState, presentHandle);
-
-		RenderPassCallback presentCallback = [=, this](RenderPassInfo& info) {
-			TextureBarrier textureBarriers[] =
-			{
-				{
-					outPutTarget->getTarget(),
-					RESOURCE_STATE_UNORDERED_ACCESS,
-					RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-				}
-			};
-			rs->resourceBarrier(0, nullptr, 1, textureBarriers, 0, nullptr);
-			info.renderTargetCount = 1;
-			info.renderTargets[0].renderTarget = renderWindow->getColorTarget();
-			info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
-			info.depthTarget.depthStencil = nullptr;
-			info.depthTarget.clearValue = { 0.0f, 0.0f };
-			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-			rs->pushGroupMarker("presentPass");
-			rs->beginRenderPass(info);
-			auto* frameData = getFrameInfo(frameIndex);
-			rs->bindPipeline(presentHandle, pipelineHandle,
-				&frameData->zeroDescriptorSetOfPresent, 1);
-			rs->draw(3, 0);
-			rs->endRenderPass(info);
-			rs->popGroupMarker();
-			RenderTargetBarrier rtBarriers[] =
-			{
-				renderWindow->getColorTarget(),
-				RESOURCE_STATE_RENDER_TARGET,
-				RESOURCE_STATE_PRESENT
-			};
-			rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
-			};
-		UpdatePassCallback updateCallback = [](float delta) {
-			};
-		auto presentPass = createUserDefineRenderPass(presentCallback, updateCallback);
-		renderPipeline->addRenderPass(presentPass);
-	}
-
-	Ogre::Vector3 camPos2(80.0f, 60.0f, 50.0f);
-
-	mGameCamera->setMoveSpeed(50.0f);
-
-	Ogre::Vector3 lookAt = Ogre::Vector3(1.0f, 0.5f, 0.0f);
-	mGameCamera->lookAt(camPos2, lookAt);
 }
 static float haltonSequence(uint32_t index, uint32_t base)
 {
@@ -442,4 +162,516 @@ void RayTracingApp::update(float delta)
 		mPathTracingData.mFrameIndex += 1;
 		mPathTracingData.mHaltonIndex = (mPathTracingData.mHaltonIndex + 1) % 16;
 	}
+}
+
+void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
+	RenderSystem* renderSystem,
+	Ogre::RenderWindow* renderWindow,
+	Ogre::SceneManager* sceneManager,
+	GameCamera* gameCamera)
+{
+	mGameCamera = gameCamera;
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	auto rootNode = sceneManager->getRoot();
+	RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
+	ShaderInfo shaderInfo;
+	shaderInfo.shaderName = "RayQuery";
+	auto programHandle = rs->createComputeProgram(shaderInfo);
+
+	auto zeroLayout = rs->getDescriptorSetLayout(programHandle, 0);
+	auto firstLayout = rs->getDescriptorSetLayout(programHandle, 1);
+
+
+	std::string meshname = "SanMiguel.bin";
+	std::shared_ptr<Mesh> mesh = loadSanMiguel(meshname);
+
+	Entity* sanMiguel = sceneManager->createEntity(meshname, meshname);
+	SceneNode* sanMiguelNode = rootNode->createChildSceneNode(meshname);
+	sanMiguelNode->attachObject(sanMiguel);
+
+	auto subMeshCount = mesh->getSubMeshCount();
+	/************************************************************************/
+			// Creation Acceleration Structure
+   /************************************************************************/
+	AccelerationStructureDesc         asDesc = {};
+	AccelerationStructureGeometryDesc geomDescs[512] = {};
+	VertexData* vertexData = mesh->getVertexData();
+	IndexData* indexData = mesh->getIndexData();
+	for (uint32_t i = 0; i < subMeshCount; i++)
+	{
+		SubMesh* subMesh = mesh->getSubMesh(i);
+		auto& mat = subMesh->getMaterial();
+
+		auto materialFlag = mat->getMaterialFlags();
+
+		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
+			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
+			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
+		geomDescs[i].vertexBufferHandle = vertexData->getBuffer(0);
+		geomDescs[i].mVertexCount = (uint32_t)vertexData->getVertexCount();
+		geomDescs[i].mVertexStride = vertexData->getVertexSize(0);
+		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
+		geomDescs[i].indexBufferHandle = indexData->getHandle();
+
+		IndexDataView* indexView = subMesh->getIndexView();
+		geomDescs[i].mIndexCount = indexView->mIndexCount;
+		geomDescs[i].mIndexOffset = indexView->mIndexLocation * sizeof(uint32_t);
+		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
+	}
+
+	asDesc.mBottom.mDescCount = subMeshCount;
+	asDesc.mBottom.pGeometryDescs = geomDescs;
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+
+	AccelerationStructure* pSanMiguelBottomAS;
+	AccelerationStructure* pSanMiguelAS = NULL;
+
+	rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
+
+	sanMiguelProp.mWorldMatrix = Ogre::Math::makeScaleMatrix(Ogre::Vector3(10.0f, 10.0f, 10.0f));
+
+	AccelerationStructureInstanceDesc instanceDesc = {};
+	instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
+	instanceDesc.mInstanceContributionToHitGroupIndex = 0;
+	instanceDesc.mInstanceID = 0;
+	instanceDesc.mInstanceMask = 1;
+	memcpy(instanceDesc.mTransform, &sanMiguelProp.mWorldMatrix, sizeof(float[12]));
+	instanceDesc.pBottomAS = pSanMiguelBottomAS;
+
+
+	rs->beginCmd();
+	asDesc = {};
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	asDesc.mTop.mDescCount = 1;
+	asDesc.mTop.pInstanceDescs = &instanceDesc;
+
+	rs->addAccelerationStructure(&asDesc, &pSanMiguelAS);
+
+	// Build Acceleration Structures
+	RaytracingBuildASDesc buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pSanMiguelBottomAS;
+	buildASDesc.mIssueRWBarrier = true;
+	rs->buildAccelerationStructure(&buildASDesc);
+
+	buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pSanMiguelAS;
+
+	rs->buildAccelerationStructure(&buildASDesc);
+	rs->flushCmd(true);
+	rs->removeAccelerationStructureScratch(pSanMiguelBottomAS);
+	rs->removeAccelerationStructureScratch(pSanMiguelAS);
+
+	backend::SamplerParams samplerParams;
+
+	samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
+	samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
+	samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
+	samplerParams.compareMode = backend::SamplerCompareMode::NONE;
+	samplerParams.compareFunc = backend::SamplerCompareFunc::N;
+	samplerParams.wrapS = backend::SamplerWrapMode::REPEAT;
+	samplerParams.wrapT = backend::SamplerWrapMode::REPEAT;
+	samplerParams.wrapR = backend::SamplerWrapMode::REPEAT;
+	samplerParams.anisotropyLog2 = 0;
+	samplerParams.padding0 = 0;
+	samplerParams.padding1 = 0;
+	samplerParams.padding2 = 0;
+	auto linearSamplerHandle = rs->createTextureSampler(samplerParams);
+
+	auto outPutTarget = rs->createRenderTarget("outputTarget",
+		ogreConfig.width, ogreConfig.height, Ogre::PixelFormat::PF_FLOAT16_RGBA, Ogre::TextureUsage::WRITEABLE);
+	OgreTexture* outputTexture = outPutTarget->getTarget();
+
+	auto numFrame = ogreConfig.swapBufferCount;
+	mFrameInfoList.resize(numFrame);
+
+	indexOffsetsBuffer =
+		rs->createBufferObject(
+			BufferObjectBinding::BufferObjectBinding_Storge,
+			0,
+			subMeshCount * sizeof(uint32_t));
+
+
+	Handle<HwBufferObject> vertexDataHandle = vertexData->getBuffer(0);
+	Handle<HwBufferObject> indexDataHandle = indexData->getHandle();
+	for (auto i = 0; i < numFrame; i++)
+	{
+		FrameInfo& frameInfo = mFrameInfoList[i];
+		auto genConfigBuffer =
+			rs->createBufferObject(
+				BufferObjectBinding::BufferObjectBinding_Uniform,
+				BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT,
+				sizeof(ShadersConfigBlock));
+		frameInfo.genConfigBuffer = genConfigBuffer;
+
+		auto zeroSet = rs->createDescriptorSet(zeroLayout);
+		auto firstSet = rs->createDescriptorSet(firstLayout);
+		frameInfo.zeroDescriptorSet = zeroSet;
+		frameInfo.firstDescriptorSet = firstSet;
+		rs->updateDescriptorSetAccelerationStructure(zeroSet, 0, pSanMiguelAS);
+		rs->updateDescriptorSetBuffer(zeroSet, 1, &indexDataHandle, 1);
+		rs->updateDescriptorSetBuffer(zeroSet, 2, &vertexDataHandle, 1);
+		rs->updateDescriptorSetBuffer(zeroSet, 5, &indexOffsetsBuffer, 1);
+		rs->updateDescriptorSetSampler(zeroSet, 6, linearSamplerHandle);
+		rs->updateDescriptorSetTexture(zeroSet, 8, &outputTexture, 1, TextureBindType_RW_Image);
+		rs->updateDescriptorSetBuffer(firstSet, 0, &genConfigBuffer, 1);
+	}
+
+	BufferHandleLockGuard lockGuard(indexOffsetsBuffer);
+	uint32_t* offsetsData = (uint32_t*)lockGuard.data();
+
+	std::vector<OgreTexture*> diffuseList;
+
+	diffuseList.reserve(256);
+
+	for (auto i = 0; i < subMeshCount; i++)
+	{
+		auto* subEntity = sanMiguel->getSubEntity(i);
+		IndexDataView* indexDataView = subEntity->getIndexView();
+		offsetsData[i] = indexDataView->mIndexLocation;
+		auto& mat = subEntity->getMaterial();
+		mat->load(nullptr);
+		auto& unitList = mat->getAllTexureUnit();
+		auto* diffuseTex = unitList[0]->getRaw();
+		diffuseList.push_back(diffuseTex);
+	}
+	std::shared_ptr<OgreTexture> defaultTex =
+		TextureManager::getSingleton().getByName("white1x1.dds");
+	for (auto i = subMeshCount; i < 256; i++)
+	{
+		diffuseList.push_back(defaultTex.get());
+	}
+	for (auto i = 0; i < numFrame; i++)
+	{
+		FrameInfo& frameInfo = mFrameInfoList[i];
+		rs->updateDescriptorSetTexture(frameInfo.zeroDescriptorSet, 7, diffuseList.data(), diffuseList.size());
+	}
+
+	ComputePassCallback callback = [=](ComputePassInfo& info) {
+		TextureBarrier uavBarriers[] = {
+				{
+				outPutTarget->getTarget(),
+				RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				RESOURCE_STATE_UNORDERED_ACCESS},
+		};
+		rs->resourceBarrier(0, nullptr, 1, uavBarriers, 0, nullptr);
+		info.programHandle = programHandle;
+		info.computeGroup = Ogre::Vector3i(180, 180, 1);
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		FrameInfo* frameInfo = this->getFrameInfo(frameIndex);
+
+		info.descSets.clear();
+		info.descSets.push_back(frameInfo->zeroDescriptorSet);
+		info.descSets.push_back(frameInfo->firstDescriptorSet);
+		rs->pushGroupMarker("RayQuery");
+		rs->beginComputePass(info);
+		rs->endComputePass();
+		rs->popGroupMarker();
+		};
+
+	auto clearBufferPass = createComputePass(callback, nullptr);
+	renderPipeline->addRenderPass(clearBufferPass);
+
+	if (1)
+	{
+		backend::SamplerParams samplerParams;
+
+		samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
+		samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
+		samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
+		samplerParams.wrapS = backend::SamplerWrapMode::REPEAT;
+		samplerParams.wrapT = backend::SamplerWrapMode::REPEAT;
+		samplerParams.wrapR = backend::SamplerWrapMode::REPEAT;
+		samplerParams.compareMode = backend::SamplerCompareMode::NONE;
+		samplerParams.compareFunc = backend::SamplerCompareFunc::N;
+		samplerParams.anisotropyLog2 = 0;
+		samplerParams.padding0 = 0;
+		samplerParams.padding1 = 0;
+		samplerParams.padding2 = 0;
+		auto repeatBillinearSampler = rs->createTextureSampler(samplerParams);
+		auto winDepth = renderWindow->getDepthTarget();
+		ShaderInfo shaderInfo;
+		shaderInfo.shaderName = "presentShade";
+		auto presentHandle = rs->createShaderProgram(shaderInfo, nullptr);
+		auto zeroLayout = rs->getDescriptorSetLayout(presentHandle, 0);
+		for (auto i = 0; i < numFrame; i++)
+		{
+			auto& frameData = mFrameInfoList[i];
+			auto zeroSet = rs->createDescriptorSet(zeroLayout);
+			frameData.zeroDescriptorSetOfPresent = zeroSet;
+			auto* tex = outPutTarget->getTarget();
+			rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Image);
+			rs->updateDescriptorSetSampler(zeroSet, 1, repeatBillinearSampler);
+		}
+
+		backend::RasterState rasterState{};
+		rasterState.depthWrite = false;
+		rasterState.depthTest = false;
+		rasterState.depthFunc = SamplerCompareFunc::A;
+		rasterState.colorWrite = true;
+		rasterState.renderTargetCount = 1;
+		rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+		auto pipelineHandle = rs->createPipeline(rasterState, presentHandle);
+
+		RenderPassCallback presentCallback = [=, this](RenderPassInfo& info) {
+			TextureBarrier textureBarriers[] =
+			{
+				{
+					outPutTarget->getTarget(),
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+				}
+			};
+			rs->resourceBarrier(0, nullptr, 1, textureBarriers, 0, nullptr);
+			info.renderTargetCount = 1;
+			info.renderTargets[0].renderTarget = renderWindow->getColorTarget();
+			info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+			info.depthTarget.depthStencil = nullptr;
+			info.depthTarget.clearValue = { 0.0f, 0.0f };
+			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+			rs->pushGroupMarker("presentPass");
+			rs->beginRenderPass(info);
+			auto* frameData = getFrameInfo(frameIndex);
+			rs->bindPipeline(presentHandle, pipelineHandle,
+				&frameData->zeroDescriptorSetOfPresent, 1);
+			rs->draw(3, 0);
+			rs->endRenderPass(info);
+			rs->popGroupMarker();
+			RenderTargetBarrier rtBarriers[] =
+			{
+				renderWindow->getColorTarget(),
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_PRESENT
+			};
+			rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+			};
+		UpdatePassCallback updateCallback = [](float delta) {
+			};
+		auto presentPass = createUserDefineRenderPass(presentCallback, updateCallback);
+		renderPipeline->addRenderPass(presentPass);
+	}
+
+	Ogre::Vector3 camPos2(80.0f, 60.0f, 50.0f);
+
+	mGameCamera->setMoveSpeed(50.0f);
+
+	Ogre::Vector3 lookAt = Ogre::Vector3(1.0f, 0.5f, 0.0f);
+	mGameCamera->lookAt(camPos2, lookAt);
+}
+
+
+void RayTracingApp::RayTracing(
+	RenderPipeline* renderPipeline,
+	RenderSystem* rs,
+	Ogre::RenderWindow* renderWindow,
+	Ogre::SceneManager* sceneManager,
+	GameCamera* gameCamera)
+{
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	auto rootNode = sceneManager->getRoot();
+	auto root = sceneManager->getRoot();
+    std::string meshname = "FlightHelmet.gltf";
+    std::shared_ptr<Mesh> mesh = MeshManager::getSingletonPtr()->load(meshname);
+    Entity* gltfEntity = sceneManager->createEntity(meshname, meshname);
+    SceneNode* gltfNode = rootNode->createChildSceneNode(meshname);
+	gltfNode->attachObject(gltfEntity);
+
+	auto subMeshCount = mesh->getSubMeshCount();
+	AccelerationStructureDesc         asDesc = {};
+	AccelerationStructureGeometryDesc geomDescs[512] = {};
+	
+	for (uint32_t i = 0; i < subMeshCount; i++)
+	{
+		SubMesh* subMesh = mesh->getSubMesh(i);
+		VertexData* vertexData = subMesh->getVertexData();
+		IndexData* indexData = subMesh->getIndexData();
+		auto& mat = subMesh->getMaterial();
+
+		auto materialFlag = mat->getMaterialFlags();
+
+		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
+			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
+			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
+		geomDescs[i].vertexBufferHandle = vertexData->getBuffer(0);
+		geomDescs[i].mVertexCount = (uint32_t)vertexData->getVertexCount();
+		geomDescs[i].mVertexStride = vertexData->getVertexSize(0);
+		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
+		geomDescs[i].indexBufferHandle = indexData->getHandle();
+
+		IndexDataView* indexView = subMesh->getIndexView();
+		geomDescs[i].mIndexCount = indexView->mIndexCount;
+		geomDescs[i].mIndexOffset = indexView->mIndexLocation * sizeof(uint32_t);
+		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
+	}
+
+	asDesc.mBottom.mDescCount = subMeshCount;
+	asDesc.mBottom.pGeometryDescs = geomDescs;
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+
+	AccelerationStructure* pSanMiguelBottomAS = nullptr;
+	AccelerationStructure* pSanMiguelAS = nullptr;
+
+	rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
+
+	sanMiguelProp.mWorldMatrix = Ogre::Math::makeScaleMatrix(Ogre::Vector3(10.0f, 10.0f, 10.0f));
+
+	AccelerationStructureInstanceDesc instanceDesc = {};
+	instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
+	instanceDesc.mInstanceContributionToHitGroupIndex = 0;
+	instanceDesc.mInstanceID = 0;
+	instanceDesc.mInstanceMask = 1;
+	memcpy(instanceDesc.mTransform, &sanMiguelProp.mWorldMatrix, sizeof(float[12]));
+	instanceDesc.pBottomAS = pSanMiguelBottomAS;
+
+
+	rs->beginCmd();
+	asDesc = {};
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	asDesc.mTop.mDescCount = 1;
+	asDesc.mTop.pInstanceDescs = &instanceDesc;
+
+	rs->addAccelerationStructure(&asDesc, &pSanMiguelAS);
+
+	// Build Acceleration Structures
+	RaytracingBuildASDesc buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pSanMiguelBottomAS;
+	buildASDesc.mIssueRWBarrier = true;
+	rs->buildAccelerationStructure(&buildASDesc);
+
+	buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pSanMiguelAS;
+
+	rs->buildAccelerationStructure(&buildASDesc);
+	rs->flushCmd(true);
+	rs->removeAccelerationStructureScratch(pSanMiguelBottomAS);
+	rs->removeAccelerationStructureScratch(pSanMiguelAS);
+
+	auto outPutTarget = rs->createRenderTarget("outputTarget",
+		ogreConfig.width, ogreConfig.height, Ogre::PixelFormat::PF_FLOAT16_RGBA, 
+		Ogre::TextureUsage::WRITEABLE);
+	OgreTexture* storeImage = outPutTarget->getTarget();
+
+	auto uniformBuffer = rs->createBufferObject(
+		BufferObjectBinding::BufferObjectBinding_Uniform,
+		0,
+		sizeof(UniformData)
+	);
+
+	auto geometryNodesBuffer = rs->createBufferObject(
+		BufferObjectBinding::BufferObjectBinding_Storge,
+		BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
+		sizeof(UniformData)
+	);
+	ShaderInfo shaderInfo;
+	shaderInfo.shaderName = "raytracing";
+	Handle<HwRaytracingProgram> raytracingHandle = 
+		rs->createRaytracingProgram(shaderInfo);
+
+	auto numFrame = ogreConfig.swapBufferCount;
+	mFrameInfoList.resize(numFrame);
+	auto zeroLayout = rs->getDescriptorSetLayout(raytracingHandle, 0);
+
+	std::vector<OgreTexture*> textureList;
+	textureList.resize(subMeshCount);
+	for (auto i = 0; i < subMeshCount; i++)
+	{
+		auto* subMesh = mesh->getSubMesh(i);
+
+		auto& mat = subMesh->getMaterial();
+		mat->load(nullptr);
+		auto& unitList = mat->getAllTexureUnit();
+		textureList[i] = unitList[0]->getRaw();
+	}
+
+	for (auto i = 0; i < numFrame; i++)
+	{
+		Handle<HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(zeroLayout);
+		mFrameInfoList[i].zeroDescSetOfRaytracing = zeroDescSet;
+		rs->updateDescriptorSetAccelerationStructure(zeroDescSet, 0, pSanMiguelAS);
+		rs->updateDescriptorSetTexture(zeroDescSet,
+			1, &storeImage, 1, TextureBindType_RW_Image);
+		rs->updateDescriptorSetBuffer(zeroDescSet, 2, &uniformBuffer, 1);
+		rs->updateDescriptorSetBuffer(zeroDescSet, 4, &geometryNodesBuffer, 1);
+
+
+
+		rs->updateDescriptorSetTexture(zeroDescSet, 5, textureList.data(), subMeshCount);
+	}
+	
+
+	RenderPassCallback rayTracingCallback = [=, this](RenderPassInfo& info) {
+		info.renderTargetCount = 1;
+		info.renderTargets[0].renderTarget = renderWindow->getColorTarget();
+		info.depthTarget.depthStencil = renderWindow->getColorTarget();
+		info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+		info.depthTarget.clearValue = { 0.0f, 0.0f };
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		auto* frameInfo = getFrameInfo(frameIndex);
+		auto descSet = frameInfo->zeroDescSetOfRaytracing;
+		rs->beginRenderPass(info);
+		rs->bindPipeline(raytracingHandle, &descSet, 1);
+		rs->traceRay(raytracingHandle);
+		rs->endRenderPass(info);
+		{
+			RenderTargetBarrier rtBarriers[] =
+			{
+				{
+					renderWindow->getColorTarget(),
+					RESOURCE_STATE_RENDER_TARGET,
+					RESOURCE_STATE_COPY_DEST
+				},
+				{
+					outPutTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_COPY_SOURCE
+				}
+			};
+			rs->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
+		}
+		
+		rs->copyImage(renderWindow->getColorTarget(), outPutTarget);
+
+		{
+			RenderTargetBarrier rtBarriers[] =
+			{
+				{
+					renderWindow->getColorTarget(),
+					RESOURCE_STATE_COPY_DEST,
+					RESOURCE_STATE_PRESENT
+				},
+				{
+					outPutTarget,
+					RESOURCE_STATE_COPY_SOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				}
+			};
+			rs->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
+		}
+		};
+
+	auto* cam = gameCamera->getCamera();
+	UpdatePassCallback rayTracingUpdateCallback = [=, this](float delta) {
+		const auto& view = cam->getViewMatrix();
+		const auto& project = cam->getProjectMatrix();
+		mUniformData.projInverse = project.inverse().transpose();
+		mUniformData.viewInverse = view.inverse().transpose();
+		mUniformData.frame++;
+		rs->updateBufferObject(uniformBuffer,
+			(const char*)&mUniformData, sizeof(mUniformData));
+
+		if (gameCamera->changed())
+		{
+			mUniformData.frame = -1;
+			gameCamera->updateChanged(false);
+		}
+		};
+
+	auto rayTracingPass = createUserDefineRenderPass(
+		rayTracingCallback, rayTracingUpdateCallback);
+	renderPipeline->addRenderPass(rayTracingPass);
 }

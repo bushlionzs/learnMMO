@@ -396,6 +396,49 @@ namespace vks
 			return shaderModule;
 		}
 
+		VkPipelineShaderStageCreateInfo loadShader(
+			const std::string& fileName,
+			VkShaderStageFlagBits stage)
+		{
+			std::string content;
+			get_file_content(fileName.c_str(), content);
+
+			std::string result;
+			std::string strName(fileName);
+			std::string entryPoint("main");
+			std::vector<std::pair<std::string, std::string>> shaderMacros;
+			shaderc_shader_kind kind = shaderc_glsl_vertex_shader;
+			std::vector<GlslInputDesc> inputDesc;
+			VkShaderModuleInfo shaderModuleInfo;
+			switch (stage)
+			{
+			case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+				shaderModuleInfo.shaderType = Ogre::ShaderType::RayGenShader;
+				break;
+			case VK_SHADER_STAGE_MISS_BIT_KHR:
+				shaderModuleInfo.shaderType = Ogre::ShaderType::MissShader;
+				break;
+			case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
+				shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
+				break;
+			case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+				shaderModuleInfo.shaderType = Ogre::ShaderType::ClosestHitShader;
+				break;
+			default:
+				assert(false);
+				break;
+			}
+
+			glslCompileShader(strName, content, entryPoint, shaderMacros, shaderModuleInfo);
+
+			VkPipelineShaderStageCreateInfo shaderStage = {};
+			shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			shaderStage.stage = stage;
+			shaderStage.module = shaderModuleInfo.shaderModule;
+			shaderStage.pName = "main";
+			return shaderStage;
+		}
+
 		bool fileExists(const std::string &filename)
 		{
 			std::ifstream f(filename.c_str());

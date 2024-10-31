@@ -173,6 +173,21 @@ VulkanTextureSampler::~VulkanTextureSampler()
 
 }
 
+VulkanRaytracingProgram::VulkanRaytracingProgram(const std::string& name)noexcept
+    : HwRaytracingProgram(utils::CString(name.c_str())),
+    VulkanResource(VulkanResourceType::PROGRAM),
+    mVkPipelineLayout(VK_NULL_HANDLE),
+    mVkPipeline(VK_NULL_HANDLE),
+    mLayouts{}
+{
+
+}
+
+VulkanRaytracingProgram::~VulkanRaytracingProgram()
+{
+
+}
+
 VulkanComputeProgram::VulkanComputeProgram(const std::string& name) noexcept
     : HwComputeProgram(utils::CString(name.c_str())),
     VulkanResource(VulkanResourceType::PROGRAM)
