@@ -42,6 +42,7 @@ public:
 
     virtual void traceRay(Handle<HwRaytracingProgram> programHandle);
     virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src);
+    virtual uint64_t getBufferDeviceAddress(Handle<HwBufferObject> bufHandle);
 private:
     uint64_t getBufferDeviceAddress(VkBuffer vkBuffer);
 

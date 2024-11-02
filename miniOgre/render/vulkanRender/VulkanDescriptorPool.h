@@ -11,7 +11,7 @@ public:
         mCapacity(capacity),
         mSize(0),
         mUnusedCount(0) {
-        VkDescriptorPoolSize sizes[4];
+        VkDescriptorPoolSize sizes[10];
         uint8_t npools = 0;
         if (layout->hasUbo()) {
             sizes[npools++] = {

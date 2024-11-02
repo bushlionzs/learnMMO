@@ -15,6 +15,7 @@ public:
 	~VulkanWindow();
 
 	virtual void create(VulkanSwapChain* swapChain);
+	virtual Ogre::PixelFormat getColorFormat();
 	virtual Ogre::RenderTarget* getColorTarget();
 	virtual Ogre::RenderTarget* getDepthTarget();
 

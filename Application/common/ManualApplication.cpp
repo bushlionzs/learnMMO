@@ -74,7 +74,7 @@ bool ManualApplication::appInit()
 	Ogre::NameValuePairList params;
 	params["externalWindowHandle"] = Ogre::StringConverter::toString((uint64_t)wnd);
 	params["backGroundColor"] = Ogre::StringConverter::toString(color);
-	params["srgb"] = "1";
+	//params["srgb"] = "1";
 	mRenderWindow = mRenderSystem->createRenderWindow("", ogreConfig.width, ogreConfig.height, &params);
 
 	ResourceParserManager::getSingleton()._initialise();

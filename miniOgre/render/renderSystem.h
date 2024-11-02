@@ -237,6 +237,10 @@ public:
     virtual void removeAccelerationStructureScratch(
         AccelerationStructure* pAccelerationStructure) {}
 
+    virtual uint64_t getBufferDeviceAddress(Handle<HwBufferObject> bufHandle)
+    {
+        return 0;
+    }
     //destroy
     virtual void destroyBufferObject(Handle<HwBufferObject> bufHandle) {}
 private:

@@ -56,6 +56,11 @@ struct VulkanSwapChain : public HwSwapChain, VulkanResource {
         return mColors[imageIndex].get();
     }
 
+    inline VulkanTexture* getFirstColor() const noexcept {
+        return mColors[0].get();
+    }
+
+
     inline VulkanTexture* getDepth() const noexcept {
         return mDepth.get();
     }

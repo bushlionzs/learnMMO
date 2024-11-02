@@ -74,7 +74,7 @@ static VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physic
 
 VulkanRenderSystemBase::VulkanRenderSystemBase()
     :
-    mResourceAllocator(8388608, false)
+    mResourceAllocator(83886080, false)
 {
     new VulkanHelper(this);
 }
@@ -168,16 +168,18 @@ Ogre::RenderWindow* VulkanRenderSystemBase::createRenderWindow(
         OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "externalWindowHandle should be provided");
     }
 
+    HWND wnd = (HWND)StringConverter::parseSizeT(itor->second);
+
     bool srgb = false;
 
-    itor = miscParams->find("externalWindowHandle");
+    itor = miscParams->find("srgb");
 
     if (itor != miscParams->end())
     {
         srgb = true;
     }
     
-    HWND wnd = (HWND)StringConverter::parseSizeT(itor->second);
+    
     VkExtent2D extent;
     extent.width = 0;
     extent.height = 0;
@@ -1708,8 +1710,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         }
         else
         {
-            Handle<HwDescriptorSetLayout> layoutHandle = mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
-
             VulkanDescriptorSetLayout::VulkanDescriptorSetLayoutInfo info;
 
             for (auto i = 0; i < bindIndex; i++)
@@ -1736,13 +1736,16 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
                     break;
                 }
             }
-            VulkanDescriptorSetLayout* vulkanLayout = mResourceAllocator.construct<VulkanDescriptorSetLayout>(layoutHandle, info);
+            Handle<HwDescriptorSetLayout> layoutHandle = 
+                mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
+            VulkanDescriptorSetLayout* vulkanLayout = 
+                mResourceAllocator.construct<VulkanDescriptorSetLayout>(layoutHandle, info);
             
             
             VkDescriptorSetLayout vkLayout = mVulkanLayoutCache->getLayout(&toBind[0], bindIndex);
             vulkanLayout->setVkLayout(vkLayout);
 
-            keys[set] = vulkanLayout->getVkLayout();
+            keys[set] = vkLayout;
 
             vulkanProgram->updateLayout(set, layoutHandle);
         }

@@ -56,6 +56,11 @@ namespace Ogre
 
         }
 
+        virtual Ogre::PixelFormat getColorFormat()
+        {
+            return PF_UNKNOWN;
+        }
+
         virtual Ogre::RenderTarget* getColorTarget()
         {
             return nullptr;

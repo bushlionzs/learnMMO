@@ -3,6 +3,7 @@
 #include "OgreStringConverter.h"
 #include "VulkanHelper.h"
 #include "VulkanTools.h"
+#include "VulkanTexture.h"
 #include "VulkanRenderTarget.h"
 
 
@@ -28,6 +29,11 @@ void VulkanWindow::create(VulkanSwapChain* swapChain)
 
     mColorTarget = new Ogre::VulkanRenderTarget(swapChain);
     mDepthTarget = new Ogre::VulkanRenderTarget(swapChain, true);
+}
+
+Ogre::PixelFormat VulkanWindow::getColorFormat()
+{
+    return mSwapChain->getFirstColor()->getTextureProperty()->_tex_format;
 }
 
 Ogre::RenderTarget* VulkanWindow::getColorTarget()

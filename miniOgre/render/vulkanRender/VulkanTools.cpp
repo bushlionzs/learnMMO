@@ -942,9 +942,16 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = 10;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
+
 
 				layout.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 

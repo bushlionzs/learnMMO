@@ -76,6 +76,14 @@ namespace Ogre
 
 	Ogre::OgreTexture* VulkanRenderTarget::getTarget()
 	{
+		if (mSwapChain)
+		{
+			if (mDepth)
+			{
+				return mSwapChain->getDepth();
+			}
+			return mSwapChain->getCurrentColor();
+		}
 		return mTarget;
 	}
 }

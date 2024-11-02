@@ -179,6 +179,12 @@ namespace Ogre {
         return mTextureUnits;
     }
 
+    OgreTexture* Material::getPbrTexture(TextureTypePbr type)
+    {
+        return mTextureUnits[type]->getRaw();
+    }
+
+
     void Material::addShader(ShaderInfo& sinfo)
     {
         mShaderInfo = sinfo;

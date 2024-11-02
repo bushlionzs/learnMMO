@@ -258,7 +258,7 @@ void VulkanTexture::createImage(
     
     if (mUsage & Ogre::TextureUsage::WRITEABLE)
     {
-        imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
 
 

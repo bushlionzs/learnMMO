@@ -25,7 +25,7 @@ struct FVulkanBuffer {
 	void destroy();
 };
 
-class ShaderBindingTable : public FVulkanBuffer
+class ShaderBindingTable: public FVulkanBuffer
 {
 public:
 	VkStridedDeviceAddressRegionKHR stridedDeviceAddressRegion{};

@@ -77,8 +77,14 @@ struct VulkanDescriptorSetLayout : public VulkanResource, HwDescriptorSetLayout 
 
     ~VulkanDescriptorSetLayout() = default;
 
-    VkDescriptorSetLayout getVkLayout() const { return mVkLayout; }
-    void setVkLayout(VkDescriptorSetLayout vklayout) { mVkLayout = vklayout; }
+    VkDescriptorSetLayout getVkLayout() const 
+    { 
+        return mVkLayout; 
+    }
+    void setVkLayout(VkDescriptorSetLayout vklayout) 
+    { 
+        mVkLayout = vklayout;
+    }
 
     bool hasUbo()
     {
@@ -340,7 +346,12 @@ struct VulkanRaytracingProgram : public HwRaytracingProgram, VulkanResource {
         return mLayouts[set];
     }
 
-    ShaderBindingTables& getShaderBindingTables()
+    void updateShaderBindingTables(ShaderBindingTables* tables)
+    {
+        mShaderBindingTables = tables;
+    }
+
+    ShaderBindingTables* getShaderBindingTables()
     {
         return mShaderBindingTables;
     }
@@ -349,7 +360,7 @@ private:
     VkPipeline mVkPipeline;
     Handle<HwDescriptorSetLayout> mLayouts[VulkanDescriptorSetLayout::MAX_BINDING_SET];
 
-    ShaderBindingTables mShaderBindingTables;
+    ShaderBindingTables* mShaderBindingTables;
 };
 struct VulkanComputeProgram : public HwComputeProgram, VulkanResource {
     VulkanComputeProgram(const std::string& name) noexcept;

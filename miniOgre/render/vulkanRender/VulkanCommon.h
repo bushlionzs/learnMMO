@@ -10,6 +10,7 @@
 #include <OgreCommon.h>
 #include <DriverEnums.h>
 #include <VulkanUtility.h>
+#include <VulkanBuffer.h>
 #include <vk_mem_alloc.h>
 #include <tsl/robin_map.h>
 #include <utils/FixedCapacityVector.h>
@@ -126,6 +127,7 @@ struct RayTracingScratchBuffer
     VkBuffer handle = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
 };
+
 
 
 #define VULKAN_FRAME_RESOURCE_COUNT 3

@@ -10,6 +10,7 @@
 #endif
 bool get_file_content(const char* filename, std::string& content, uint32_t part)
 {
+    content.clear();
     FILE* fp = fopen(filename, "rb");
     if (NULL == fp)
     {

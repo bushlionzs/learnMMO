@@ -423,7 +423,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                     auto i = findLayout(bingdingList, layoutBingding);
                     if (i >= 0)
                     {
-                        bingdingList[i].stageFlags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+                        bingdingList[i].stageFlags |= flagBits;
                     }
                     else
                     {
@@ -565,7 +565,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                 bindIndex++;
             }
 
-            Handle<HwDescriptorSetLayout> layoutHandle = mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
+            
             VulkanDescriptorSetLayout::VulkanDescriptorSetLayoutInfo info;
 
             for (auto i = 0; i < bindIndex; i++)
@@ -573,7 +573,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                 switch (toBind[i].descriptorType)
                 {
                 case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-                    info.combinedImage++;
+                    info.combinedImage+= toBind[i].descriptorCount;
                     break;
                 case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
                     info.inputAttachmentCount++;
@@ -598,6 +598,9 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                     break;
                 }
             }
+
+            Handle<HwDescriptorSetLayout> layoutHandle = 
+                mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
             VulkanDescriptorSetLayout* vulkanLayout = 
                 mResourceAllocator.construct<VulkanDescriptorSetLayout>(layoutHandle, info);
 
@@ -629,7 +632,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
 
     vulkanProgram->updatePipelineLayout(pipelineLayout);
     vulkanProgram->updatePipeline(pipeline);
-
+    
     //create shader binding table
     auto& rayTracingPipelineProperties = 
         mVulkanPlatform->getRayTracingPipelineProperties();
@@ -641,22 +644,26 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
             rayTracingPipelineProperties.shaderGroupHandleAlignment);
     const uint32_t groupCount = static_cast<uint32_t>(shaderGroups.size());
     const uint32_t sbtSize = groupCount * handleSizeAligned;
-
     std::vector<uint8_t> shaderHandleStorage(sbtSize);
     VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(
         mVulkanPlatform->getDevice(), pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data()));
+    
+    ShaderBindingTables* shaderBindingTables = new ShaderBindingTables;
+    vulkanProgram->updateShaderBindingTables(shaderBindingTables);
 
-    ShaderBindingTables& shaderBindingTables = vulkanProgram->getShaderBindingTables();
+    createShaderBindingTable(shaderBindingTables->raygen, 1);
+    
+    createShaderBindingTable(shaderBindingTables->miss, 2);
 
-    createShaderBindingTable(shaderBindingTables.raygen, 1);
-    createShaderBindingTable(shaderBindingTables.miss, 2);
-    createShaderBindingTable(shaderBindingTables.hit, 1);
-
+    createShaderBindingTable(shaderBindingTables->hit, 1);
     // Copy handles
-    memcpy(shaderBindingTables.raygen.mapped, shaderHandleStorage.data(), handleSize);
+    void* raygenData = shaderBindingTables->raygen.mapped;
+    memcpy(raygenData, shaderHandleStorage.data(), handleSize);
     // We are using two miss shaders, so we need to get two handles for the miss shader binding table
-    memcpy(shaderBindingTables.miss.mapped, shaderHandleStorage.data() + handleSizeAligned, handleSize * 2);
-    memcpy(shaderBindingTables.hit.mapped, shaderHandleStorage.data() + handleSizeAligned * 3, handleSize);
+    void* missData = shaderBindingTables->miss.mapped;
+    memcpy(missData, shaderHandleStorage.data() + handleSizeAligned, handleSize * 2);
+    void* hitData = shaderBindingTables->hit.mapped;
+    memcpy(hitData, shaderHandleStorage.data() + handleSizeAligned * 3, handleSize);
     return program;
 }
 
@@ -703,13 +710,13 @@ void VulkanRenderSystem::traceRay(Handle<HwRaytracingProgram> programHandle)
     auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
     VulkanRaytracingProgram* program = 
         mResourceAllocator.handle_cast<VulkanRaytracingProgram*>(programHandle);
-    ShaderBindingTables& shaderBindingTables = program->getShaderBindingTables();
+    ShaderBindingTables* shaderBindingTables = program->getShaderBindingTables();
     VkStridedDeviceAddressRegionKHR emptySbtEntry = {};
     vkCmdTraceRaysKHR(
         mCommandBuffer,
-        &shaderBindingTables.raygen.stridedDeviceAddressRegion,
-        &shaderBindingTables.miss.stridedDeviceAddressRegion,
-        &shaderBindingTables.hit.stridedDeviceAddressRegion,
+        &shaderBindingTables->raygen.stridedDeviceAddressRegion,
+        &shaderBindingTables->miss.stridedDeviceAddressRegion,
+        &shaderBindingTables->hit.stridedDeviceAddressRegion,
         &emptySbtEntry,
         ogreConfig.width,
         ogreConfig.height,
@@ -731,7 +738,14 @@ void VulkanRenderSystem::copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* 
     VulkanTexture* dstImage = (VulkanTexture*)dst->getTarget();
     vkCmdCopyImage(mCommandBuffer, srcImage->getVkImage(),
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-        dstImage->getVkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+        dstImage->getVkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        1, &copyRegion);
+}
+
+uint64_t VulkanRenderSystem::getBufferDeviceAddress(Handle<HwBufferObject> bufHandle)
+{
+    VulkanBufferObject* bo = mResourceAllocator.handle_cast<VulkanBufferObject*>(bufHandle);
+    return getBufferDeviceAddress(bo->buffer.getGpuBuffer());
 }
 
 VkStridedDeviceAddressRegionKHR VulkanRenderSystem::getSbtEntryStridedDeviceAddressRegion(
@@ -753,15 +767,17 @@ void VulkanRenderSystem::createShaderBindingTable(
     auto& rayTracingPipelineProperties =
         mVulkanPlatform->getRayTracingPipelineProperties();
     // Create buffer to hold all shader handles for the SBT
-    VK_CHECK_RESULT(VulkanHelper::getSingleton().createBuffer(
+   VK_CHECK_RESULT(VulkanHelper::getSingleton().createBuffer(
         VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         &shaderBindingTable,
         rayTracingPipelineProperties.shaderGroupHandleSize * handleCount));
+    /*auto* buffer = new VulkanBuffer(mAllocator, *mStagePool, 
+        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        rayTracingPipelineProperties.shaderGroupHandleSize * handleCount);*/
     // Get the strided address to be used when dispatching the rays
     shaderBindingTable.stridedDeviceAddressRegion = 
         getSbtEntryStridedDeviceAddressRegion(shaderBindingTable.buffer, handleCount);
-    // Map persistent 
     shaderBindingTable.map();
 }
 

@@ -332,7 +332,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
             .textureCompressionETC2 = features.textureCompressionETC2,
             .textureCompressionBC = features.textureCompressionBC,
             .shaderClipDistance = features.shaderClipDistance,
-            
+            .shaderInt64 = VK_TRUE
     };
 
     deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
