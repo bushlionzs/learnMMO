@@ -737,12 +737,12 @@ void RayTracingApp::RayTracing(
 	renderPipeline->addRenderPass(rayTracingPass);
 
 	gameCamera->setMoveSpeed(1.0f);
-	Ogre::Vector3 camPos(0.0f, 0.0, 2.0f);
+	Ogre::Vector3 camPos(0.0f, 0.0, -2.0f);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 	gameCamera->lookAt(camPos, lookAt);
 	float aspect = ogreConfig.width / (float)ogreConfig.height;
-	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLH(
-		Ogre::Math::PI / 3.0f, aspect, 0.1, 1000.f);
+	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixRH(
+		Ogre::Math::PI / 4.0f, aspect, 0.1, 1000.f);
 	gameCamera->getCamera()->updateProjectMatrix(m);
-	gameCamera->setCameraType(CameraMoveType_ThirdPerson);
+	gameCamera->setCameraType(CameraMoveType_LookAt);
 }

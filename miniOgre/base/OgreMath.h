@@ -364,7 +364,11 @@ namespace Ogre
             float aspectInverse,
             float zNear,
             float zFar);
-
+        static Matrix4 makePerspectiveMatrixRHReverseZ(
+            float fovxRadians,
+            float aspectInverse,
+            float zNear,
+            float zFar);
         static Matrix4 makePerspectiveMatrix(Real left, Real right, Real bottom, Real top, 
             Real zNear, Real zFar);
         static Matrix4 makeOrthoRH(

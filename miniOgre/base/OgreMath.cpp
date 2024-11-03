@@ -1088,6 +1088,19 @@ namespace Ogre
         return m;
     }
 
+    Matrix4 Math::makePerspectiveMatrixRHReverseZ(
+        float fovxRadians,
+        float aspectInverse,
+        float zNear,
+        float zFar)
+    {
+        Matrix4 m = makePerspectiveMatrixRH(fovxRadians, 1 / aspectInverse, zNear, zFar);
+        float  w = m[3][2];
+        float  z = m[2][2];
+        m[2][2] = w - z;
+        m[2][3] = -m[2][3];
+        return m;
+    }
     Matrix4 Math::makePerspectiveMatrix(Real left, Real right, Real bottom, Real top, Real zNear, Real zFar)
     {
         // The code below will dealing with general projection

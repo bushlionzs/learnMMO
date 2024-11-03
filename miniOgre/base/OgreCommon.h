@@ -421,7 +421,8 @@ namespace Ogre {
     enum CameraMoveType
     {
         CameraMoveType_FirstPerson = 0,
-        CameraMoveType_ThirdPerson = 1
+        CameraMoveType_LookAt = 1,
+
     };
 
     typedef enum QueueType

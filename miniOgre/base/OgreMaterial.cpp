@@ -20,9 +20,14 @@ namespace Ogre {
 
         mRasterState.depthWrite = true;
         mRasterState.depthTest = true;
-        mRasterState.depthFunc = SamplerCompareFunc::GE;
+        mRasterState.depthFunc = SamplerCompareFunc::LE;
+        auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+        if (ogreConfig.reverseDepth)
+        {
+            mRasterState.depthFunc = SamplerCompareFunc::GE;
+        }
         mRasterState.colorWrite = true;
-        mRasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+        mRasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
         mRasterState.renderTargetCount = 1;
     }
 

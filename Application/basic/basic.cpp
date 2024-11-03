@@ -34,7 +34,8 @@ void BasicApplication::setup(
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
-
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	ogreConfig.reverseDepth = true;
 	mSceneManager = sceneManager;
 	mGameCamera = gameCamera;
 	mRenderWindow = renderWindow;
@@ -220,17 +221,32 @@ void BasicApplication::base5()
 
 	//mSceneManager->setSkyBox(true, "SkyLan", 5000);
 
+	Ogre::Vector3 camPos = Ogre::Vector3(0, 0.2, -2.f);
+	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 	mGameCamera->lookAt(
-		Ogre::Vector3(0, 0.0, 2.0f),
-		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+		camPos, lookAt);
 	mGameCamera->setMoveSpeed(1);
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+	
+	
+	Ogre::Matrix4 m;
 
-	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
-		Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
-
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 256);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrixLH(
+			Ogre::Math::PI / 4.0f, aspect, 0.1, 256);
+	}
+	
+	//auto view = Ogre::Math::makeLookAtLH(camPos, lookAt, Ogre::Vector3::UNIT_Y);
+	//mGameCamera->getCamera()->updateViewMatrix(view);
 	mGameCamera->getCamera()->updateProjectMatrix(m);
-	mGameCamera->setCameraType(CameraMoveType_ThirdPerson);
+	mGameCamera->setCameraType(CameraMoveType_LookAt);
 }
