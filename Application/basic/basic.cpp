@@ -39,7 +39,7 @@ void BasicApplication::setup(
 	mGameCamera = gameCamera;
 	mRenderWindow = renderWindow;
 	mRenderSystem = renderSystem;
-	base1();
+	base5();
 
 	RenderPassInput input;
 	input.color = renderWindow->getColorTarget();
@@ -208,23 +208,29 @@ void BasicApplication::base4()
 
 void BasicApplication::base5()
 {
+	std::string name = "FlightHelmet.gltf";
+	auto mesh = MeshManager::getSingletonPtr()->load(name);
+
 	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
 
-	float aa = 0.5f;
-	Ogre::Vector3 leftop = Ogre::Vector3(-aa, aa, 0.0f);
-	Ogre::Vector3 leftbottom = Ogre::Vector3(-aa, -aa, 0.0f);
-	Ogre::Vector3 righttop = Ogre::Vector3(aa, aa, 0.0f);
-	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, -aa, 0.0f);
-	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
+	Entity* gltfEntity = mSceneManager->createEntity("FlightHelmet", name);
+	SceneNode* gltfNode = root->createChildSceneNode("FlightHelmet");
 
-	std::string meshname = "box.gltf";
-	auto mesh = MeshManager::getSingletonPtr()->load(meshname);
-	Entity* rect = mSceneManager->createEntity(meshname, meshname);
-	SceneNode* rectnode = root->createChildSceneNode(meshname);
-	rectnode->attachObject(rect);
+	gltfNode->attachObject(gltfEntity);
 
-	mSceneManager->setSkyBox(true, "SkyMap", 1000);
+	//mSceneManager->setSkyBox(true, "SkyLan", 5000);
 
-	mGameCamera->setDistance(2.5f);
-	mGameCamera->setMoveSpeed(5);
+	mGameCamera->lookAt(
+		Ogre::Vector3(0, 0.0, 2.0f),
+		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+	mGameCamera->setMoveSpeed(1);
+
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+
+	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+		Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
+
+	mGameCamera->getCamera()->updateProjectMatrix(m);
+	mGameCamera->setCameraType(CameraMoveType_ThirdPerson);
 }

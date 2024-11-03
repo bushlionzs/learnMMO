@@ -258,11 +258,25 @@ bool GameCamera::update(float delta)
         position += move;
     }
   
-    auto m = Ogre::Math::makeRotateMatrixXY(-x, -y);
-    Ogre::Vector4 t = m * Ogre::Vector4(-position);
-    m.setTrans(t.xyz());
-    mCamera->updatePosition(position);
+    auto rotM = Ogre::Math::makeRotateMatrixXY(-x, -y);
+    
+    //Ogre::Vector4 t = rotM * Ogre::Vector4(-position);
+    //rotM.setTrans(t.xyz());
+
+    Ogre::Matrix4 m;
+    if (mCameraType == CameraMoveType_FirstPerson)
+    {
+        auto transM = Ogre::Math::makeTranslateMatrix(-position);
+        m = rotM * transM;
+    }
+    else
+    {
+        auto transM = Ogre::Math::makeTranslateMatrix(position);
+        m = transM * rotM;
+    }
+    
     mCamera->updateViewMatrix(m);
+    mCamera->updatePosition(position);
     return true;
 }
 

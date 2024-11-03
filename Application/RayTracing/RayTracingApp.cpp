@@ -23,6 +23,7 @@
 #include "OgreMurmurHash3.h"
 #include "OgreTextureManager.h"
 #include "OgreMeshManager.h"
+#include "OgreSubEntity.h"
 #include "forgeCommon.h"
 
 RayTracingApp::RayTracingApp()
@@ -476,13 +477,35 @@ void RayTracingApp::RayTracing(
 	auto root = sceneManager->getRoot();
     std::string meshname = "FlightHelmet.gltf";
     std::shared_ptr<Mesh> mesh = MeshManager::getSingletonPtr()->load(meshname);
+	float aa = 1.0f;
+	Ogre::Vector3 leftop = Ogre::Vector3(-aa, aa, 0.0f);
+	Ogre::Vector3 leftbottom = Ogre::Vector3(-aa, -aa, 0.0f);
+	Ogre::Vector3 righttop = Ogre::Vector3(aa, aa, 0.0f);
+	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, -aa, 0.0f);
+	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
+	/*auto mesh = MeshManager::getSingletonPtr()->createRect(
+		nullptr,
+		meshname,
+		leftop, leftbottom, righttop, rightbottom, normal);*/
     Entity* gltfEntity = sceneManager->createEntity(meshname, meshname);
     SceneNode* gltfNode = rootNode->createChildSceneNode(meshname);
 	gltfNode->attachObject(gltfEntity);
 
 	auto subMeshCount = mesh->getSubMeshCount();
 	AccelerationStructureDesc         asDesc = {};
-	AccelerationStructureGeometryDesc geomDescs[512] = {};
+	AccelerationStructureGeometryDesc geomDescs[128] = {};
+	
+	std::vector<TransformMatrix> transformMatrices;
+	transformMatrices.reserve(subMeshCount);
+
+	uint32_t transformSize = sizeof(TransformMatrix) * subMeshCount;
+
+	Handle< HwBufferObject> transformBufferHandle =rs->createBufferObject(
+		BufferObjectBinding::BufferObjectBinding_Storge,
+		BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
+		transformSize
+	);
+
 	
 	for (uint32_t i = 0; i < subMeshCount; i++)
 	{
@@ -490,9 +513,15 @@ void RayTracingApp::RayTracing(
 		VertexData* vertexData = subMesh->getVertexData();
 		IndexData* indexData = subMesh->getIndexData();
 		auto& mat = subMesh->getMaterial();
-		//mat->load(nullptr);
 		auto materialFlag = mat->getMaterialFlags();
+		
+		SubEntity* subEntity = gltfEntity->getSubEntity(i);
+		const Ogre::Matrix4& subMatrix = subEntity->getModelMatrix();
+		TransformMatrix transformMatrix;
 
+		Ogre::Matrix4 m = Ogre::Matrix4::IDENTITY;
+		memcpy(&transformMatrix, (void*)&subMatrix, sizeof(transformMatrix));
+		transformMatrices.push_back(transformMatrix);
 		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
 			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
 			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
@@ -501,13 +530,15 @@ void RayTracingApp::RayTracing(
 		geomDescs[i].mVertexStride = vertexData->getVertexSize(0);
 		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
 		geomDescs[i].indexBufferHandle = indexData->getHandle();
-
+		geomDescs[i].transformBufferHandle = transformBufferHandle;
 		IndexDataView* indexView = subMesh->getIndexView();
 		geomDescs[i].mIndexCount = indexView->mIndexCount;
 		geomDescs[i].mIndexOffset = indexView->mIndexLocation * sizeof(uint32_t);
 		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
 	}
 
+	rs->updateBufferObject(transformBufferHandle,
+		(const char*)transformMatrices.data(), transformSize);
 	AccelerationStructure* pSanMiguelBottomAS = nullptr;
 	AccelerationStructure* pSanMiguelAS = nullptr;
 	if (1)
@@ -519,14 +550,17 @@ void RayTracingApp::RayTracing(
 
 		rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
 
-		sanMiguelProp.mWorldMatrix = Ogre::Math::makeScaleMatrix(Ogre::Vector3(1.0f, 1.0f, 1.0f));
+		TransformMatrix transformMatrix = {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, -1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f };
 
 		AccelerationStructureInstanceDesc instanceDesc = {};
 		instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
 		instanceDesc.mInstanceContributionToHitGroupIndex = 0;
 		instanceDesc.mInstanceID = 0;
 		instanceDesc.mInstanceMask = 1;
-		memcpy(instanceDesc.mTransform, &sanMiguelProp.mWorldMatrix, sizeof(float[12]));
+		memcpy(instanceDesc.mTransform, &transformMatrix, sizeof(float[12]));
 		instanceDesc.pBottomAS = pSanMiguelBottomAS;
 
 
@@ -592,13 +626,18 @@ void RayTracingApp::RayTracing(
 		mat->load(nullptr);
 
 		auto* baseColorTexture = mat->getPbrTexture(TextureTypePbr_Albedo);
-		auto baseColorIndex = textureList.size();
+		baseColorTexture = mat->getTexture(0);
+		int32_t baseColorIndex = textureList.size();
 		textureList.push_back(baseColorTexture);
 
 		auto* occlusionTexture = mat->getPbrTexture(TextureTypePbr_AmbientOcclusion);
-		auto occlusionIndex = textureList.size();
-		textureList.push_back(occlusionTexture);
-
+		int32_t occlusionIndex = -1;
+		if (occlusionTexture)
+		{
+			occlusionIndex = textureList.size();
+			textureList.push_back(occlusionTexture);
+		}
+		
 		VertexData* vertexData = subMesh->getVertexData();
 		IndexData* indexData = subMesh->getIndexData();
 
@@ -698,12 +737,12 @@ void RayTracingApp::RayTracing(
 	renderPipeline->addRenderPass(rayTracingPass);
 
 	gameCamera->setMoveSpeed(1.0f);
-	Ogre::Vector3 camPos(0, 0, -2.0f);
+	Ogre::Vector3 camPos(0.0f, 0.0, 2.0f);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 	gameCamera->lookAt(camPos, lookAt);
-	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 	float aspect = ogreConfig.width / (float)ogreConfig.height;
 	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLH(
 		Ogre::Math::PI / 3.0f, aspect, 0.1, 1000.f);
 	gameCamera->getCamera()->updateProjectMatrix(m);
+	gameCamera->setCameraType(CameraMoveType_ThirdPerson);
 }

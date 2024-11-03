@@ -181,7 +181,19 @@ namespace Ogre {
 
     OgreTexture* Material::getPbrTexture(TextureTypePbr type)
     {
-        return mTextureUnits[type]->getRaw();
+        for (auto i = 0; i < mTextureUnits.size(); i++)
+        {
+            if (mTextureUnits[i]->getTextureProperty()->_pbrType == type)
+            {
+                return mTextureUnits[i]->getRaw();
+            }
+        }
+        return nullptr;
+    }
+
+    OgreTexture* Material::getTexture(uint32_t index)
+    {
+        return mTextureUnits[index]->getRaw();
     }
 
 

@@ -25,7 +25,6 @@ struct GltfVertex
     Ogre::Vector3 Pos;
     Ogre::Vector3 Normal;
     Ogre::Vector2 TexC;
-    Ogre::Vector3 Tangent;
 };
 
 struct GltfSkinnedVertex
@@ -245,13 +244,6 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             {
                 mVertexBuffer[i].Pos = Ogre::Vector3(gltfPosition[0], gltfPosition[1], gltfPosition[2]);
                 mVertexBuffer[i].Normal = Ogre::Vector3(gltfNormal[0], gltfNormal[1], gltfNormal[2]);
-                if (gltfTangent)
-                {
-                    mVertexBuffer[i].Tangent.x = gltfTangent[0];
-                    mVertexBuffer[i].Tangent.y = gltfTangent[1];
-                    mVertexBuffer[i].Tangent.z = gltfTangent[2];
-                    gltfTangent += 4;
-                }
                 
                 gltfPosition += 3;
                 gltfNormal += 3;
@@ -270,7 +262,6 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             vd->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
             vd->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
             vd->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
-            vd->addElement(0, 0, 32, VET_FLOAT3, VES_TANGENT);
 
             std::vector<VertexBoneAssignment> assignInfoList;
      
@@ -450,30 +441,13 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
 		}
 	}
 
-    Ogre::Vector3 position;
-    for (auto& node : model.nodes)
+    const tinygltf::Scene& scene = model.scenes[model.defaultScene > -1 ? model.defaultScene : 0];
+    for (size_t i = 0; i < scene.nodes.size(); i++) 
     {
-        if (node.mesh < 0 )
-            continue;
-        //node.translation
-        auto subMesh = pMesh->getSubMesh(node.mesh);
-
-        if (!node.translation.empty())
-        {
-            position.x = node.translation[0];
-            position.y = node.translation[1];
-            position.z = node.translation[2];
-
-            subMesh->setPosition(position);
-        }
-
-        if (!node.rotation.empty())
-        {
-            Ogre::Quaternion q(node.rotation.data());
-            //subMesh->setRotate(q);
-        }
-        
+        const tinygltf::Node node = model.nodes[scene.nodes[i]];
+        TraverseNode(pMesh, nullptr, node, model);
     }
+    
 
     std::vector<std::shared_ptr<Ogre::Skeleton>> skeletonlist;
 
@@ -484,9 +458,64 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
         skeletonlist.front()->setBindingPose();
         pMesh->applySkeleton(skeletonlist.front());
     }
-    
-
+   
 	return std::shared_ptr<Ogre::Mesh>(pMesh);
+}
+
+void GltfLoader::TraverseNode(
+    Ogre::Mesh* mesh, 
+    GltfNode* parentNode, 
+    const tinygltf::Node& node,
+    const tinygltf::Model& model)
+{
+    GltfNode current;
+    current.parent = parentNode;
+    if (!node.translation.empty())
+    {
+        current.translation.x = node.translation[0];
+        current.translation.y = node.translation[1];
+        current.translation.z = node.translation[2];
+    }
+
+    if (!node.rotation.empty())
+    {
+        const double* rotationData = node.rotation.data();
+        current.rotation.x = rotationData[0];
+        current.rotation.y = rotationData[1];
+        current.rotation.z = rotationData[2];
+        current.rotation.w = rotationData[3];
+    }
+
+    if (node.children.size() > 0) {
+        for (auto i = 0; i < node.children.size(); i++) {
+            TraverseNode(mesh, &current, model.nodes[node.children[i]], model);
+        }
+    }
+    if (node.mesh >= 0)
+    {
+        Ogre::Matrix4 m;
+        m.makeTransform(current.translation, current.scale, current.rotation);
+
+        GltfNode* p = current.parent;
+
+        Ogre::Matrix4 parentMatrix;
+        while (p)
+        {
+            parentMatrix.makeTransform(p->translation, p->scale, p->rotation);
+            m = parentMatrix * m;
+            p = p->parent;
+        }
+
+        auto q = m.extractQuaternion();
+        auto translation = m.getTrans();
+        auto scale = Ogre::Vector3(1.0f);
+
+        auto subMesh = mesh->getSubMesh(node.mesh);
+
+        subMesh->setPosition(translation);
+        subMesh->setRotate(q);
+        subMesh->setScale(scale);
+    }
 }
 
 bool GltfLoader::loadSkeleton(
@@ -546,8 +575,6 @@ bool GltfLoader::loadSkeleton(
         }
         
     }
-
-
     return true;
 }
 

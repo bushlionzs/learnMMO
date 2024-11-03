@@ -44,7 +44,7 @@ namespace Ogre {
         int32_t getTextureUnitCount();
         std::vector<std::shared_ptr<TextureUnit>>& getAllTexureUnit();
         OgreTexture* getPbrTexture(TextureTypePbr type);
-        
+        OgreTexture* getTexture(uint32_t index);
         void addShader(ShaderInfo& sinfo);
 
         ShaderInfo& getShaderInfo();

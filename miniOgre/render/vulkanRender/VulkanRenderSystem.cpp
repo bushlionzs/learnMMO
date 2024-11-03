@@ -105,20 +105,25 @@ void VulkanRenderSystem::addAccelerationStructure(
             pGeometry->geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
             pGeometry->geometry.triangles = VkAccelerationStructureGeometryTrianglesDataKHR{};
             pGeometry->geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-
+            
             uint32_t primitiveCount = 0;
 
             if (pGeom->mIndexCount)
             {
  
                 VkDeviceOrHostAddressConstKHR indexBufferDeviceAddress = {};
-                indexBufferDeviceAddress.deviceAddress = getBufferDeviceAddress(getVkBuffer(pGeom->indexBufferHandle)) + pGeom->mIndexOffset;
-
+                indexBufferDeviceAddress.deviceAddress = 
+                    getBufferDeviceAddress(getVkBuffer(pGeom->indexBufferHandle)) + pGeom->mIndexOffset;
+                VkDeviceOrHostAddressConstKHR transformBufferDeviceAddress{};
+                transformBufferDeviceAddress.deviceAddress =
+                    getBufferDeviceAddress(pGeom->transformBufferHandle) + sizeof(VkTransformMatrixKHR) * j;
                 pGeometry->geometry.triangles.indexData = indexBufferDeviceAddress;
                 pGeometry->geometry.triangles.indexType =
                     (INDEX_TYPE_UINT16 == pGeom->mIndexType) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
 
                 primitiveCount = pGeom->mIndexCount / 3;
+
+                pGeometry->geometry.triangles.transformData = transformBufferDeviceAddress;
             }
             else
             {

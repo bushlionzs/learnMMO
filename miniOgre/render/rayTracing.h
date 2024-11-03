@@ -56,13 +56,14 @@ typedef struct AccelerationStructureGeometryDesc
 {
     Handle<HwBufferObject> vertexBufferHandle;
     Handle<HwBufferObject> indexBufferHandle;
+    Handle< HwBufferObject> transformBufferHandle;
     uint32_t                           mVertexOffset;
     uint32_t                           mVertexCount;
     uint32_t                           mVertexStride;
-    VertexElementType                  mVertexElementType;
+    VertexElementType         mVertexElementType;
     uint32_t                           mIndexOffset;
     uint32_t                           mIndexCount;
-    Ogre::IndexType                    mIndexType;
+    Ogre::IndexType              mIndexType;
     AccelerationStructureGeometryFlags mFlags;
 } AccelerationStructureGeometryDesc;
 

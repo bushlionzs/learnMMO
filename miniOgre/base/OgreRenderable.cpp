@@ -210,7 +210,9 @@ namespace Ogre {
         auto* rs = Ogre::Root::getSingleton().getRenderSystem();
         Material* mat = mMaterial.get();
         static ObjectConstantBuffer objectBuffer;
-        objectBuffer.world = mModel.transpose();
+        const auto& modelMatrix = this->getModelMatrix();
+
+        objectBuffer.world = modelMatrix.transpose();
         rs->updateBufferObject(resourceInfo.modelObjectHandle,
             (const char*)&objectBuffer, sizeof(objectBuffer));
 

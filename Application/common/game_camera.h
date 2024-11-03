@@ -53,6 +53,11 @@ public:
 
     const Ogre::Vector3& getPosition() const;
 
+    void setCameraType(CameraMoveType moveType)
+    {
+        mCameraType = moveType;
+    }
+
     void setDistance(float distance);
     void setHeight(float height);
 

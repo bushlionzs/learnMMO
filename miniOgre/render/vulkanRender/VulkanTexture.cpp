@@ -175,8 +175,7 @@ void VulkanTexture::postLoad()
 {
     auto frameIndex = 0;
 
-    VkCommandBuffer commandBuffer = mCommands->get().buffer();
-    commandBuffer = VulkanHelper::getSingleton().beginTransferCommand();
+    VkCommandBuffer commandBuffer = VulkanHelper::getSingleton().beginTransferCommand();
     if (!mSurfaceList.empty())
     {
         vks::tools::copyBufferToImage(

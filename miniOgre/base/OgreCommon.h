@@ -1141,6 +1141,10 @@ namespace Ogre {
         uint8_t       mMipLevel : 7;
         uint16_t      mArrayLayer;
     } RenderTargetBarrier;
+
+    struct TransformMatrix {
+        float    matrix[3][4];
+    };
     /// Render window creation parameters container.
     typedef std::vector<RenderWindowDescription> RenderWindowDescriptionList;
 
