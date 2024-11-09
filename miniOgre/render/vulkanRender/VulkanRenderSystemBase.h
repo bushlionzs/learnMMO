@@ -111,6 +111,11 @@ protected:
     virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
         Handle<HwComputeProgram> programHandle, 
         uint32_t set) override;
+    virtual void updatePushConstants(
+        Handle<HwProgram> program,
+        uint32_t offset,
+        const char* data,
+        uint32_t size);
     virtual Handle<HwSampler> createTextureSampler(filament::backend::SamplerParams& samplerParams);
     virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& mShaderInfo) override;
     virtual Handle<HwPipeline> createPipeline(

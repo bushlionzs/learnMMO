@@ -152,7 +152,8 @@ VulkanProgram::VulkanProgram(const std::string& name) noexcept
     : HwProgram(utils::CString(name.c_str())),
       VulkanResource(VulkanResourceType::PROGRAM),
     mShaders{},
-    mLayouts{}
+    mLayouts{},
+    mPushConstantsSize(0)
 {
 
    

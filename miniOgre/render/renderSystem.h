@@ -179,11 +179,17 @@ public:
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(const ShaderInfo& mShaderInfo);
     virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
         Handle<HwRaytracingProgram> programHandle, uint32_t set);
+    virtual void updatePushConstants(
+        Handle<HwProgram> program,
+        uint32_t offset, 
+        const char* data,
+        uint32_t size) {}
     virtual Handle<HwSampler> createTextureSampler(filament::backend::SamplerParams& samplerParams);
     virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& shaderInfo);
     virtual Handle<HwPipeline> createPipeline(
         backend::RasterState& rasterState,
-        Handle<HwProgram>& program);
+        Handle<HwProgram>& program
+        );
 
     virtual void bindDescriptorSet(
         Handle<HwDescriptorSet> dsh,

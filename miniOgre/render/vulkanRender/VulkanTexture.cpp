@@ -247,7 +247,7 @@ void VulkanTexture::createImage(
 
     if (mUsage & Ogre::TextureUsage::COLOR_ATTACHMENT)
     {
-        imageInfo.usage |=  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        imageInfo.usage |=  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
 
     if (mUsage & Ogre::TextureUsage::DEPTH_ATTACHMENT)

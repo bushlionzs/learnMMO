@@ -35,7 +35,7 @@ void BasicApplication::setup(
 	GameCamera* gameCamera)
 {
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	ogreConfig.reverseDepth = true;
+	ogreConfig.reverseDepth = false;
 	mSceneManager = sceneManager;
 	mGameCamera = gameCamera;
 	mRenderWindow = renderWindow;
@@ -245,8 +245,6 @@ void BasicApplication::base5()
 			Ogre::Math::PI / 4.0f, aspect, 0.1, 256);
 	}
 	
-	//auto view = Ogre::Math::makeLookAtLH(camPos, lookAt, Ogre::Vector3::UNIT_Y);
-	//mGameCamera->getCamera()->updateViewMatrix(view);
 	mGameCamera->getCamera()->updateProjectMatrix(m);
 	mGameCamera->setCameraType(CameraMoveType_LookAt);
 }

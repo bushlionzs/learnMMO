@@ -8,7 +8,7 @@ int main()
 	PbrMaterial instance;
 
 	AppInfo info;
-
+	info.useCEGUI = true;
 	ManualApplication app;
 
 	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {

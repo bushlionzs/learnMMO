@@ -56,8 +56,10 @@ namespace Ogre {
         return OT_TRIANGLE_LIST;
     }
 
-    void Renderable::createFrameResource()
+    bool Renderable::createFrameResource()
     {
+        if (!mFrameResourceInfoList.empty())
+            return false;
         auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
         mFrameResourceInfoList.resize(ogreConfig.swapBufferCount);
         auto* rs = Ogre::Root::getSingleton().getRenderSystem();
@@ -125,8 +127,7 @@ namespace Ogre {
 
             if (mat->isPbr())
             {
-                std::array<OgreTexture*, 5> texArray = 
-                {nullptr, nullptr, nullptr, nullptr, nullptr};
+                std::array<OgreTexture*, 9> texArray{};
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
                     int32_t texIndex = -1;
@@ -147,15 +148,26 @@ namespace Ogre {
                     case TextureTypePbr_AmbientOcclusion:
                         texIndex = 1;
                         break;
+                    case TextureTypePbr_Roughness:
+                        texIndex = 5;
+                        break;
+                    case TextureTypePbr_BRDF_LUT:
+                        texIndex = 6;
+                        break;
+                    case TextureTypePbr_IBL_Diffuse:
+                        texIndex = 7;
+                        break;
+                    case TextureTypePbr_IBL_Specular:
+                        texIndex = 8;
+                        break;
                     }
-
                     assert(texIndex >= 0);
                     OgreTexture* tex = texs[i]->getRaw();
                     texArray[texIndex] = tex;
                 }
                 std::shared_ptr<OgreTexture> defaultTex =
                     TextureManager::getSingleton().getByName("white1x1.dds");
-                for (auto i = 0; i < 5; i++)
+                for (auto i = 0; i < 9; i++)
                 {
                     OgreTexture* tex = texArray[i];
                     if (tex == nullptr)
@@ -192,6 +204,8 @@ namespace Ogre {
                 }
             }
         }
+
+        return true;
     }
 
     void Renderable::updateFrameResource(uint32_t frameIndex)

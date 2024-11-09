@@ -291,15 +291,19 @@ struct VulkanProgram : public HwProgram, VulkanResource {
         return mAttributeDescriptions;
     }
 
+    void updatePushConstantsSize(uint32_t size)
+    {
+        mPushConstantsSize = size;
+    }
     static constexpr uint8_t const MAX_SHADER_MODULES = 3;
 
 private:
-    
     VkShaderModule mShaders[MAX_SHADER_MODULES];
     VkPipelineLayout mPipelineLayout;
     Handle<HwDescriptorSetLayout> mLayouts[4];
     std::vector<VkVertexInputBindingDescription> mVertexInputBindings;
     std::vector<VkVertexInputAttributeDescription> mAttributeDescriptions;
+    uint32_t mPushConstantsSize;
 };
 
 struct VulkanTextureSampler : public HwSampler, VulkanResource {

@@ -67,7 +67,7 @@ namespace Ogre {
 
         Ogre::OperationType getPrimitiveTopology();
 
-        void createFrameResource();
+        bool createFrameResource();
         void updateFrameResource(uint32_t frameIndex);
         void updateMaterialInfo();
         FrameResourceInfo* getFrameResourceInfo(uint32_t frameIndex);

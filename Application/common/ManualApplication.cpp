@@ -54,10 +54,6 @@ bool ManualApplication::appInit()
 	mApplicationWindow->createWindow(ogreConfig.width, ogreConfig.height);
 	
 	HWND wnd = mApplicationWindow->getWnd();
-	
-	
-	
-
 
 	if (!InputManager::getSingletonPtr())
 	{
@@ -109,6 +105,7 @@ bool ManualApplication::appInit()
 void ManualApplication::run(AppInfo& info)
 {
 	mAppInfo = &info;
+	mUseCEGUI = mAppInfo->useCEGUI;
 	appInit();
 	info.setup(mRenderSystem, mRenderWindow, mSceneManager, mGameCamera);
 	MSG msg;

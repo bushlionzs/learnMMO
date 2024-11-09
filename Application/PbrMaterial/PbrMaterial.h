@@ -46,8 +46,8 @@ private:
 	CEGUI::Window* mRoot = nullptr;
 	std::vector<Ogre::Entity*> matBallList;
 
-	SceneManager* mSceneManager;
-	GameCamera* mGameCamera;
-	RenderSystem* mRenderSystem;
-	RenderWindow* mRenderWindow;
+	//SceneManager* mSceneManager;
+	//GameCamera* mGameCamera;
+	//RenderSystem* mRenderSystem;
+	//RenderWindow* mRenderWindow;
 };

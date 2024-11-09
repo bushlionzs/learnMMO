@@ -17,7 +17,7 @@ VkPipelineLayout VulkanPipelineLayoutCache::getLayout(
         return entry.handle;
     }
     uint8_t descSetLayoutCount = 0;
-    for (auto layoutHandle : key) {
+    for (auto layoutHandle : key.setLayout) {
         if (layoutHandle == VK_NULL_HANDLE) {
             break;
         }
@@ -28,10 +28,18 @@ VkPipelineLayout VulkanPipelineLayoutCache::getLayout(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .setLayoutCount = descSetLayoutCount,
-        .pSetLayouts = key.data(),
+        .pSetLayouts = key.setLayout,
         .pushConstantRangeCount = 0,
     };
+    VkPushConstantRange pushRange{};
 
+    if (key.pushConstant->size > 0)
+    {
+        pushRange.size = key.pushConstant->size;
+        pushRange.stageFlags = key.pushConstant->stage;
+        info.pushConstantRangeCount = 1;
+        info.pPushConstantRanges = &pushRange;
+    }
     
     VkPipelineLayout layout;
     vkCreatePipelineLayout(mDevice, &info, VKALLOC, &layout);

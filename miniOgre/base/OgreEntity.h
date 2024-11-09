@@ -66,7 +66,7 @@ namespace Ogre {
             return mMesh;
         }
 
-        void setMaterialName(const std::string& name);
+        void setMaterialName(const std::string& name, bool copy = true);
 
         const ChildObjectList& getAttachedObjects() const;
 

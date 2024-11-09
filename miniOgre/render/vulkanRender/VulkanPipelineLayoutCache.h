@@ -1,6 +1,7 @@
 #pragma once
 
 #include <VulkanCommon.h>
+#include <VulkanHandles.h>
 #include <VulkanResourceAllocator.h>
 #include <utils/Hash.h>
 
@@ -12,8 +13,17 @@ public:
         mTimestamp(0) {}
 
     void terminate() noexcept;
-
-    using PipelineLayoutKey = std::array<VkDescriptorSetLayout,4>;
+    struct PushConstantInfo
+    {
+        uint32_t size;
+        VkShaderStageFlags stage;
+    };
+    struct PipelineLayoutKeyInfo
+    {
+        VkDescriptorSetLayout setLayout[VulkanDescriptorSetLayout::MAX_BINDING_SET];
+        PushConstantInfo pushConstant[1];
+    };
+    using PipelineLayoutKey = PipelineLayoutKeyInfo;
 
     VulkanPipelineLayoutCache(VulkanPipelineLayoutCache const&) = delete;
     VulkanPipelineLayoutCache& operator=(VulkanPipelineLayoutCache const&) = delete;

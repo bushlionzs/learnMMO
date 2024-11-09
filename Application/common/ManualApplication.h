@@ -26,7 +26,7 @@ public:
 	
 	virtual bool isUseCEGUI()
 	{
-		return false;
+		return mUseCEGUI;
 	}
 
 	virtual void OnSize(uint32_t width, uint32_t height);
@@ -49,6 +49,6 @@ protected:
 	Ogre::RenderWindow* mRenderWindow = nullptr;
 	std::vector<PassBase*> mPassList;
 	RenderPassInfo mPassInfo;
-
+	bool mUseCEGUI;
 	AppInfo* mAppInfo;
 };

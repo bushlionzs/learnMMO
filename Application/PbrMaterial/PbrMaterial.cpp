@@ -7,7 +7,7 @@
 #include "OgreResourceManager.h"
 #include "renderSystem.h"
 #include "OgreViewport.h"
-
+#include "OgreRenderWindow.h"
 #include "OgreTextureManager.h"
 #include "OgreMaterialManager.h"
 #include "OgreRenderTexture.h"
@@ -20,6 +20,8 @@
 #include "OgreSceneNode.h"
 #include "OgreMeshManager.h"
 #include "OgreMaterial.h"
+#include "OgreVertexData.h"
+#include "OgreIndexData.h"
 #include "game_camera.h"
 #include <platform_file.h>
 #include <OgreRoot.h>
@@ -27,7 +29,7 @@
 
 
 #define ENTRY_INSTANCE_COUNT 6
-#define PI 3.14159265358
+
 PbrMaterial::PbrMaterial()
 {
    
@@ -59,14 +61,12 @@ std::vector<std::string> matNameList =
 
 void PbrMaterial::setup(
 	RenderPipeline* renderPipeline,
-	RenderSystem* renderSystem,
+	RenderSystem* rs,
 	Ogre::RenderWindow* renderWindow,
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
 	uiInit();
-
-
 	float baseX = 22.0f;
 	float baseY = -1.8f;
 	float baseZ = 12.0f;
@@ -74,28 +74,24 @@ void PbrMaterial::setup(
 	float scaleVal = 4.0f;
 	float roughDelta = 1.0f;
 	float materialPlateOffset = 4.0f;
-	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
+	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
 	std::string cubeName = "cube.bin";
 	auto cube = MeshManager::getSingletonPtr()->load(cubeName);
 
 	std::string matBallName = "matBall.bin";
 	auto matBall = MeshManager::getSingletonPtr()->load(matBallName);
-
 	matBallList.resize(ENTRY_INSTANCE_COUNT);
-
-
-
 	for (uint32_t i = 0; i < ENTRY_INSTANCE_COUNT; ++i)
 	{
 		std::string entryName = "matBall_" + std::to_string(i);
-		Entity* entity = mSceneManager->createEntity(entryName, matBallName);
+		Entity* entity = sceneManager->createEntity(entryName, matBallName);
 
-		entity->setMaterialName(matNameList[i]);
+		entity->setMaterialName(matNameList[i], false);
 		auto* r = entity->getSubEntity(0);
 		Ogre::Vector3 pos = Ogre::Vector3(baseX - i - offsetX * i, baseY, baseZ);
 		r->setLocalMatrix(pos,
 			Ogre::Vector3(4.0),
-			Ogre::Quaternion(Ogre::Radian(PI), Ogre::Vector3::UNIT_Y));
+			Ogre::Quaternion(Ogre::Radian(Ogre::Math::PI), Ogre::Vector3::UNIT_Y));
 
 		SceneNode* entityNode = root->createChildSceneNode(entryName);
 		entityNode->attachObject(entity);
@@ -108,13 +104,13 @@ void PbrMaterial::setup(
 	for (uint32_t i = 0; i < ENTRY_INSTANCE_COUNT; ++i)
 	{
 		std::string entryName = "cube_" + std::to_string(i);
-		Entity* entity = mSceneManager->createEntity(entryName, cubeName);
+		Entity* entity = sceneManager->createEntity(entryName, cubeName);
 
-		entity->setMaterialName("ForgePlate");
+		entity->setMaterialName("ForgePlate", false);
 		auto* r = entity->getSubEntity(0);
 		r->setLocalMatrix(Ogre::Vector3(baseX - i - offsetX * i, -5.8f, baseZ + materialPlateOffset),
 			Ogre::Vector3(3.0f, 0.1f, 1.0f),
-			Ogre::Quaternion(Ogre::Radian(PI / 5.0f), Ogre::Vector3::UNIT_X));
+			Ogre::Quaternion(Ogre::Radian(Ogre::Math::PI / 5.0f), Ogre::Vector3::UNIT_X));
 
 		SceneNode* entityNode = root->createChildSceneNode(entryName);
 		entityNode->attachObject(entity);
@@ -124,9 +120,9 @@ void PbrMaterial::setup(
 
 	{
 		std::string entryName = "cube_ground";
-		Entity* entity = mSceneManager->createEntity(entryName, cubeName);
+		Entity* entity = sceneManager->createEntity(entryName, cubeName);
 
-		entity->setMaterialName("ForgeGround");
+		entity->setMaterialName("ForgeGround", false);
 		auto* r = entity->getSubEntity(0);
 		r->setLocalMatrix(Ogre::Vector3(0.0f, -6.0f, 5.0f),
 			Ogre::Vector3(30.0f, 0.2f, 30.0f),
@@ -142,15 +138,10 @@ void PbrMaterial::setup(
 	for (auto& name : matNameList)
 	{
 		auto mat = MaterialManager::getSingleton().getByName(name);
-		PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
 		matList.push_back(mat);
 	}
 
 	TextureProperty tp;
-
-
-	auto rs = Ogre::Root::getSingleton().getRenderSystem();
-
 	tp._need_mipmap = false;
 	tp._texType = TEX_TYPE_CUBE_MAP;
 	tp._tex_addr_mod = TAM_CLAMP;
@@ -163,40 +154,76 @@ void PbrMaterial::setup(
 	tp._samplerParams.anisotropyLog2 = 0;
 	auto environmentCube = TextureManager::getSingletonPtr()->load("LA_Helipad3D.dds", &tp, true).get();
 
-	std::string prefilteredenvName = "prefilteredMap";
-	auto prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
-	TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
-	tp._pbrType = TextureTypePbr_IBL_Specular;
+	{
+		std::string prefilteredenvName = "prefilteredMap";
+		auto prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
+		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
+		tp._pbrType = TextureTypePbr_IBL_Specular;
 
-	std::for_each(matList.begin(), matList.end(),
-		[&prefilteredenvName, &tp](Ogre::MaterialPtr& mat)
-		{mat->addTexture(prefilteredenvName, &tp); });
+		std::for_each(matList.begin(), matList.end(),
+			[&prefilteredenvName, &tp](Ogre::MaterialPtr& mat)
+			{
+				mat->addTexture(prefilteredenvName, &tp); 
+			});
+	}
+	
+	{
+		std::string irradianceName = "IrradianceMap";
+		auto irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
+		TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
+		tp._pbrType = TextureTypePbr_IBL_Diffuse;
+		std::for_each(matList.begin(), matList.end(),
+			[&irradianceName, &tp](Ogre::MaterialPtr mat)
+			{
+				mat->addTexture(irradianceName, &tp); 
+			});
+	}
+	
+	{
+		std::string brdfLutName = "brdflut";
+		auto brdf = rs->generateBRDFLUT(brdfLutName);
+		TextureManager::getSingleton().addTexture(brdfLutName, brdf);
+		tp._pbrType = TextureTypePbr_BRDF_LUT;
 
+		std::for_each(matList.begin(), matList.end(),
+			[&brdfLutName, &tp](Ogre::MaterialPtr mat)
+			{
+				mat->addTexture(brdfLutName, &tp);
+			});
+	}
+	
+	sceneManager->setSkyBox(true, "SkyMap", 10000);
 
-	std::string irradianceName = "IrradianceMap";
-	auto irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
-	TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
-	tp._pbrType = TextureTypePbr_IBL_Diffuse;
-	std::for_each(matList.begin(), matList.end(),
-		[&irradianceName, &tp](Ogre::MaterialPtr mat)
-		{mat->addTexture(irradianceName, &tp); });
+	Ogre::Vector3 camPos = Ogre::Vector3(0, 10.0f, 60.0f);
+	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
+	gameCamera->lookAt(camPos, lookAt);
+	Ogre::Matrix4 m;
 
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 1000);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrixLH(
+			Ogre::Math::PI / 4.0f, aspect, 0.1, 1000);
+	}
 
-	std::string brdfLutName = "brdflut";
-	auto brdf = rs->generateBRDFLUT(brdfLutName);
-	TextureManager::getSingleton().addTexture(brdfLutName, brdf);
-	tp._pbrType = TextureTypePbr_BRDF_LUT;
+	gameCamera->getCamera()->updateProjectMatrix(m);
+	gameCamera->setCameraType(CameraMoveType_LookAt);
+	gameCamera->setMoveSpeed(20);
 
-	std::for_each(matList.begin(), matList.end(),
-		[&brdfLutName, &tp](Ogre::MaterialPtr mat)
-		{mat->addTexture(brdfLutName, &tp); });
-
-
-
-	mSceneManager->setSkyBox(true, "SkyMap", 10000);
-	mGameCamera->updateCamera(Ogre::Vector3(0, 10.0f, 60.0f), Ogre::Vector3::ZERO);
-
-	mGameCamera->setMoveSpeed(20);
+	RenderPassInput input;
+	input.color = renderWindow->getColorTarget();
+	input.depth = renderWindow->getDepthTarget();
+	input.cam = gameCamera->getCamera();
+	input.sceneMgr = sceneManager;
+	auto mainPass = createStandardRenderPass(input);
+	renderPipeline->addRenderPass(mainPass);
 }
 
 void PbrMaterial::update(float delta)
@@ -228,7 +255,7 @@ void PbrMaterial::updateMaterialType(uint32_t type)
 {
 	for (auto i = 0; i < matBallList.size(); i++)
 	{
-		matBallList[i]->setMaterialName(matNameList[i + type* ENTRY_INSTANCE_COUNT]);
+		matBallList[i]->setMaterialName(matNameList[i + type* ENTRY_INSTANCE_COUNT], false);
 	}
 }
 

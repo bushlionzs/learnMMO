@@ -28,6 +28,7 @@ struct AppInfo
     CleanupCallback cleanup;
     UpdateCallback update;
     bool enableRayTracing = false;
+    bool useCEGUI = false;
 };
 
 

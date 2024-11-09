@@ -158,8 +158,16 @@ namespace vks
 		void generateMipmaps(VkCommandBuffer commandBuffer, VulkanTexture* tex);
 
 		using BingdingInfo = std::map<uint8_t, std::vector<VkDescriptorSetLayoutBinding>>;
-
-		BingdingInfo getProgramBindings(const std::string& blob, VkShaderStageFlags stageFlags);
+		struct PushConstants
+		{
+			std::string name;
+			uint32_t size;
+			VkShaderStageFlags stage;
+		};
+		BingdingInfo getProgramBindings(
+			const std::string& blob, 
+			VkShaderStageFlags stageFlags,
+			std::vector<PushConstants>* pushConstantsList = nullptr);
 		
 		VkPipelineStageFlags util_determine_pipeline_stage_flags(
 			VulkanSettings* settings,

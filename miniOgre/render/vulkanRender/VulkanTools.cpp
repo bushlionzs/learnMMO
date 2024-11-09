@@ -800,7 +800,10 @@ namespace vks
 				subresourceRange);
 		}
 
-		BingdingInfo getProgramBindings(const std::string& blob, VkShaderStageFlags stageFlags)
+		BingdingInfo getProgramBindings(
+			const std::string& blob, 
+			VkShaderStageFlags stageFlags,
+			std::vector<PushConstants>* pushConstantsList)
 		{
 			
 			BingdingInfo result;
@@ -986,6 +989,23 @@ namespace vks
 
 				result[set].push_back(layout);
 			}
+
+			if (pushConstantsList)
+			{
+				auto push_constant_buffers = glsl.get_shader_resources().push_constant_buffers;
+
+				PushConstants tmp;
+				tmp.stage = stageFlags;
+				for (int32_t i = 0; i < push_constant_buffers.size(); i++)
+				{
+					auto& input = push_constant_buffers[i];
+					tmp.name = glsl.get_name(input.id);
+					spirv_cross::SPIRType type = glsl.get_type(input.type_id);
+					tmp.size = (uint32_t)glsl.get_declared_struct_size(type);
+					pushConstantsList->push_back(tmp);
+				}
+			}
+			
 
 			return result;
 		}

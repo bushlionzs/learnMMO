@@ -611,15 +611,17 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
 
             VkDescriptorSetLayout vkLayout = mVulkanLayoutCache->getLayout(&toBind[0], bindIndex);
             vulkanLayout->setVkLayout(vkLayout);
-            keys[set] = vkLayout;
+            keys.setLayout[set] = vkLayout;
             vulkanProgram->updateLayout(set, layoutHandle);
         }
         else
         {
-            keys[set] = pEmptyDescriptorSetLayout;
+            keys.setLayout[set] = pEmptyDescriptorSetLayout;
         }
     }
 
+    keys.pushConstant->size = 0;
+    keys.pushConstant->stage = 0;
     VkPipelineLayout pipelineLayout = mPipelineLayoutCache->getLayout(keys);
     
     VkPipeline pipeline;

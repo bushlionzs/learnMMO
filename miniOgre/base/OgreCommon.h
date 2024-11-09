@@ -1146,6 +1146,11 @@ namespace Ogre {
     struct TransformMatrix {
         float    matrix[3][4];
     };
+
+    struct PushConstantContext
+    {
+        uint32_t size;
+    };
     /// Render window creation parameters container.
     typedef std::vector<RenderWindowDescription> RenderWindowDescriptionList;
 

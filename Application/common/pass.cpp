@@ -61,11 +61,13 @@ public:
 		for (auto r : engineRenerList.mOpaqueList)
 		{
 			Ogre::Material* mat = r->getMaterial().get();
-
+			
 			if (!mat->isLoaded())
 			{
 				mat->load(nullptr);
-				r->createFrameResource();
+			}
+			if (r->createFrameResource())
+			{
 				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
 				{
 					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
@@ -74,6 +76,7 @@ public:
 					rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 1, &frameHandle, 1);
 				}
 			}
+			
 			r->updateFrameResource(frameIndex);
 		}
 		rs->beginRenderPass(info);
