@@ -10,10 +10,14 @@
 #include "OgreRoot.h"
 #include "OgreRenderWindow.h"
 #include "OgreViewport.h"
+#include "OgreRenderable.h"
 #include "GameTableManager.h"
 #include "CEGUIManager.h"
 #include "OgreTextureManager.h"
+#include "OgreVertexData.h"
+#include "OgreIndexData.h"
 #include <ResourceParserManager.h>
+#include <CEGUIManager.h>
 #include "pass.h"
 
 
@@ -48,7 +52,7 @@ bool ManualApplication::appInit()
 	Ogre::Root::getSingleton()._initialise();
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	ogreConfig.width = 1440;
+	ogreConfig.width = 1600;
 	ogreConfig.height = 900;
 	ogreConfig.enableRaytracing = mAppInfo->enableRayTracing;
 	mApplicationWindow->createWindow(ogreConfig.width, ogreConfig.height);
@@ -70,7 +74,11 @@ bool ManualApplication::appInit()
 	Ogre::NameValuePairList params;
 	params["externalWindowHandle"] = Ogre::StringConverter::toString((uint64_t)wnd);
 	params["backGroundColor"] = Ogre::StringConverter::toString(color);
-	//params["srgb"] = "1";
+	if (mAppInfo->useSRGB)
+	{
+		params["srgb"] = "1";
+	}
+	
 	mRenderWindow = mRenderSystem->createRenderWindow("", ogreConfig.width, ogreConfig.height, &params);
 
 	ResourceParserManager::getSingleton()._initialise();
@@ -148,6 +156,15 @@ void ManualApplication::render()
 		pass->execute(mRenderSystem);
 	}
 
+	RenderTargetBarrier rtBarriers[] =
+	{
+		{
+			mRenderWindow->getColorTarget(),
+			RESOURCE_STATE_RENDER_TARGET,
+			RESOURCE_STATE_PRESENT
+		}
+	};
+	mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
 
 	mRenderSystem->present();
 	mRenderSystem->frameEnd();
@@ -189,4 +206,118 @@ void ManualApplication::OnSize(uint32_t width, uint32_t height)
 void ManualApplication::addRenderPass(PassBase* pass)
 {
 	mPassList.push_back(pass);
+}
+
+void updateFrameData(
+	ICamera* camera, 
+	FrameConstantBuffer& frameConstantBuffer,
+	Handle<HwBufferObject> frameHandle)
+{
+	RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
+	const Ogre::Matrix4& view = camera->getViewMatrix();
+	const Ogre::Matrix4& proj = camera->getProjectMatrix();
+	const Ogre::Vector3& camepos = camera->getDerivedPosition();
+	Ogre::Matrix4 invView = view.inverse();
+	Ogre::Matrix4 viewProj = proj * view;
+	Ogre::Matrix4 invProj = proj.inverse();
+	Ogre::Matrix4 invViewProj = viewProj.inverse();
+
+	frameConstantBuffer.View = view.transpose();
+	frameConstantBuffer.InvView = invView.transpose();
+	frameConstantBuffer.Proj = proj.transpose();
+	frameConstantBuffer.InvProj = invProj.transpose();
+	frameConstantBuffer.ViewProj = viewProj.transpose();
+	frameConstantBuffer.InvViewProj = invViewProj.transpose();
+
+	frameConstantBuffer.EyePosW = camepos;
+
+	
+	frameConstantBuffer.Shadow = 0;
+	frameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(0, -1, 0.0f);
+	frameConstantBuffer.directionLights[0].Direction.normalise();
+	
+
+
+	frameConstantBuffer.TotalTime += Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
+	frameConstantBuffer.DeltaTime = Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
+
+	
+	rs->updateBufferObject(frameHandle,
+		(const char*)&frameConstantBuffer, sizeof(frameConstantBuffer));
+}
+void ManualApplication::addUIPass()
+{
+	CEGUIManager* ceguiManager = CEGUIManager::getSingletonPtr();
+	Ogre::Camera*  cam = ceguiManager->getCamera();
+	Ogre::SceneManager* sceneManager = ceguiManager->getSceneManager();
+	FrameConstantBuffer frameConstantBuffer;
+	auto* rs = mRenderSystem;
+	auto frameHandle =
+		rs->createBufferObject(
+			BufferObjectBinding::BufferObjectBinding_Uniform,
+			0, sizeof(frameConstantBuffer));
+
+	updateFrameData(cam, frameConstantBuffer, frameHandle);
+	RenderPassCallback guiCallback = [=, this](RenderPassInfo& info) {		
+		auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
+		info.renderTargetCount = 1;
+		info.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();
+		info.renderLoadAction = LOAD_ACTION_CLEAR;
+		info.renderStoreAction = STORE_ACTION_STORE;
+		info.renderTargets[0].clearColour = { 0.0f, 0.847058f, 0.901960f, 1.000000000f };
+		info.depthTarget.depthStencil = nullptr;
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		const std::vector<Renderable*>& renderList = ceguiManager->getRenderableList();
+		for (auto r : renderList)
+		{
+			Ogre::Material* mat = r->getMaterial().get();
+
+			if (!mat->isLoaded())
+			{
+				mat->load(nullptr);
+			}
+			if (r->createFrameResource())
+			{
+				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
+				{
+					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
+					rs->updateDescriptorSetBuffer(resourceInfo->zeroSet,
+						1, (backend::BufferObjectHandle*) & frameHandle, 1);
+				}
+			}
+
+			r->updateFrameResource(frameIndex);
+		}
+		rs->beginRenderPass(info);
+		for (auto r : renderList)
+		{
+			Ogre::Material* mat = r->getMaterial().get();
+			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+			FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
+			Handle<HwDescriptorSet> descriptorSet[2];
+			descriptorSet[0] = resourceInfo->zeroSet;
+			descriptorSet[1] = resourceInfo->firstSet;
+
+			auto programHandle = mat->getProgram();
+			auto piplineHandle = mat->getPipeline();
+			rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+
+
+			VertexData* vertexData = r->getVertexData();
+			IndexData* indexData = r->getIndexData();
+			
+			vertexData->bind(nullptr);
+
+			RawDataView* dataView = r->getRawDataView();
+			if (dataView)
+			{
+				rs->draw(dataView->mVertexCount, dataView->mVertexStart);
+			}
+		}
+		rs->endRenderPass(info);
+		};
+	UpdatePassCallback updateCallback = [](float delta) {
+		};
+	auto guiPass = createUserDefineRenderPass(guiCallback, updateCallback);
+	addRenderPass(guiPass);
 }

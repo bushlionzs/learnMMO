@@ -11,8 +11,7 @@ layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTexC;
 
 void main() {
-    gl_Position = cbPerObject.gWorldViewProj * vec4(position, 1.0);
-	gl_Position.y = -gl_Position.y;
+    gl_Position =  cbPass.gViewProj * cbPerObject.gWorld * vec4(position, 1.0);
 	outColor = color_diffuse;
 	outTexC = texcoord;
 }
@@ -27,6 +26,8 @@ layout (location = 1) in vec2 inTexC;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	//return;
     outColor = texture(first, inTexC)* inColor;
 	if(outColor.a < 0.5f)
 	{

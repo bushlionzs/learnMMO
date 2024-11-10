@@ -20,8 +20,7 @@ class GameToolTip;
 
 class CEGUIManager : public Ogre::Singleton<CEGUIManager>,
 	public FrameListener,
-	public InputListener,
-	public Ogre::MoveObject
+	public InputListener
 {
 public:
 	CEGUIManager();
@@ -41,6 +40,12 @@ public:
 	{
 		return mCamera;
 	}
+
+	Ogre::SceneManager* getSceneManager()
+	{
+		return mSceneManager;
+	}
+
 	Ogre::Viewport* getViewport()
 	{
 		return mViewPort;
@@ -102,4 +107,6 @@ private:
 	std::map<Ogre::String, Ogre::String>	mIconsMap;
 
 	GameToolTip* mToolTip = nullptr;
+
+	std::vector<Renderable*> mRenderables;
 };

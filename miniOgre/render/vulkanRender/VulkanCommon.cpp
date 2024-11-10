@@ -42,6 +42,10 @@ VkFormat getVKFormatFromType(spirv_cross::SPIRType type)
         {
             return VK_FORMAT_R32G32B32_SFLOAT;
         }
+        else if (type.vecsize == 4)
+        {
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
+        }
         break;
     }
     assert(false);

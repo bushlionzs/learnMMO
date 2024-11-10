@@ -262,8 +262,8 @@ void VulkanRenderSystemBase::beginRenderPass(
         colorAttachments[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
         colorAttachments[i].pNext = NULL;
         colorAttachments[i].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachments[i].loadOp = VulkanMappings::getVkAttachmentLoadOp(renderPassInfo.renderLoadAction);
+        colorAttachments[i].storeOp = VulkanMappings::getVkAttachmentStoreOp(renderPassInfo.renderStoreAction);
         Ogre::VulkanRenderTarget* rt = (Ogre::VulkanRenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
 
         vks::tools::insertImageMemoryBarrier(
@@ -288,8 +288,8 @@ void VulkanRenderSystemBase::beginRenderPass(
     {
         depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
         depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depthAttachment.loadOp = VulkanMappings::getVkAttachmentLoadOp(renderPassInfo.depthLoadAction);
+        depthAttachment.storeOp = VulkanMappings::getVkAttachmentStoreOp(renderPassInfo.depthStoreAction);
 
         Ogre::VulkanRenderTarget* rt = (Ogre::VulkanRenderTarget*)renderPassInfo.depthTarget.depthStencil;
         depthAttachment.imageView = rt->getImageView();
@@ -1385,7 +1385,14 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
         vulkanProgram->getVertexInputBindings();
     std::vector<VkVertexInputAttributeDescription>& attributeDescriptions =
         vulkanProgram->getAttributeDescriptions();
-    mPipelineCache->bindFormat(VulkanMappings::_getPF((PixelFormat)rasterState.pixelFormat), VK_FORMAT_D32_SFLOAT); //todo
+    PixelFormat format = (PixelFormat)rasterState.pixelFormat;
+    if (format == PF_UNKNOWN)
+    {
+        format = mRenderWindow->getColorFormat();
+    }
+    
+
+    mPipelineCache->bindFormat(VulkanMappings::_getPF(format), VK_FORMAT_D32_SFLOAT);
     mPipelineCache->bindProgram(
         vulkanProgram->getVertexShader(), 
         vulkanProgram->getGeometryShader(), 

@@ -47,10 +47,15 @@ VulkanTexture::~VulkanTexture()
 
 void VulkanTexture::_createSurfaceList(void)
 {
-    if (mTextureProperty.isRenderTarget())
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
     {
         return;
     }
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    {
+        return;
+    }
+    
     // Create new list of surfaces
     mSurfaceList.clear();
     size_t depth = mTextureProperty._depth;

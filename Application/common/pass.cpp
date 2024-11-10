@@ -54,7 +54,7 @@ public:
 			depthValue = 0.0f;
 		}
 		info.depthTarget.clearValue = { depthValue, 0.0f };
-		info.cam = cam;
+
 		static EngineRenderList engineRenerList;
 		sceneManager->getSceneRenderList(cam, engineRenerList, false);
 		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
@@ -104,15 +104,7 @@ public:
 		}
 		rs->endRenderPass(info);
 
-		RenderTargetBarrier rtBarriers[] =
-		{
-			{
-				mPassInput.color,
-				RESOURCE_STATE_RENDER_TARGET,
-				RESOURCE_STATE_PRESENT
-			}
-		};
-		rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+		
 	}
 	virtual void update(float delta)
 	{
@@ -122,20 +114,9 @@ private:
 	void updateFrameData(ICamera* camera, ICamera* light)
 	{
 		RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
-		const Ogre::Matrix4& view_ = camera->getViewMatrix();
+		const Ogre::Matrix4& view = camera->getViewMatrix();
 		const Ogre::Matrix4& proj = camera->getProjectMatrix();
 		const Ogre::Vector3& camepos = camera->getDerivedPosition();
-
-		Ogre::Matrix4 rot = 
-		{
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, -1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-	   };
-		//rot = Ogre::Matrix4::IDENTITY;
-		Ogre::Matrix4 view = rot * view_;
-
 		Ogre::Matrix4 invView = view.inverse();
 		Ogre::Matrix4 viewProj = proj * view;
 		Ogre::Matrix4 invProj = proj.inverse();

@@ -128,68 +128,8 @@ namespace Ogre {
 			return;
 		}
 
-		
-
-
-		
-
-
 		CImage image;
-
 		image.loadImage(mName, cube);
-
-
-		/*if (cube)
-		{
-			std::string suffix = getSuffix(mName);
-			if (ResourceManager::getSingletonPtr()->hasResource(mName, BLANKSTRING))
-			{
-				names.push_back(mName);
-				images.emplace_back();
-			}
-			else
-			{
-				std::string basename = removeSuffix(mName);
-				std::string currname;
-				const char* CUBEMAP_SUFFIXES[] = { "_rt", "_lf", "_up", "_dn", "_fr", "_bk" };
-				const char* CUBEMAP_SUFFIXES_ALT[] = { "_px", "_nx", "_py", "_ny", "_pz", "_nz" };
-				for (int32_t i = 0; i < 6; i++)
-				{
-					currname = basename + CUBEMAP_SUFFIXES[i] + suffix;
-					if (ResourceManager::getSingletonPtr()->hasResource(currname, BLANKSTRING))
-					{
-						names.push_back(currname);
-					}
-					else
-					{
-						currname = basename + CUBEMAP_SUFFIXES_ALT[i] + suffix;
-						names.push_back(currname);
-					}
-				}
-			}
-
-		}
-		else
-		{
-			names.push_back(mName);
-		}
-
-		images.resize(names.size());
-
-		bool b = true;
-		for (int32_t i = 0; i < names.size(); i++)
-		{
-			if (!images[i].loadImage(names[i]))
-			{
-				b = false;
-			}
-		}
-
-		if (!b)
-		{
-			return;
-		}*/
-
 		_loadImages({&image});
 	}
 

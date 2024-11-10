@@ -9,10 +9,15 @@ int main()
 
 	AppInfo info;
 	info.useCEGUI = true;
-	ManualApplication app;
+	info.useSRGB = false;
+	ManualApplication app; 
 
-	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {
+	info.setup = [&instance, &app, &info](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {
 		instance.setup(&app, rs, win, sceneManager, gameCamera);
+		if (info.useCEGUI)
+		{
+			app.addUIPass();
+		}
 		};
 
 	info.update = [&instance](float delta) {

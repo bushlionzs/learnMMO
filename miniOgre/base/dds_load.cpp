@@ -627,7 +627,7 @@ bool DDSImage::load(DataStream* stream)
             header.pixelFormat.flags & DDPF_ALPHAPIXELS ?
             header.pixelFormat.alphaMask : 0);
     }
-
+    imgData->format = sourceFormat;
     if (PixelUtil::isCompressed(sourceFormat))
     {
         if (false)

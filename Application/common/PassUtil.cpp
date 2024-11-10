@@ -96,7 +96,6 @@ FrameGraphId<FrameGraphTexture> PassUtil::colorPass(
                 auto out = resources.getRenderPassInfo();
                 RenderSystem* rs = config.rs;
                 RenderPassInfo passInfo;
-                passInfo.cam = config.cam;
                 passInfo.renderTargetCount = 1;
                 passInfo.renderTargets[0].renderTarget = config.target->getColorTarget();
                 passInfo.renderTargets[0].clearColour = { 0.0, 0.0, 0.0, 1.0 };

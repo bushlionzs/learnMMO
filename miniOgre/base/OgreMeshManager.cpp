@@ -117,10 +117,11 @@ std::shared_ptr<Mesh> MeshManager::createBox(
 	float d2 = 0.5f * depth;
 	std::vector<SVertexElement> vertices;
 	// Fill in the front face vertex data
+	vertices.push_back(SVertexElement(+w2, -h2, -d2, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f));
 	vertices.push_back(SVertexElement( -w2, -h2, -d2, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f ));
 	vertices.push_back(SVertexElement(-w2, +h2, -d2, 0.0f, 0.0f, -1.0f,  0.0f, 0.0f));
 	vertices.push_back(SVertexElement(+w2, +h2, -d2, 0.0f, 0.0f, -1.0f,  1.0f, 0.0f));
-	vertices.push_back(SVertexElement(+w2, -h2, -d2, 0.0f, 0.0f, -1.0f,  1.0f, 1.0f));
+	
 
 	// Fill in the back face vertex data.
 	vertices.push_back(SVertexElement(-w2, -h2, +d2, 0.0f, 0.0f, 1.0f,  1.0f, 1.0f));
@@ -142,11 +143,11 @@ std::shared_ptr<Mesh> MeshManager::createBox(
 	vertices.push_back(SVertexElement(-w2, -h2, +d2, 0.0f, -1.0f, 0.0f,  1.0f, 0.0f));
 
 	// Fill in the left face vertex data
-	vertices.push_back(SVertexElement(-w2, -h2, +d2, -1.0f, 0.0f, 0.0f,  0.0f, 1.0f ));
-	vertices.push_back(SVertexElement(-w2, +h2, +d2, -1.0f, 0.0f, 0.0f,  0.0f, 0.0f ));
-	vertices.push_back(SVertexElement(-w2, +h2, -d2, -1.0f, 0.0f, 0.0f,  1.0f, 0.0f ));
-	vertices.push_back(SVertexElement(-w2, -h2, -d2, -1.0f, 0.0f, 0.0f,  1.0f, 1.0f ));
-
+	vertices.push_back(SVertexElement(-w2, -h2, -d2, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f));
+	vertices.push_back(SVertexElement(-w2, +h2, -d2, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f));
+	vertices.push_back(SVertexElement(-w2, +h2, +d2, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f));
+	vertices.push_back(SVertexElement(-w2, -h2, +d2, -1.0f, 0.0f, 0.0f,  1.0f, 1.0f ));
+	
 	// Fill in the right face vertex data
 	vertices.push_back(SVertexElement(+w2, -h2, -d2, 1.0f, 0.0f, 0.0f,  0.0f, 1.0f));
 	vertices.push_back(SVertexElement(+w2, +h2, -d2, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f));
@@ -160,7 +161,7 @@ std::shared_ptr<Mesh> MeshManager::createBox(
 		4, 5, 6, 4, 6, 7,
 		8, 9, 10, 8, 10, 11,
 		12, 13, 14, 12, 14, 15,
-		16, 17, 18, 16, 18, 19,
+		16, 17, 18, 16, 18, 19, //left
 		20, 21, 22, 20, 22, 23
 	};
 
@@ -209,10 +210,10 @@ std::shared_ptr<Mesh> MeshManager::createRect(
 	std::vector<SVertexElement> vertices;
 	if (vertices.empty())
 	{
-		vertices.push_back(SVertexElement(leftbottom.x, leftbottom.y, leftbottom.z, normal.x, normal.y, normal.z,  0.0f, 0.0));
-		vertices.push_back(SVertexElement(leftop.x, leftop.y, leftop.z, normal.x, normal.y, normal.z,  0.0f, tex));
-		vertices.push_back(SVertexElement(righttop.x, righttop.y, righttop.z, normal.x, normal.y, normal.z,  tex, tex));
-		vertices.push_back(SVertexElement(rightbottom.x, rightbottom.y, rightbottom.z, normal.x, normal.y, normal.z,  tex, 0.0));
+		vertices.push_back(SVertexElement(leftbottom.x, leftbottom.y, leftbottom.z, normal.x, normal.y, normal.z,  0.0f, tex));
+		vertices.push_back(SVertexElement(leftop.x, leftop.y, leftop.z, normal.x, normal.y, normal.z,  0.0f, 0.0f));
+		vertices.push_back(SVertexElement(righttop.x, righttop.y, righttop.z, normal.x, normal.y, normal.z,  tex, 0.0f));
+		vertices.push_back(SVertexElement(rightbottom.x, rightbottom.y, rightbottom.z, normal.x, normal.y, normal.z,  tex, tex));
 	}
 	
 

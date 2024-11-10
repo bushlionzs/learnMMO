@@ -10,7 +10,7 @@ int main()
 	BasicApplication instance;
 
 	AppInfo info;
-
+	info.useSRGB = false;
 	ManualApplication app;
 
 	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {

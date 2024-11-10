@@ -29,6 +29,7 @@ struct AppInfo
     UpdateCallback update;
     bool enableRayTracing = false;
     bool useCEGUI = false;
+    bool useSRGB = false;
 };
 
 

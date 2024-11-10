@@ -41,6 +41,18 @@ public:
 	void updateRenderMode(uint32_t mode);
 	void updateMaterialType(uint32_t type);
 	void updateLightDirection(const Ogre::Vector3& dir);
+	void example1(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
+	void example2(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
 private:
 	CEGUI::GUIContext* mGUIContext = nullptr;
 	CEGUI::Window* mRoot = nullptr;

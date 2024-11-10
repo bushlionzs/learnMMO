@@ -21,13 +21,8 @@ namespace Ogre {
         mRasterState.depthWrite = true;
         mRasterState.depthTest = true;
         mRasterState.depthFunc = SamplerCompareFunc::LE;
-        auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-        if (ogreConfig.reverseDepth)
-        {
-            mRasterState.depthFunc = SamplerCompareFunc::GE;
-        }
         mRasterState.colorWrite = true;
-        mRasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+        mRasterState.pixelFormat = Ogre::PixelFormat::PF_UNKNOWN;
         mRasterState.renderTargetCount = 1;
     }
 
@@ -85,6 +80,14 @@ namespace Ogre {
             return;
         }
 
+        auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+        if (ogreConfig.reverseDepth)
+        {
+            if (mRasterState.depthFunc != SamplerCompareFunc::A)
+            {
+                mRasterState.depthFunc = SamplerCompareFunc::GE;
+            }
+        }
         for (auto& it : mTextureUnits)
         {
             if (!it->isLoaded())
@@ -335,14 +338,7 @@ namespace Ogre {
 
     void Material::setDepthTest(bool test)
     {
-        if (test)
-        {
-            mRasterState.depthFunc = SamplerCompareFunc::LE;
-        }
-        else
-        {
-            mRasterState.depthFunc = SamplerCompareFunc::A;
-        }
+        mRasterState.depthTest = test;
     }
 
     bool Material::isWriteDepth()

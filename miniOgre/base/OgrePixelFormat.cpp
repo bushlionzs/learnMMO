@@ -681,10 +681,13 @@ namespace Ogre {
             if (src.format == dst.format && src.isConsecutive() && dst.isConsecutive())
             {
                 // we can copy with slice granularity, useful for Tex2DArray handling
-                size_t bytesPerSlice = getMemorySize(src.getWidth(), src.getHeight(), 1, src.format);
+                auto width = src.getWidth();
+                auto height = src.getHeight();
+                auto depth = src.getDepth();
+                size_t bytesPerSlice = getMemorySize(width, height, 1, src.format);
                 memcpy(dst.data + bytesPerSlice * dst.front,
                     src.data + bytesPerSlice * src.front,
-                    bytesPerSlice * src.getDepth());
+                    bytesPerSlice * depth);
                 return;
             }
             else

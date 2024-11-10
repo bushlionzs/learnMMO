@@ -31,7 +31,6 @@ THE SOFTWARE.
 namespace Ogre {
 
     RenderWindow::RenderWindow()
-        :mWidth(0), mHeight(0)
     {
        
     }

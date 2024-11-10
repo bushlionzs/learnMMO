@@ -42,11 +42,22 @@ bool CEGUIManager::_initialise(Ogre::RenderTarget* window)
 	auto width = mRenderWindow->getWidth();
 	auto height = mRenderWindow->getHeight();
 	
+	Real left = -width / 2.0f;
+	Real right = width / 2.0f;
+	Real top = height / 2.0f;
+	Real bottom = -height / 2.0f;
 
-	mCamera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
-	mCamera->setOrthoWindow(width, height);
-	Ogre::Vector3 eyePos = Ogre::Vector3(0, 0, 10);
-	auto m = Ogre::Math::makeLookAtRH(eyePos, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y);
+	left = 0.0f;
+	top = 0.0f;
+	right = width;
+	bottom = height;
+	auto projectMatrix =
+		Ogre::Math::makeOrthoLH(left, right, bottom, top, 0.1, 1000.0f);
+	mCamera->updateProjectMatrix(projectMatrix);
+	//mCamera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
+	//mCamera->setOrthoWindow(width, height);
+	Ogre::Vector3 eyePos = Ogre::Vector3(0, 0, -10);
+	auto m = Ogre::Math::makeLookAtLH(eyePos, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y);
 	mCamera->updateViewMatrix(m);
 	InputManager::getSingleton().addListener(this);
 
@@ -108,12 +119,6 @@ bool CEGUIManager::_initialise(Ogre::RenderTarget* window)
 		CEGUI::Font& font(fontManager.createFromFile("simhei12.font"));
 		mGUIContext->setDefaultFont(&font);
 	}
-
-	
-
-	auto mNode = mSceneManager->getRoot()->createChildSceneNode("cegui");
-	mNode->attachObject(this);
-
 
 	NOTICE_LOG("CEGUI initialise end");
 	return true;
@@ -205,7 +210,7 @@ void CEGUIManager::injectMouseWheel(int _absz)
 
 bool CEGUIManager::frameStarted(const FrameEvent& evt)
 {
-	mSceneManager->update(evt.timeSinceLastFrame);
+	mGUIContext->injectTimePulse(evt.timeSinceLastFrame);
 	return true;
 }
 

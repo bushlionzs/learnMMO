@@ -27,7 +27,8 @@ namespace Ogre
 		static VkFormat _getPF(PixelFormat ogrePF);
 		static PixelFormat getPixelFormat(VkFormat format);
 		static VkFormat _getGammaFormat(VkFormat format, bool appendSRGB);
-
+		static VkAttachmentLoadOp getVkAttachmentLoadOp(LoadActionType loadAction);
+		static VkAttachmentStoreOp getVkAttachmentStoreOp(StoreActionType storeAction);
 		static VkSamplerAddressMode getWrapMode(filament::backend::SamplerWrapMode mode);
 		static VkFilter getFilter(filament::backend::SamplerMinFilter filter);
 		static VkFilter getFilter(filament::backend::SamplerFilterType filter);

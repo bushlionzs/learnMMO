@@ -114,15 +114,14 @@ OgreTexture::OgreTexture(const String& name, const Sizef& sz) :
     d_texelScaling(0, 0),
     d_name(name)
 {
-    
-    std::string aa = name.c_str();
+    std::string strName = name.c_str();
     d_tex_name = name;
     TextureProperty texProperty;
     texProperty._width = sz.d_width;
     texProperty._height = sz.d_height;
-    texProperty._tex_usage = Ogre::TextureUsage::UPLOADABLE;
-    TextureManager::getSingleton().createManual(aa, texProperty);
-    
+    texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
+    TexturePtr tex = TextureManager::getSingleton().createManual(strName, texProperty);
+
     d_size.d_width = sz.d_width;
     d_size.d_height = sz.d_height;
     d_dataSize = sz;

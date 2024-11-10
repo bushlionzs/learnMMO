@@ -125,7 +125,7 @@ namespace Ogre {
             OGRE_EXCEPT(Exception::ERR_INTERNAL_ERROR, "fail to create texture");
         }
 
-        tmp->createInternalResources();
+        tmp->load(nullptr);
         std::shared_ptr<OgreTexture> tex(tmp);
 
         mTexMap[name] = tex;

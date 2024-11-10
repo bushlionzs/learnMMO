@@ -45,6 +45,7 @@ namespace CEGUI
     CEGUIRenderable::CEGUIRenderable(OgreGeometryBuffer* owner)
     {
         _owner = owner;
+        this->mObjectType = ObjectType_Dynamic;
         mMaterial = std::make_shared<Ogre::Material>("CEGUI");
         mMaterial->addTexture("white1x1.dds", nullptr);
         ShaderInfo sInfo;
@@ -126,7 +127,6 @@ namespace CEGUI
 
         std::string tmp(texName.c_str());
         tu->updateTexture(0, tmp);
-        assert(false);
     }
 
 //----------------------------------------------------------------------------//
@@ -187,8 +187,9 @@ OgreGeometryBuffer::OgreGeometryBuffer(OgreRenderer& owner,
     vd->addElement(0, 0, vd_offset, VET_FLOAT2, VES_TEXTURE_COORDINATES);
 
     auto vertexSize = vd->getVertexSize(0);
-
-    d_renderOp.vertexData->addBindBuffer(0, vertexSize, 4096);
+    auto vertexCount = 4096;
+    d_renderOp.vertexData->setVertexCount(vertexCount);
+    d_renderOp.vertexData->addBindBuffer(0, vertexSize, vertexCount);
 }
 
 //----------------------------------------------------------------------------//
@@ -441,19 +442,19 @@ void OgreGeometryBuffer::syncHardwareBuffer() const
     const size_t required_size = d_vertices.size();
     if(numVerts < required_size)
     {
+        if (numVerts == 0)
+        {
+            numVerts = required_size;
+        }
         // calculate new size to use
         while(numVerts < required_size)
             numVerts *= 2;
 
     }
 
-    // copy vertex data into hw buffer
+    // copy vertex data into gpu buffer
     if (required_size > 0)
     {
-        /*std::memcpy(hwBuffer->lock(Ogre::HardwareVertexBuffer::HBL_DISCARD),
-                    &d_vertices[0], sizeof(OgreVertex) * d_vertices.size());
-        hwBuffer->unlock();*/
-
         d_renderOp.vertexData->writeBindBufferData(0, (const char*) & d_vertices[0], sizeof(OgreVertex) * d_vertices.size(), true);
     }
 

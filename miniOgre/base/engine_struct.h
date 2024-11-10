@@ -123,15 +123,42 @@ enum
     MAX_SAMPLE_LOCATIONS = 16,
 };
 
+typedef enum LoadActionType
+{
+    LOAD_ACTION_DONTCARE,
+    LOAD_ACTION_LOAD,
+    LOAD_ACTION_CLEAR,
+    MAX_LOAD_ACTION
+} LoadActionType;
+
+typedef enum StoreActionType
+{
+    // Store is the most common use case so keep that as default
+    STORE_ACTION_STORE,
+    STORE_ACTION_DONTCARE,
+    STORE_ACTION_NONE,
+#if defined(USE_MSAA_RESOLVE_ATTACHMENTS)
+    // Resolve into pResolveAttachment and also store the MSAA attachment (rare - maybe used for debug)
+    STORE_ACTION_RESOLVE_STORE,
+    // Resolve into pResolveAttachment and discard MSAA attachment (most common use case for resolve)
+    STORE_ACTION_RESOLVE_DONTCARE,
+#endif
+    MAX_STORE_ACTION
+} StoreActionType;
+
 struct RenderPassInfo
 {
     uint32_t renderTargetCount = 1;
     BindRenderTargetDesc renderTargets[MAX_RENDER_TARGET_ATTACHMENTS];
+    LoadActionType renderLoadAction = LOAD_ACTION_CLEAR;
+    StoreActionType renderStoreAction = STORE_ACTION_STORE;
     BindDepthTargetDesc  depthTarget;
-    Ogre::SceneManager* sceneMgr;
+    LoadActionType depthLoadAction = LOAD_ACTION_CLEAR;
+    StoreActionType depthStoreAction = STORE_ACTION_STORE;
+    /*Ogre::SceneManager* sceneMgr;
     Ogre::OgreTexture* shadowMap = nullptr;
     Ogre::ICamera* cam = nullptr;
-    bool shadowPass = false;
+    bool shadowPass = false;*/
 };
 
 struct ComputePassInfo

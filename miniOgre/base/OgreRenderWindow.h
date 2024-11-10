@@ -36,15 +36,6 @@ namespace Ogre
     public:
         RenderWindow();
 
-        uint32_t getWidth()
-        {
-            return mWidth;
-        }
-
-        uint32_t getHeight()
-        {
-            return mHeight;
-        }
         virtual void create(const String& name, unsigned int width, unsigned int height,
             bool fullScreen, const NameValuePairList* miscParams)
         {
@@ -69,12 +60,7 @@ namespace Ogre
         virtual Ogre::RenderTarget* getDepthTarget()
         {
             return nullptr;
-        }
-
-    protected:
-        uint32_t mWidth = 0;
-        uint32_t mHeight = 0;
-        
+        } 
     };
     /** @} */
     /** @} */

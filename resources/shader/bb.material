@@ -61,9 +61,7 @@ material myrect
 			shader basic
 			texture_unit
 			{
-				texture ForgeFlags.dds
-
-				tex_address_mode clamp
+				texture studio_garden_px.jpg
 			}
 
 		}
@@ -204,9 +202,9 @@ material SkyLan
 			cull_hardware none
 			texture_unit
 			{
-				texture evening.jpg cubic
-				#texture papermill.ktx cubic
-				tex_address_mode clamp
+				//texture garden.dds cubic
+				texture yokohama_rgba.ktx cubic
+				mipmap false
 			}
 		}
 	}

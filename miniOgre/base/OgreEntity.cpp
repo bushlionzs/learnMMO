@@ -254,6 +254,7 @@ namespace Ogre {
 
             std::shared_ptr<Material>& mat = subMesh->getMaterial();
             newMatName = mName + "_" + mat->getName() + std::to_string(i);
+            newMatName = mat->getName();
             std::shared_ptr<Material> newMat = mat->clone(newMatName);
 
             SubEntity* subEnt = createSubEntity(subMesh);

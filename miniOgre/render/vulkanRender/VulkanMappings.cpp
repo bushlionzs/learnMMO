@@ -207,6 +207,36 @@ namespace Ogre {
         return format;
     }
 
+    VkAttachmentLoadOp VulkanMappings::getVkAttachmentLoadOp(LoadActionType loadAction)
+    {
+        switch (loadAction)
+        {
+        case LOAD_ACTION_DONTCARE:
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case LOAD_ACTION_LOAD:
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        case LOAD_ACTION_CLEAR:
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        default:
+            assert(false);
+        }
+    }
+
+    VkAttachmentStoreOp VulkanMappings::getVkAttachmentStoreOp(StoreActionType storeAction)
+    {
+        switch (storeAction)
+        {
+        case STORE_ACTION_STORE:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        case STORE_ACTION_DONTCARE:
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case STORE_ACTION_NONE:
+            return VK_ATTACHMENT_STORE_OP_NONE;
+        default:
+            assert(false);
+        }
+    }
+
     VkSamplerAddressMode VulkanMappings::getWrapMode(filament::backend::SamplerWrapMode mode)
     {
         switch (mode) {

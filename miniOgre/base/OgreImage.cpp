@@ -211,54 +211,8 @@ namespace Ogre {
         }
         else
         {
-            mImageInfo.face = cube ? 6 : 1;
+            mImageInfo.face = 1;
             PixelFormat format[4] = { Ogre::PF_L8, Ogre::PF_BYTE_LA, Ogre::PF_BYTE_RGB, Ogre::PF_BYTE_RGBA };
-            if (cube)
-            {
-                auto getCubePicName = [&name](std::array<std::string, 6>& namelist)
-                    {
-                        std::string basename = removeSuffix(name);
-                        std::string suffix = getSuffix(name);
-                        const char* CUBEMAP_SUFFIXES[] = { "_rt", "_lf", "_up", "_dn", "_fr", "_bk" };
-                        for (uint32_t i = 0; i < 6; i++)
-                        {
-                            namelist[i] = basename + CUBEMAP_SUFFIXES[i] + suffix;
-                        }
-                    };
-                std::array<std::string, 6> namelist;
-                getCubePicName(namelist);
-
-                
-
-                
-
-                auto faceSize = 0; 
-
-                for (uint32_t i = 0; i < 6; i++)
-                {
-                    std::shared_ptr<DataStream> stream
-                        = ResourceManager::getSingleton().openResource(namelist[i]);
-
-                    const stbi_uc* stream_data = (const stbi_uc*)stream->getStreamData();
-                    uint32_t size = stream->getStreamLength();
-                    data = stbi_load_from_memory(stream_data, size,
-                        (int*)&mImageInfo.width, (int*)&mImageInfo.height, (int*)&nrComponents, 0);
-
-                    if (faceSize == 0)
-                    {
-                        mImageInfo.format = format[nrComponents - 1];
-                        faceSize = calculateFaceSize(mImageInfo);
-                        auto total = calculateSize(mImageInfo);
-
-                        mImageData = (unsigned char*)malloc(total);
-                    }
-                    memcpy(mImageData + i * faceSize, data, faceSize);
-                    free(data);
-                }
-
-                data = mImageData;
-            }
-            else
             {
                 std::shared_ptr<DataStream> stream
                     = ResourceManager::getSingleton().openResource(name);
@@ -380,10 +334,6 @@ namespace Ogre {
         }
         
     }
-
-
-    
-    
 
     bool CImage::loadRawData(DataStreamPtr& stream, ushort uWidth, ushort uHeight, PixelFormat format)
     {

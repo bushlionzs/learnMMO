@@ -31,7 +31,8 @@ public:
 
 	virtual void OnSize(uint32_t width, uint32_t height);
 
-	virtual void addRenderPass(PassBase* pass);
+	void addRenderPass(PassBase* pass);
+	void addUIPass();
 private:
 	bool appInit();
 	void render();

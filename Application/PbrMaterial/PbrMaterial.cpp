@@ -66,7 +66,26 @@ void PbrMaterial::setup(
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	ogreConfig.reverseDepth = true;
 	uiInit();
+	if (0)
+	{
+		example1(renderPipeline, rs, renderWindow, sceneManager, gameCamera);
+	}
+	else
+	{
+		example2(renderPipeline, rs, renderWindow, sceneManager, gameCamera);
+	}
+	
+}
+
+void PbrMaterial::example1(RenderPipeline* renderPipeline,
+	RenderSystem* rs,
+	Ogre::RenderWindow* renderWindow,
+	Ogre::SceneManager* sceneManager,
+	GameCamera* gameCamera)
+{
 	float baseX = 22.0f;
 	float baseY = -1.8f;
 	float baseZ = 12.0f;
@@ -163,10 +182,10 @@ void PbrMaterial::setup(
 		std::for_each(matList.begin(), matList.end(),
 			[&prefilteredenvName, &tp](Ogre::MaterialPtr& mat)
 			{
-				mat->addTexture(prefilteredenvName, &tp); 
+				mat->addTexture(prefilteredenvName, &tp);
 			});
 	}
-	
+
 	{
 		std::string irradianceName = "IrradianceMap";
 		auto irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
@@ -175,10 +194,10 @@ void PbrMaterial::setup(
 		std::for_each(matList.begin(), matList.end(),
 			[&irradianceName, &tp](Ogre::MaterialPtr mat)
 			{
-				mat->addTexture(irradianceName, &tp); 
+				mat->addTexture(irradianceName, &tp);
 			});
 	}
-	
+
 	{
 		std::string brdfLutName = "brdflut";
 		auto brdf = rs->generateBRDFLUT(brdfLutName);
@@ -191,8 +210,8 @@ void PbrMaterial::setup(
 				mat->addTexture(brdfLutName, &tp);
 			});
 	}
-	
-	sceneManager->setSkyBox(true, "SkyMap", 10000);
+
+	sceneManager->setSkyBox(true, "SkyMap", 5000);
 
 	Ogre::Vector3 camPos = Ogre::Vector3(0, 10.0f, 60.0f);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
@@ -204,17 +223,17 @@ void PbrMaterial::setup(
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
-			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 1000);
+			Ogre::Math::PI / 3.0f, aspectInverse, 0.1, 6000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
 		m = Ogre::Math::makePerspectiveMatrixLH(
-			Ogre::Math::PI / 4.0f, aspect, 0.1, 1000);
+			Ogre::Math::PI / 3.0f, aspect, 0.1, 6000);
 	}
 
 	gameCamera->getCamera()->updateProjectMatrix(m);
-	gameCamera->setCameraType(CameraMoveType_LookAt);
+	gameCamera->setCameraType(CameraMoveType_FirstPerson);
 	gameCamera->setMoveSpeed(20);
 
 	RenderPassInput input;
@@ -224,6 +243,60 @@ void PbrMaterial::setup(
 	input.sceneMgr = sceneManager;
 	auto mainPass = createStandardRenderPass(input);
 	renderPipeline->addRenderPass(mainPass);
+}
+
+void PbrMaterial::example2(RenderPipeline* renderPipeline,
+	RenderSystem* rs,
+	Ogre::RenderWindow* renderWindow,
+	Ogre::SceneManager* sceneManager,
+	GameCamera* gameCamera)
+{
+	std::string name = "FlightHelmet.gltf";
+	auto mesh = MeshManager::getSingletonPtr()->load(name);
+
+	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
+
+	Entity* gltfEntity = sceneManager->createEntity("FlightHelmet", name);
+	SceneNode* gltfNode = root->createChildSceneNode("FlightHelmet");
+
+	gltfNode->attachObject(gltfEntity);
+
+	//sceneManager->setSkyBox(true, "SkyLan", 2000);
+
+	Ogre::Vector3 camPos = Ogre::Vector3(0, 0.2, 2.f);
+	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
+	gameCamera->lookAt(
+		camPos, lookAt);
+	gameCamera->setMoveSpeed(1);
+
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+
+
+	Ogre::Matrix4 m;
+
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 5000);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrixLH(
+			Ogre::Math::PI / 4.0f, aspect, 0.1, 5000);
+	}
+
+	gameCamera->getCamera()->updateProjectMatrix(m);
+	gameCamera->setCameraType(CameraMoveType_FirstPerson);
+	gameCamera->setCameraType(CameraMoveType_LookAt);
+	RenderPassInput input;
+	input.color = renderWindow->getColorTarget();
+	input.depth = renderWindow->getDepthTarget();
+	input.cam = gameCamera->getCamera();
+	input.sceneMgr = sceneManager;
+	auto mainPass = createStandardRenderPass(input);
+	//renderPipeline->addRenderPass(mainPass);
 }
 
 void PbrMaterial::update(float delta)
