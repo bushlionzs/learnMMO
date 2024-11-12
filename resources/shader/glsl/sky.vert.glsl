@@ -13,10 +13,8 @@ layout (location = 0) out vec3 outUV;
 
 
 void main() {
-	vec4 posW = cbPerObject.gWorld * vec4(position, 1.0f);
-	posW.xyz -= cbPass.gEyePosW;
-	
-	gl_Position = cbPass.gViewProj * vec4(posW.xyz, 1.0);
+	gl_Position = cbPass.gViewProj * vec4(position, 1.0);
 	outUV = position;
+	outUV.y = -outUV.y;
 }
 

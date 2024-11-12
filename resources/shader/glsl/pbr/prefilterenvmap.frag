@@ -14,7 +14,7 @@ layout (binding = 0) uniform samplerCube samplerEnv;
 layout(push_constant) uniform PushConsts {
 	layout (offset = 64) float roughness;
 	layout (offset = 68) uint numSamples;
-} consts;
+} pushConsts;
 
 const float PI = 3.1415926536;
 
@@ -76,8 +76,8 @@ vec3 prefilterEnvMap(vec3 R, float roughness)
 	vec3 color = vec3(0.0);
 	float totalWeight = 0.0;
 	float envMapDim = float(textureSize(samplerEnv, 0).s);
-	for(uint i = 0u; i < consts.numSamples; i++) {
-		vec2 Xi = hammersley2d(i, consts.numSamples);
+	for(uint i = 0u; i < pushConsts.numSamples; i++) {
+		vec2 Xi = hammersley2d(i, pushConsts.numSamples);
 		vec3 H = importanceSample_GGX(Xi, roughness, N);
 		vec3 L = 2.0 * dot(V, H) * H - V;
 		float dotNL = clamp(dot(N, L), 0.0, 1.0);
@@ -90,7 +90,7 @@ vec3 prefilterEnvMap(vec3 R, float roughness)
 			// Probability Distribution Function
 			float pdf = D_GGX(dotNH, roughness) * dotNH / (4.0 * dotVH) + 0.0001;
 			// Slid angle of current smple
-			float omegaS = 1.0 / (float(consts.numSamples) * pdf);
+			float omegaS = 1.0 / (float(pushConsts.numSamples) * pdf);
 			// Solid angle of 1 pixel across all cube faces
 			float omegaP = 4.0 * PI / (6.0 * envMapDim * envMapDim);
 			// Biased (+1.0) mip level for better result
@@ -106,5 +106,5 @@ vec3 prefilterEnvMap(vec3 R, float roughness)
 void main()
 {		
 	vec3 N = normalize(inPos);
-	outColor = vec4(prefilterEnvMap(N, consts.roughness), 1.0);
+	outColor = vec4(prefilterEnvMap(N, pushConsts.roughness), 1.0);
 }

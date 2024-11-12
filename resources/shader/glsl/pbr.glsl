@@ -28,7 +28,8 @@ layout (location = 5) out vec4 outColor0;
 
 void main()
 {	
-    outWorldPos = (cbPerObject.gWorld * float4(position, 1.0f)).xyz;
+    vec4 locPos = (cbPerObject.gWorld * float4(position, 1.0f));
+    outWorldPos = locPos.xyz / locPos.w;
     outNormal = mat3(cbPerObject.gWorld) * normal;
     outUV0 = texcoord;
 	gl_Position = cbPass.gViewProj * float4(outWorldPos, 1.0f);
@@ -38,40 +39,12 @@ void main()
 
 #ifdef FRAGMENT_SHADER
 #include "common.glsl"
-struct PBRInfo
-{
-    float NdotL;                  // cos angle between normal and light direction
-    float NdotV;                  // cos angle between normal and view direction
-    float NdotH;                  // cos angle between normal and half vector
-    float LdotH;                  // cos angle between light direction and half vector
-    float VdotH;                  // cos angle between view direction and half vector
-    float perceptualRoughness;    // roughness value, as authored by the model creator (input to shader)
-    float metalness;              // metallic value at the surface
-    float3 reflectance0;            // full reflectance color (normal incidence angle)
-    float3 reflectance90;           // reflectance color at grazing angle
-    float alphaRoughness;         // roughness mapped to a more linear change in the roughness (proposed by [2])
-    float3 diffuseColor;            // color contribution from diffuse lighting
-    float3 specularColor;           // color contribution from specular lighting
-};
+#include "pbrutil.glsl"
 
-#define  M_PI  3.141592653589793
+
 #define c_MinRoughness  0.04
 
 
-vec4 SRGBtoLINEAR(vec4 srgbIn)
-{
-	#ifdef MANUAL_SRGB
-	#ifdef SRGB_FAST_APPROXIMATION
-	vec3 linOut = pow(srgbIn.xyz,vec3(2.2));
-	#else //SRGB_FAST_APPROXIMATION
-	vec3 bLess = step(vec3(0.04045),srgbIn.xyz);
-	vec3 linOut = mix( srgbIn.xyz/vec3(12.92), pow((srgbIn.xyz+vec3(0.055))/vec3(1.055),vec3(2.4)), bLess );
-	#endif //SRGB_FAST_APPROXIMATION
-	return vec4(linOut,srgbIn.w);;
-	#else //MANUAL_SRGB
-	return srgbIn;
-	#endif //MANUAL_SRGB
-}
 
 float saturate(float VALUE) { return clamp(VALUE, 0.0f, 1.0f); }
 
@@ -285,43 +258,11 @@ float3 EnvironmentBRDF(float3 N, float3 V, float3 albedo, float roughness, float
 // Basic Lambertian diffuse
 // Implementation from Lambert's Photometria https://archive.org/details/lambertsphotome00lambgoog
 // See also [1], Equation 1
-float3 diffuse(PBRInfo pbrInputs)
-{
-    return pbrInputs.diffuseColor / M_PI;
-}
 
-// The following equation models the Fresnel reflectance term of the spec equation (aka F())
-// Implementation of fresnel from [4], Equation 15
-float3 specularReflection(PBRInfo pbrInputs)
-{
-    return pbrInputs.reflectance0 + (pbrInputs.reflectance90 - pbrInputs.reflectance0) * pow(clamp(1.0 - pbrInputs.VdotH, 0.0, 1.0), 5.0);
-}
 
-// This calculates the specular geometric attenuation (aka G()),
-// where rougher material will reflect less light back to the viewer.
-// This implementation is based on [1] Equation 4, and we adopt their modifications to
-// alphaRoughness as input as originally proposed in [2].
-float geometricOcclusion(PBRInfo pbrInputs)
-{
-    float NdotL = pbrInputs.NdotL;
-    float NdotV = pbrInputs.NdotV;
-    float r = pbrInputs.alphaRoughness;
 
-    float attenuationL = 2.0 * NdotL / (NdotL + sqrt(r * r + (1.0 - r * r) * (NdotL * NdotL)));
-    float attenuationV = 2.0 * NdotV / (NdotV + sqrt(r * r + (1.0 - r * r) * (NdotV * NdotV)));
-    return attenuationL * attenuationV;
-}
 
-// The following equation(s) model the distribution of microfacet normals across the area being drawn (aka D())
-// Implementation from "Average Irregularity Representation of a Roughened Surface for Ray Reflection" by T. S. Trowbridge, and K. P. Reitz
-// Follows the distribution function recommended in the SIGGRAPH 2013 course notes from EPIC Games [1], Equation 3.
-float microfacetDistribution(PBRInfo pbrInputs)
-{
-    float roughnessSq = pbrInputs.alphaRoughness * pbrInputs.alphaRoughness;
-    float f = (pbrInputs.NdotH * roughnessSq - pbrInputs.NdotH) * pbrInputs.NdotH + 1.0;
-	float a = M_PI * f * f;
-    return roughnessSq / a;
-}
+
 
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
@@ -331,6 +272,152 @@ layout (location = 4) in vec2 inUV1;
 layout (location = 5) in vec4 inColor0;
 
 layout (location = 0) out vec4 outColor;
+
+void main1()
+{
+    // Metallic and Roughness material properties are packed together
+    // In glTF, these factors can be specified by fixed scalar values
+    // or from a metallic-roughness map
+#ifdef HAS_METALROUGHNESSMAP
+    // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
+    // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
+    float4 mrSample = texture(metal_roughness_pbr, inUV0);
+	float metalness = mrSample.b;
+    float roughness = mrSample.g;
+#else
+    float roughness = pbrMaterial.u_MetallicRoughnessValues.y;
+    float metalness = pbrMaterial.u_MetallicRoughnessValues.x;
+	roughness = clamp(roughness, c_MinRoughness, 1.0);
+    metalness = clamp(metalness, 0.0, 1.0);
+#endif
+  
+
+    
+
+    // The albedo may be defined from a base texture or a flat color
+	float4 baseColorSource = float4(1.0f, 1.0f, 1.0f, 1.0f);
+#ifdef HAS_BASECOLORMAP
+    baseColorSource = texture(albedo_pbr, inUV0);
+    float4 baseColor = SRGBtoLINEAR(baseColorSource) * pbrMaterial.u_BaseColorFactor;
+	
+	if (pbrMaterial.alpha_mask > 0)
+	{
+		if (baseColorSource.a < pbrMaterial.alpha_mask_cutoff)
+		{
+			discard;
+		}
+	}
+#else
+    float4 baseColor = vec4(0.04f, 0.04f, 0.04f, 1.0f);
+#endif
+    float3 f0 = float3(0.04, 0.04, 0.04);
+	
+	float alphaRoughness = roughness * roughness;
+	
+	vec3 diffuseColor = baseColor.rgb * (vec3(1.0) - f0);
+	diffuseColor *= 1.0 - metalness;
+	vec3 specularColor = mix(f0, baseColor.rgb, metalness);
+	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+	
+	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+	vec3 specularEnvironmentR0 = specularColor.rgb;
+	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
+	
+	
+	
+#ifdef HAS_NORMALMAP
+	float3 n = getPbrNormal(inWorldPos, inNormal, inUV0);
+#else
+    float3 n = inNormal;
+#endif
+    n.y *= -1.0f;
+	
+	float3 v = normalize(cbPass.gEyePosW - inWorldPos);        // Vector from surface point to camera
+	
+	vec3 l = normalize(cbPass.gDirLights[0].Direction); 
+    
+	vec3 h = normalize(l+v);
+	vec3 reflection = normalize(reflect(-v, n));
+	
+    float NdotL = clamp(dot(n, l), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
+	float NdotH = clamp(dot(n, h), 0.0, 1.0);
+	float LdotH = clamp(dot(l, h), 0.0, 1.0);
+	float VdotH = clamp(dot(v, h), 0.0, 1.0);
+	PBRInfo pbrInputs = PBRInfo(
+		NdotL,
+		NdotV,
+		NdotH,
+		LdotH,
+		VdotH,
+		roughness,
+		metalness,
+		specularEnvironmentR0,
+		specularEnvironmentR90,
+		alphaRoughness,
+		diffuseColor,
+		specularColor
+	);
+
+	// Calculate the shading terms for the microfacet specular shading model
+	vec3 F = specularReflection(pbrInputs);
+	float G = geometricOcclusion(pbrInputs);
+	float D = microfacetDistribution(pbrInputs);
+
+	const vec3 u_LightColor = vec3(1.0);
+
+	// Calculation of analytical lighting contribution
+	vec3 diffuseContrib = (1.0 - F) * diffuse(pbrInputs);
+	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
+	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
+	vec3 directColor = NdotL * u_LightColor * (diffuseContrib + specContrib);
+	
+	float3 color = directColor;
+    // Calculate lighting contribution from image based lighting source (IBL)
+	float3 ibl = vec3(0.0f);
+#ifdef USE_IBL
+	ibl = getIBLContribution(pbrInputs, n, reflection);
+    color += ibl;
+#endif
+    // Apply optional PBR terms for additional (optional) shading
+	float ao = 0.0f;
+#ifdef HAS_OCCLUSIONMAP
+	ao = texture(ao_pbr, inUV0).r;
+    color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
+#endif
+
+#ifdef HAS_EMISSIVEMAP
+	float3 emissive = texture(emissive_pbr,inUV0).rgb * pbrMaterial.u_EmissiveFactor;
+    color += emissive;
+#endif
+    
+	outColor = vec4(color, baseColor.a);
+	
+	//outColor = SRGBtoLINEAR(outColor);
+	
+	if(pbrMaterial.debugRenderMode > 0)
+	{
+        switch (pbrMaterial.debugRenderMode)
+		{
+		default:
+		case 0: break;
+		case 1: color = baseColorSource.rgb; break;
+		case 2: color =  texture(normal_pbr, inUV0).rgb; break;
+		case 3: color = float3(roughness); break;
+		case 4: color = float3(metalness); break;
+		case 5: color = float3(ao); break;
+		case 6: color = n; break;
+		case 7: color = F;break;
+		case 8: color = vec3(G);break;
+		case 9: color = vec3(D);break;
+		}
+		outColor = vec4(color, baseColorSource.a);
+		if(pbrMaterial.debugRenderMode < 6)
+		{
+		    outColor = SRGBtoLINEAR(outColor);
+		}
+	}
+}
 
 void main()
 {
@@ -344,16 +431,16 @@ void main()
 	float metalness = mrSample.b;
     float roughness = mrSample.g;
 #else
-     float roughness = pbrMaterial.u_MetallicRoughnessValues.y;
+    float roughness = pbrMaterial.u_MetallicRoughnessValues.y;
     float metalness = pbrMaterial.u_MetallicRoughnessValues.x;
 #endif
     
 #ifdef HAS_METALMAP
-    metalness = texture(metal_roughness_pbr, inUV0).r * metalness;
+    metalness = texture(metal_roughness_pbr, inUV0).r;
 #endif
 
 #ifdef HAS_ROUGHNESSMAP
-  roughness = texture(roughness_pbr, inUV0).r * roughness;
+  roughness = texture(roughness_pbr, inUV0).r;
 #endif
 
     roughness = clamp(roughness, c_MinRoughness, 1.0);
@@ -366,7 +453,7 @@ void main()
 	
 	if (pbrMaterial.alpha_mask > 0)
 	{
-		if (baseColor.a < pbrMaterial.alpha_mask_cutoff)
+		if (baseColorSource.a < pbrMaterial.alpha_mask_cutoff)
 		{
 			discard;
 		}
@@ -385,7 +472,7 @@ void main()
     float3 n = inNormal;
 #endif
 
-    
+    //n.y *= -1.0f;
     float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
     
 
@@ -422,21 +509,23 @@ void main()
     color += emissive;
 #endif
     
-
-	switch (pbrMaterial.debugRenderMode)
+	color = color / (color + float3(1.0f, 1.0f, 1.0f));
+	outColor = vec4(color, baseColorSource.a);
+	if(pbrMaterial.debugRenderMode > 0)
 	{
-	default:
-	case 0: break;
-	case 1: color = baseColor.rgb; break;
-	case 2: color =  n; break;
-	case 3: color = float3(roughness); break;
-	case 4: color = float3(metalness); break;
-	case 5: color = float3(ao); break;
-	case 6: color = directColor;break;
-	case 7: color = ibl;
+        switch (pbrMaterial.debugRenderMode)
+		{
+		default:
+		case 0: break;
+		case 1: color = baseColorSource.rgb; break;
+		case 2: color =  n; break;
+		case 3: color = float3(roughness); break;
+		case 4: color = float3(metalness); break;
+		case 5: color = float3(ao); break;
+		case 6: color = directColor; break;
+		}
+		outColor = vec4(color, baseColorSource.a);
 	}
-	outColor =  float4(pow(color,float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), baseColor.a);
-	//outColor =  float4(color, baseColor.a);
 }
 
 #endif //FRAGMENT_SHADER
