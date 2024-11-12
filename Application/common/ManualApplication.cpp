@@ -262,7 +262,7 @@ void ManualApplication::addUIPass()
 		auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
 		info.renderTargetCount = 1;
 		info.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();
-		info.renderLoadAction = LOAD_ACTION_CLEAR;
+		info.renderLoadAction = LOAD_ACTION_LOAD;
 		info.renderStoreAction = STORE_ACTION_STORE;
 		info.renderTargets[0].clearColour = { 0.0f, 0.847058f, 0.901960f, 1.000000000f };
 		info.depthTarget.depthStencil = nullptr;

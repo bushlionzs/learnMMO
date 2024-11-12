@@ -45,6 +45,21 @@ VulkanTexture::~VulkanTexture()
     
 }
 
+bool VulkanTexture::need_midmap()
+{
+    if (!mTextureProperty._need_mipmap)
+        return false;
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
+    {
+        return false;
+    }
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    {
+        return false;
+    }
+    return true;
+}
+
 void VulkanTexture::_createSurfaceList(void)
 {
     if (mTextureProperty._tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
@@ -122,7 +137,7 @@ void VulkanTexture::createInternalResourcesImpl(void)
             mTextureProperty._height,
             mVulkanFormat,
             VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             mTextureImage,
             mTextureImageMemory);
@@ -211,19 +226,16 @@ void VulkanTexture::createImage(
     VkDeviceMemory& imageMemory)
 {
     mMipLevels = mTextureProperty._numMipmaps + 1;
-    if (mTextureProperty._need_mipmap)
+    if (need_midmap())
     {
-        if (mTextureProperty.isRenderTarget())
+        if (mTextureProperty._numMipmaps == 0)
         {
-            if (mTextureProperty._numMipmaps == 0)
-            {
-                auto current = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
+            auto current = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
 
-                if (current > mMipLevels)
-                {
-                    mNeedMipmaps = true;
-                    mMipLevels = current;
-                }
+            if (current > mMipLevels)
+            {
+                mNeedMipmaps = true;
+                mMipLevels = current;
             }
         }
     }
@@ -252,17 +264,17 @@ void VulkanTexture::createImage(
 
     if (mUsage & Ogre::TextureUsage::COLOR_ATTACHMENT)
     {
-        imageInfo.usage |=  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.usage |=  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ;
     }
 
     if (mUsage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
     {
-        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
     
     if (mUsage & Ogre::TextureUsage::WRITEABLE)
     {
-        imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
 
 
@@ -338,12 +350,7 @@ VkImageView VulkanTexture::createImageView(VkImage image, VkFormat format)
 
 void VulkanTexture::createTextureSampler()
 {
-    if (mName == "ground_albedo.dds")
-    {
-        int kk = 0;
-    }
     mTextureSampler = VulkanHelper::getSingleton().getSampler(mTextureProperty._samplerParams);
-    //mTextureSampler = VulkanHelper::getSingleton().getSampler(mTextureProperty._tex_addr_mod);
 }
 
 

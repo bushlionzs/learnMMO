@@ -166,10 +166,6 @@ namespace Ogre {
         unsigned char* data = nullptr;
         if (type == backend::ImageType::ImageType_DDS)
         {
-            if (name == "copper_normal.dds")
-            {
-                int kk = 0;
-            }
             std::shared_ptr<DataStream> stream
                 = ResourceManager::getSingleton().openResource(name);
             DDSImage ddsload;

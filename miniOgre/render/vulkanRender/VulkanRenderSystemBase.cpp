@@ -526,15 +526,22 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
         shaderInfo.shaderName = "prefilteredMap";
     }
 
-    Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, nullptr);
+    std::string meshName = "box.mesh";
+    auto mesh = MeshManager::getSingleton().createBox(meshName, 256, "SkyLan");
+    auto* subMesh = mesh->getSubMesh(0);
+    IndexData* indexData = subMesh->getIndexData();
+    VertexData* vertexData = subMesh->getVertexData();
+    VertexDeclaration* decl = vertexData->getVertexDeclaration();
+    Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, decl);
 
     VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
-    backend::RasterState rasterState;
+    backend::RasterState rasterState{};
     rasterState.colorWrite = true;
     rasterState.renderTargetCount = 1;
     rasterState.depthWrite = false;
     rasterState.depthTest = false;
     rasterState.pixelFormat = format;
+
     Handle<HwPipeline> pipelineHandle = createPipeline(rasterState, programHandle);
     VulkanPipeline* vulkanPipeline = mResourceAllocator.handle_cast<VulkanPipeline*>(pipelineHandle);
 
@@ -574,9 +581,9 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
     subresourceRange.levelCount = numMips;
     subresourceRange.layerCount = 6;
     auto cubeImage = tex->getVkImage();
+    VkCommandBuffer cmdBuf = mCommands->get().buffer();
     // Change image layout for all cubemap faces to transfer destination
     {
-        VkCommandBuffer cmdBuf = mCommands->get().buffer();
         VkImageMemoryBarrier imageMemoryBarrier{};
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.image = cubeImage;
@@ -615,16 +622,10 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
     renderingInfo.renderArea = renderArea;
     renderingInfo.layerCount = 1;
 
-    std::string meshName = "box.mesh";
-    auto mesh = MeshManager::getSingleton().createBox(meshName, 512, "SkyLan");
-    auto* subMesh = mesh->getSubMesh(0);
-    IndexData* indexData = subMesh->getIndexData();
-    VertexData* vertexData = subMesh->getVertexData();
+    
     for (uint32_t m = 0; m < numMips; m++) {
         for (uint32_t f = 0; f < 6; f++) {
-
             VkCommandBuffer cmdBuf = mCommands->get().buffer();
-
             viewport.width = static_cast<float>(dim * std::pow(0.5f, m));
             viewport.height = static_cast<float>(dim * std::pow(0.5f, m));
             vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
@@ -722,7 +723,7 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
                 imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
                 vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
             }
-
+            mCommands->flush(true);
         }
     }
 
@@ -1364,6 +1365,10 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
 
 
     vulkanRasterState.blendEnable = rasterState.hasBlending();
+    if (vulkanRasterState.blendEnable)
+    {
+        int kk = 0;
+    }
     vulkanRasterState.depthWriteEnable = rasterState.depthWrite;
     vulkanRasterState.depthTestEnable = rasterState.depthTest;
 

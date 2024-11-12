@@ -145,17 +145,10 @@ public:
     {
         return nullptr;
     }
-
     virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name)
     {
         return nullptr;
     }
-
-    virtual FrameConstantBuffer* getFrameConstantBuffer()
-    {
-        return nullptr;
-    }
-
     virtual void bindVertexBuffer(Handle<HwBufferObject> bufHandle, uint32_t binding) {}
     virtual void bindIndexBuffer(Handle<HwBufferObject> bufHandle, uint32_t indexSize) {}
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes) { return nullptr; }

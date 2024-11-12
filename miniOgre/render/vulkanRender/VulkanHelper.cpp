@@ -337,7 +337,7 @@ VkSampler VulkanHelper::getSampler(const filament::backend::SamplerParams& param
             .compareOp = VulkanMappings::getCompareOp(params.compareFunc),
             .minLod = 0.0f,
             .maxLod = VulkanMappings::getMaxLod(params.mipMapMode),
-            .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+            .borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
             .unnormalizedCoordinates = VK_FALSE
     };
 

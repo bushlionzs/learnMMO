@@ -118,13 +118,9 @@ namespace Ogre {
                 rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 3,
                     &resourceInfo->skinObjectHandle, 1);
             }
-
-
             //update texture
             uint32_t index = 0;
-
             auto& texs = mat->getAllTexureUnit();
-
             if (mat->isPbr())
             {
                 std::array<OgreTexture*, 9> texArray{};
@@ -177,7 +173,7 @@ namespace Ogre {
                     rs->updateDescriptorSetTexture(
                         resourceInfo->firstSet, i, &tex, 1, TextureBindType_Combined_Image_Sampler);
                 }
-                
+
             }
             else
             {
@@ -204,7 +200,8 @@ namespace Ogre {
                 }
             }
         }
-
+        
+       
         return true;
     }
 
@@ -244,7 +241,7 @@ namespace Ogre {
         }
     }
 
-    void Renderable::updateMaterialInfo()
+    void Renderable::updateMaterialInfo(bool updateTexture)
     {
         Material* mat = mMaterial.get();
         auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
@@ -252,17 +249,95 @@ namespace Ogre {
         for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
         {
             auto& resourceInfo = mFrameResourceInfoList[i];
+            resourceInfo.update = false;
+        }
+        
+        if (!updateTexture)
+            return;
+
+        uint32_t index = 0;
+        mat->load(nullptr);
+        auto& texs = mat->getAllTexureUnit();
+        for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
+        {
+            auto& resourceInfo = mFrameResourceInfoList[i];
             if (mat->isPbr())
             {
-                auto& matBuffer = mat->getPbrMatInfo();
-                rs->updateBufferObject(resourceInfo.matObjectHandle,
-                    (const char*)&matBuffer, sizeof(matBuffer));
+                std::array<OgreTexture*, 9> texArray{};
+                for (int32_t i = 0; i < texs.size(); i++)
+                {
+                    int32_t texIndex = -1;
+                    switch (texs[i]->getTextureProperty()->_pbrType)
+                    {
+                    case TextureTypePbr_Albedo:
+                        texIndex = 0;
+                        break;
+                    case TextureTypePbr_MetalRoughness:
+                        texIndex = 4;
+                        break;
+                    case TextureTypePbr_NormalMap:
+                        texIndex = 2;
+                        break;
+                    case TextureTypePbr_Emissive:
+                        texIndex = 3;
+                        break;
+                    case TextureTypePbr_AmbientOcclusion:
+                        texIndex = 1;
+                        break;
+                    case TextureTypePbr_Roughness:
+                        texIndex = 5;
+                        break;
+                    case TextureTypePbr_BRDF_LUT:
+                        texIndex = 6;
+                        break;
+                    case TextureTypePbr_IBL_Diffuse:
+                        texIndex = 7;
+                        break;
+                    case TextureTypePbr_IBL_Specular:
+                        texIndex = 8;
+                        break;
+                    }
+                    assert(texIndex >= 0);
+                    OgreTexture* tex = texs[i]->getRaw();
+                    texArray[texIndex] = tex;
+                }
+                std::shared_ptr<OgreTexture> defaultTex =
+                    TextureManager::getSingleton().getByName("white1x1.dds");
+                for (auto i = 0; i < 9; i++)
+                {
+                    OgreTexture* tex = texArray[i];
+                    if (tex == nullptr)
+                    {
+                        tex = defaultTex.get();
+                    }
+                    rs->updateDescriptorSetTexture(
+                        resourceInfo.firstSet, i, &tex, 1, TextureBindType_Combined_Image_Sampler);
+                }
+
             }
             else
             {
-                auto& matBuffer = mat->getMatInfo();
-                rs->updateBufferObject(resourceInfo.matObjectHandle,
-                    (const char*)&matBuffer, sizeof(matBuffer));
+                for (int32_t i = 0; i < texs.size(); i++)
+                {
+                    if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
+                        continue;
+                    OgreTexture* tex = texs[i]->getRaw();
+
+                    rs->updateDescriptorSetTexture(
+                        resourceInfo.firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
+                    index++;
+                }
+
+                index = 4;
+                for (int32_t i = 0; i < texs.size(); i++)
+                {
+                    if (texs[i]->getTextureProperty()->_texType != TEX_TYPE_CUBE_MAP)
+                        continue;
+                    OgreTexture* tex = texs[i]->getRaw();
+
+                    rs->updateDescriptorSetTexture(
+                        resourceInfo.firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
+                }
             }
         }
         

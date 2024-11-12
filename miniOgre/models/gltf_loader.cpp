@@ -374,10 +374,19 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             matInfo.baseColorFactor.y = tinyMat.pbrMetallicRoughness.baseColorFactor[1];
             matInfo.baseColorFactor.z = tinyMat.pbrMetallicRoughness.baseColorFactor[2];
             matInfo.baseColorFactor.w = tinyMat.pbrMetallicRoughness.baseColorFactor[3];
-            if (tinyMat.alphaMode == "MASK")
+            if (tinyMat.alphaMode == "BLEND")
             {
                 matInfo.alphaMask = 1;
                 matInfo.alphaMaskCutoff = tinyMat.alphaCutoff;
+
+                mat->setMaterialFlags(MATERIAL_FLAG_ALPHA_TESTED);
+                auto& rasterState = mat->getRasterState();
+                rasterState.blendEquationRGB = BlendEquation::ADD;
+                rasterState.blendEquationAlpha = BlendEquation::ADD;
+                rasterState.blendFunctionSrcRGB = BlendFunction::SRC_COLOR;
+                rasterState.blendFunctionDstRGB = BlendFunction::ONE_MINUS_SRC_COLOR;
+                rasterState.blendFunctionSrcAlpha = BlendFunction::ONE_MINUS_SRC_ALPHA;
+                rasterState.blendFunctionDstAlpha = BlendFunction::ZERO;
             }
             
             TextureProperty tp;
@@ -387,6 +396,7 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 const tinygltf::Image& baseColorImage = model.images[model.textures[baseColorIndex].source];
                 
                 tp._pbrType = TextureTypePbr_Albedo;
+                tp.gltfSampler();
                 mat->addTexture(baseColorImage.uri, &tp);
                 sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("HAS_BASECOLORMAP", "1"));
             }
@@ -396,6 +406,7 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             {
                 const tinygltf::Image& occlusionImage = model.images[model.textures[occlusionIndex].source];
                 tp._pbrType = TextureTypePbr_AmbientOcclusion;
+                tp.gltfSampler();
                 mat->addTexture(occlusionImage.uri, &tp);
                 sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("HAS_OCCLUSIONMAP", "1"));
             }
@@ -405,6 +416,7 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             {
                 const tinygltf::Image& normalImage = model.images[model.textures[normalIndex].source];
                 tp._pbrType = TextureTypePbr_NormalMap;
+                tp.gltfSampler();
                 mat->addTexture(normalImage.uri, &tp);
                 sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("HAS_NORMALMAP", "1"));
             }
@@ -427,6 +439,7 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             {
                 const tinygltf::Image& emissiveImage = model.images[model.textures[emissiveIndex].source];
                 tp._pbrType = TextureTypePbr_Emissive;
+                tp.gltfSampler();
                 mat->addTexture(emissiveImage.uri, &tp);
                 sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("HAS_EMISSIVEMAP", "1"));
             }

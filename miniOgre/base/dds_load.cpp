@@ -3,7 +3,7 @@
 #include "OgrePixelFormat.h"
 #include "OgreColourValue.h"
 #include "OgreDataStream.h"
-
+#include "OgreBitwise.h"
 using namespace Ogre;
 
 

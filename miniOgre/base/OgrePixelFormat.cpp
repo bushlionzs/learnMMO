@@ -101,9 +101,10 @@ namespace Ogre {
         return _pixelFormats[ord];
     }
     //-----------------------------------------------------------------------
-    size_t PixelUtil::getNumElemBytes(PixelFormat format)
+    uint8 PixelUtil::getNumElemBytes(PixelFormat format)
     {
-        return getDescriptionFor(format).elemBytes;
+        const PixelFormatDescription& desc = getDescriptionFor(format);
+        return desc.elemBytes;
     }
     //-----------------------------------------------------------------------
     static size_t astc_slice_size(uint32 width, uint32 height, uint32 blockWidth, uint32 blockHeight)
@@ -204,7 +205,7 @@ namespace Ogre {
         }
     }
     //-----------------------------------------------------------------------
-    size_t PixelUtil::getNumElemBits(PixelFormat format)
+    uint8 PixelUtil::getNumElemBits(PixelFormat format)
     {
         return getDescriptionFor(format).elemBytes * 8;
     }
@@ -231,11 +232,7 @@ namespace Ogre {
     //-----------------------------------------------------------------------
     bool PixelUtil::isCompressed(PixelFormat format)
     {
-        if (format >= PF_DXT1 && format <= PF_BC7_UNORM)
-        {
-            return true;
-        }
-        return false;
+        return (PixelUtil::getFlags(format) & PFF_COMPRESSED) > 0;
     }
     //-----------------------------------------------------------------------
     bool PixelUtil::isDepth(PixelFormat format)
@@ -296,7 +293,7 @@ namespace Ogre {
         return des.componentType;
     }
     //-----------------------------------------------------------------------
-    size_t PixelUtil::getComponentCount(PixelFormat fmt)
+    uint8 PixelUtil::getComponentCount(PixelFormat fmt)
     {
         const PixelFormatDescription& des = getDescriptionFor(fmt);
         return des.componentCount;

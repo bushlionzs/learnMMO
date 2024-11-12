@@ -69,7 +69,7 @@ namespace Ogre {
 
         bool createFrameResource();
         void updateFrameResource(uint32_t frameIndex);
-        void updateMaterialInfo();
+        void updateMaterialInfo(bool updateTexture);
         FrameResourceInfo* getFrameResourceInfo(uint32_t frameIndex);
 
         void setObjectType(ObjectType type);

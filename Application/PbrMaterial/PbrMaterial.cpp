@@ -69,7 +69,7 @@ void PbrMaterial::setup(
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	ogreConfig.reverseDepth = true;
 	uiInit();
-	if (0)
+	if (1)
 	{
 		example1(renderPipeline, rs, renderWindow, sceneManager, gameCamera);
 	}
@@ -175,7 +175,7 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string prefilteredenvName = "prefilteredMap";
-		auto prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
+		prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
 		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
 		tp._pbrType = TextureTypePbr_IBL_Specular;
 
@@ -188,7 +188,7 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string irradianceName = "IrradianceMap";
-		auto irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
+		irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
 		TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
 		tp._pbrType = TextureTypePbr_IBL_Diffuse;
 		std::for_each(matList.begin(), matList.end(),
@@ -200,7 +200,7 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string brdfLutName = "brdflut";
-		auto brdf = rs->generateBRDFLUT(brdfLutName);
+		brdf = rs->generateBRDFLUT(brdfLutName);
 		TextureManager::getSingleton().addTexture(brdfLutName, brdf);
 		tp._pbrType = TextureTypePbr_BRDF_LUT;
 
@@ -211,7 +211,7 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 			});
 	}
 
-	sceneManager->setSkyBox(true, "SkyMap", 5000);
+	//sceneManager->setSkyBox(true, "SkyMap", 5000);
 
 	Ogre::Vector3 camPos = Ogre::Vector3(0, 10.0f, 60.0f);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
@@ -222,13 +222,13 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 	if (ogreConfig.reverseDepth)
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
-		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
 			Ogre::Math::PI / 3.0f, aspectInverse, 0.1, 6000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
-		m = Ogre::Math::makePerspectiveMatrixLH(
+		m = Ogre::Math::makePerspectiveMatrix(
 			Ogre::Math::PI / 3.0f, aspect, 0.1, 6000);
 	}
 
@@ -251,43 +251,102 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
+	example_type = 2;
 	std::string name = "FlightHelmet.gltf";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
 
-	Entity* gltfEntity = sceneManager->createEntity("FlightHelmet", name);
+    gltfEntity = sceneManager->createEntity("FlightHelmet", name);
 	SceneNode* gltfNode = root->createChildSceneNode("FlightHelmet");
 
 	gltfNode->attachObject(gltfEntity);
 
+
 	//sceneManager->setSkyBox(true, "SkyLan", 2000);
 
-	Ogre::Vector3 camPos = Ogre::Vector3(0, 0.2, 2.f);
+	TextureProperty tp;
+	tp._need_mipmap = false;
+	tp._texType = TEX_TYPE_CUBE_MAP;
+	tp._tex_addr_mod = TAM_CLAMP;
+	tp._samplerParams.filterMag = filament::backend::SamplerFilterType::LINEAR;
+	tp._samplerParams.filterMin = filament::backend::SamplerFilterType::LINEAR;
+	tp._samplerParams.mipMapMode = filament::backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
+	tp._samplerParams.wrapS = filament::backend::SamplerWrapMode::REPEAT;
+	tp._samplerParams.wrapT = filament::backend::SamplerWrapMode::REPEAT;
+	tp._samplerParams.wrapR = filament::backend::SamplerWrapMode::REPEAT;
+	tp._samplerParams.anisotropyLog2 = 0;
+	auto environmentCube = TextureManager::getSingletonPtr()->load("papermill.ktx", &tp, true).get();
+	auto count = gltfEntity->getNumSubEntities();
+	std::vector<Ogre::Material*> matList;
+	for (auto i = 0; i < count; i++)
+	{
+		SubEntity* subEntity = gltfEntity->getSubEntity(i);
+		auto& mat = subEntity->getMaterial();
+		matList.push_back(mat.get());
+		ShaderInfo& shaderInfo = mat->getShaderInfo();
+		shaderInfo.shaderMacros.push_back(std::pair<std::string, std::string>("USE_IBL", "1"));
+	}
+	{
+		std::string prefilteredenvName = "prefilteredMap";
+		prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 512, CubeType_Prefiltered);
+		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
+		tp._pbrType = TextureTypePbr_IBL_Specular;
+		std::for_each(matList.begin(), matList.end(),
+			[&prefilteredenvName, &tp](Ogre::Material* mat)
+			{
+				mat->addTexture(prefilteredenvName, &tp);
+			});
+	}
+
+	{
+		std::string irradianceName = "IrradianceMap";
+		irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 64, CubeType_Irradiance);
+		TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
+		tp._pbrType = TextureTypePbr_IBL_Diffuse;
+		std::for_each(matList.begin(), matList.end(),
+			[&irradianceName, &tp](Ogre::Material* mat)
+			{
+				mat->addTexture(irradianceName, &tp);
+			});
+	}
+
+	{
+		std::string brdfLutName = "brdflut";
+		brdf = rs->generateBRDFLUT(brdfLutName);
+		TextureManager::getSingleton().addTexture(brdfLutName, brdf);
+		tp._pbrType = TextureTypePbr_BRDF_LUT;
+
+		std::for_each(matList.begin(), matList.end(),
+			[&brdfLutName, &tp](Ogre::Material* mat)
+			{
+				mat->addTexture(brdfLutName, &tp);
+			});
+	}
+	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, 1);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
-	gameCamera->lookAt(
-		camPos, lookAt);
+
+	
+	gameCamera->lookAt(camPos, lookAt);
 	gameCamera->setMoveSpeed(1);
+	gameCamera->setRotateSpeed(1.5);
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-
-
-	Ogre::Matrix4 m;
-
+	Ogre::Matrix4 projectMatrix;
 	if (ogreConfig.reverseDepth)
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
-		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
-			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 5000);
+		projectMatrix = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 5000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
-		m = Ogre::Math::makePerspectiveMatrixLH(
-			Ogre::Math::PI / 4.0f, aspect, 0.1, 5000);
+		projectMatrix = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 4.0f, aspect, 0.01, 5000);
 	}
 
-	gameCamera->getCamera()->updateProjectMatrix(m);
+	gameCamera->getCamera()->updateProjectMatrix(projectMatrix);
 	gameCamera->setCameraType(CameraMoveType_FirstPerson);
 	gameCamera->setCameraType(CameraMoveType_LookAt);
 	RenderPassInput input;
@@ -296,7 +355,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	input.cam = gameCamera->getCamera();
 	input.sceneMgr = sceneManager;
 	auto mainPass = createStandardRenderPass(input);
-	//renderPipeline->addRenderPass(mainPass);
+	renderPipeline->addRenderPass(mainPass);
 }
 
 void PbrMaterial::update(float delta)
@@ -304,39 +363,61 @@ void PbrMaterial::update(float delta)
 
 }
 
-EngineType PbrMaterial::getEngineType()
-{
-	return EngineType_Vulkan;
-}
-
 void PbrMaterial::uiInit()
 {
 	PBRWindow* window = new PBRWindow(this);
 }
 
-void PbrMaterial::updateRenderMode(uint32_t mode)
+void PbrMaterial::updateRenderMode(uint32_t mode) 
 {
-	for (auto& name : matNameList)
+	if (example_type == 1)
 	{
-		auto mat = MaterialManager::getSingleton().getByName(name);
-		PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
-		matInfo.debugRenderMode = mode;
+		for (auto& name : matNameList)
+		{
+			auto mat = MaterialManager::getSingleton().getByName(name);
+			PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
+			matInfo.debugRenderMode = mode;
+		}
+
+		for (auto entity : matBallList)
+		{
+			SubEntity* subEntity = entity->getSubEntity(0);
+			subEntity->updateMaterialInfo(false);
+		}
+	}
+	else
+	{
+		auto count = gltfEntity->getNumSubEntities();
+		for (auto i = 0; i < count; i++)
+		{
+			SubEntity* subEntity = gltfEntity->getSubEntity(i);
+			auto& mat = subEntity->getMaterial();
+			PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
+			matInfo.debugRenderMode = mode;
+			subEntity->updateMaterialInfo(false);
+		}
 	}
 }
 
 void PbrMaterial::updateMaterialType(uint32_t type)
 {
+	if (example_type != 1)
+		return;
 	for (auto i = 0; i < matBallList.size(); i++)
 	{
-		matBallList[i]->setMaterialName(matNameList[i + type* ENTRY_INSTANCE_COUNT], false);
+		std::string& name = matNameList[i + type * ENTRY_INSTANCE_COUNT];
+		matBallList[i]->setMaterialName(name, false);
+	}
+
+	for (auto entity : matBallList)
+	{
+		SubEntity* subEntity = entity->getSubEntity(0);
+		subEntity->updateMaterialInfo(true);
 	}
 }
 
 void PbrMaterial::updateLightDirection(const Ogre::Vector3& dir)
 {
-	auto* rs = Ogre::Root::getSingleton().getRenderSystem();
-	FrameConstantBuffer* frameBuffer = rs->getFrameConstantBuffer();
-
-	frameBuffer->directionLights[0].Direction = dir;
+	//assert(false);
 }
 

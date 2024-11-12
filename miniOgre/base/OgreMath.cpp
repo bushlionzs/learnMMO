@@ -50,6 +50,7 @@ namespace Ogre
 
     Math::RandomValueProvider* Math::mRandProvider = NULL;
 
+#define LEFT_HANDED
     //-----------------------------------------------------------------------
     Math::Math( unsigned int trigTableSize )
     {
@@ -1074,34 +1075,21 @@ namespace Ogre
         return m;
     }
 
-    Matrix4 Math::makePerspectiveMatrixLHReverseZ(
-        float fovxRadians,
-        float aspectInverse,
-        float zNear,
-        float zFar)
+    Matrix4 Math::makePerspectiveMatrix(
+        Real FovAngleY,
+        Real AspectRatio,
+        Real zNear,
+        Real zFar)
     {
-        Matrix4 m = makePerspectiveMatrixLH(fovxRadians, 1 / aspectInverse, zNear, zFar);
-        float  w = m[3][2];
-        float  z = m[2][2];
-        m[2][2] = w - z;
-        m[2][3] = -m[2][3];
-        return m;
+#ifdef LEFT_HANDED
+        return makePerspectiveMatrixLH(FovAngleY, AspectRatio, zNear, zFar);
+#else
+        return makePerspectiveMatrixRH(FovAngleY, AspectRatio, zNear, zFar);
+#endif
     }
 
-    Matrix4 Math::makePerspectiveMatrixRHReverseZ(
-        float fovxRadians,
-        float aspectInverse,
-        float zNear,
-        float zFar)
-    {
-        Matrix4 m = makePerspectiveMatrixRH(fovxRadians, 1 / aspectInverse, zNear, zFar);
-        float  w = m[3][2];
-        float  z = m[2][2];
-        m[2][2] = w - z;
-        m[2][3] = -m[2][3];
-        return m;
-    }
-    Matrix4 Math::makePerspectiveMatrix(Real left, Real right, Real bottom, Real top, Real zNear, Real zFar)
+    Matrix4 Math::makePerspectiveMatrix(Real left, Real right, Real bottom, Real top,
+        Real zNear, Real zFar)
     {
         // The code below will dealing with general projection
         // parameters, similar glFrustum.
@@ -1141,6 +1129,46 @@ namespace Ogre
         ret[3][2] = -1;
 
         return ret;
+    }
+
+    Matrix4 Math::makePerspectiveMatrixLHReverseZ(
+        float fovxRadians,
+        float aspectInverse,
+        float zNear,
+        float zFar)
+    {
+        Matrix4 m = makePerspectiveMatrixLH(fovxRadians, 1 / aspectInverse, zNear, zFar);
+        float  w = m[3][2];
+        float  z = m[2][2];
+        m[2][2] = w - z;
+        m[2][3] = -m[2][3];
+        return m;
+    }
+
+    Matrix4 Math::makePerspectiveMatrixRHReverseZ(
+        float fovxRadians,
+        float aspectInverse,
+        float zNear,
+        float zFar)
+    {
+        Matrix4 m = makePerspectiveMatrixRH(fovxRadians, 1 / aspectInverse, zNear, zFar);
+        float  w = m[3][2];
+        float  z = m[2][2];
+        m[2][2] = w - z;
+        m[2][3] = -m[2][3];
+        return m;
+    }
+   
+    Matrix4 Math::makePerspectiveMatrixReverseZ(float fovxRadians,
+        float aspectInverse,
+        float zNear,
+        float zFar)
+    {
+#ifdef LEFT_HANDED
+        return makePerspectiveMatrixLHReverseZ(fovxRadians, aspectInverse, zNear, zFar);
+#else
+        return makePerspectiveMatrixRHReverseZ(fovxRadians, aspectInverse, zNear, zFar);
+#endif
     }
 
     Matrix4 Math::makeOrthoRH(
@@ -1194,9 +1222,9 @@ namespace Ogre
     {
         Ogre::Vector3 f = center - eye;
         f.normalise();
-        Ogre::Vector3 s = up.crossProduct(f);
+        Ogre::Vector3 s = f.crossProduct(up);
         s.normalise();
-        Ogre::Vector3 u = f.crossProduct(s);
+        Ogre::Vector3 u = s.crossProduct(f);
         Ogre::Matrix4 Result = Ogre::Matrix4::IDENTITY;
         Result[0][0] = s.x;
         Result[1][0] = s.y;
@@ -1209,7 +1237,7 @@ namespace Ogre
         Result[2][2] = -f.z;
         Result[3][0] = -s.dotProduct(eye);
         Result[3][1] = -u.dotProduct(eye);
-        Result[3][2] = -f.dotProduct(eye);
+        Result[3][2] = f.dotProduct(eye);
         return Result.transpose();
     }
 
@@ -1237,6 +1265,27 @@ namespace Ogre
         Result[3][1] = -u.dotProduct(eye);
         Result[3][2] = -f.dotProduct(eye);
         return Result.transpose();
+    }
+
+    Matrix4 Math::makeLookAt(
+        const Ogre::Vector3& position,
+        const Ogre::Vector3& target,
+        const Ogre::Vector3& up
+    )
+    {
+#ifdef LEFT_HANDED
+        return makeLookAtLH(position, target, up);
+#else
+        return makeLookAtRH(position, target, up);
+#endif 
+    }
+    bool Math::isRightHanded()
+    {
+#ifdef LEFT_HANDED
+        return false;
+#else
+        return true;
+#endif 
     }
     //---------------------------------------------------------------------
     Real Math::boundingRadiusFromAABB(const AxisAlignedBox& aabb)

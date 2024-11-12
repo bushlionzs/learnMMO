@@ -103,6 +103,7 @@ public:
         mSlot = slot;
     }
 private:
+    bool need_midmap();
     void _createSurfaceList(void);
     virtual void createInternalResourcesImpl(void);
     virtual void freeInternalResourcesImpl(void);

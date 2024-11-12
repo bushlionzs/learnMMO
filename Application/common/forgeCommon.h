@@ -60,16 +60,6 @@ STRUCT(VertexDataBuffer)
 	DATA(Ogre::Vector2, vertexTextureUV, None);
 };
 
-enum MaterialFlagBits
-{
-	MATERIAL_FLAG_NONE = 0,
-	MATERIAL_FLAG_TWO_SIDED = (1 << 0),
-	MATERIAL_FLAG_ALPHA_TESTED = (1 << 1),
-	MATERIAL_FLAG_TRANSPARENT = (1 << 2),
-	MATERIAL_FLAG_DOUBLE_VOXEL_SIZE = (1 << 3),
-	MATERIAL_FLAG_ALL = MATERIAL_FLAG_TWO_SIDED | MATERIAL_FLAG_ALPHA_TESTED | MATERIAL_FLAG_DOUBLE_VOXEL_SIZE
-};
-
 typedef struct LightUniformBlock
 {
 	Ogre::Matrix4 mLightViewProj;

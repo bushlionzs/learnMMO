@@ -83,6 +83,11 @@ public:
 		for (auto r : engineRenerList.mOpaqueList)
 		{
 			Ogre::Material* mat = r->getMaterial().get();
+			auto flags = mat->getMaterialFlags();
+			if (flags & MATERIAL_FLAG_ALPHA_TESTED)
+			{
+				continue;
+			}
 			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
 			FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
 			Handle<HwDescriptorSet> descriptorSet[2];
@@ -101,6 +106,34 @@ public:
 			IndexDataView* view = r->getIndexView();
 			rs->drawIndexed(view->mIndexCount, 1,
 				view->mIndexLocation, view->mBaseVertexLocation, 0);
+		}
+
+		for (auto r : engineRenerList.mOpaqueList)
+		{
+			Ogre::Material* mat = r->getMaterial().get();
+			auto flags = mat->getMaterialFlags();
+			if (flags & MATERIAL_FLAG_ALPHA_TESTED)
+			{
+				auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+				FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
+				Handle<HwDescriptorSet> descriptorSet[2];
+				descriptorSet[0] = resourceInfo->zeroSet;
+				descriptorSet[1] = resourceInfo->firstSet;
+
+				auto programHandle = mat->getProgram();
+				auto piplineHandle = mat->getPipeline();
+				rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+
+
+				VertexData* vertexData = r->getVertexData();
+				IndexData* indexData = r->getIndexData();
+				vertexData->bind(nullptr);
+				indexData->bind();
+				IndexDataView* view = r->getIndexView();
+				rs->drawIndexed(view->mIndexCount, 1,
+					view->mIndexLocation, view->mBaseVertexLocation, 0);
+			}
+			
 		}
 		rs->endRenderPass(info);
 
@@ -144,7 +177,7 @@ private:
 		else
 		{
 			mFrameConstantBuffer.Shadow = 0;
-			mFrameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(0, -1, 0.0f);
+			mFrameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(0.739942074, -0.642787576, 0.198266909);
 			mFrameConstantBuffer.directionLights[0].Direction.normalise();
 		}
 

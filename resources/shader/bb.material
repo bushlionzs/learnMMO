@@ -203,7 +203,7 @@ material SkyLan
 			texture_unit
 			{
 				//texture garden.dds cubic
-				texture yokohama_rgba.ktx cubic
+				texture papermill.ktx cubic
 				mipmap false
 			}
 		}

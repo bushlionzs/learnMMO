@@ -9,7 +9,7 @@ int main()
 
 	AppInfo info;
 	info.useCEGUI = true;
-	info.useSRGB = false;
+	info.useSRGB = true;
 	ManualApplication app; 
 
 	info.setup = [&instance, &app, &info](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {

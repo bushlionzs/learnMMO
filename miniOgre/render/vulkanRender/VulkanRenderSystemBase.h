@@ -79,12 +79,6 @@ protected:
         int32_t dim,
         CubeType type);
     virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name);
-
-    virtual FrameConstantBuffer* getFrameConstantBuffer()
-    {
-        return &mFrameConstantBuffer;
-    }
-
     virtual void pushGroupMarker(const char* maker);
     virtual void popGroupMarker();
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
@@ -165,7 +159,6 @@ private:
         std::vector<GlslInputDesc>& inputDesc,
         std::vector<VkVertexInputAttributeDescription>& attributeDescriptions);
 protected:
-    FrameConstantBuffer mFrameConstantBuffer;
     VulkanWindow* mRenderWindow;
     VkCommandBuffer mCommandBuffer = VK_NULL_HANDLE;
 

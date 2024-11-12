@@ -36,11 +36,19 @@ PBRWindow::PBRWindow(PbrMaterial* self)
     item = new CEGUI::ListboxTextItem("AO", (CEGUI::uint)5);
     RenderMode->addItem(item);
 
-    item = new CEGUI::ListboxTextItem("directLight", (CEGUI::uint)6);
+    item = new CEGUI::ListboxTextItem("n", (CEGUI::uint)6);
     RenderMode->addItem(item);
 
-    item = new CEGUI::ListboxTextItem("EnvironmentLight", (CEGUI::uint)7);
+    item = new CEGUI::ListboxTextItem("F(l,h)", (CEGUI::uint)7);
     RenderMode->addItem(item);
+
+    item = new CEGUI::ListboxTextItem("G(l,v,h)", (CEGUI::uint)8);
+    RenderMode->addItem(item);
+
+    item = new CEGUI::ListboxTextItem("D(h)", (CEGUI::uint)9);
+    RenderMode->addItem(item);
+
+    
 
     RenderMode->subscribeEvent(
         CEGUI::Combobox::EventListSelectionAccepted,

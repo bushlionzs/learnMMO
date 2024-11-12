@@ -1172,6 +1172,14 @@ struct RasterState {
         blendFunctionDstAlpha = BlendFunction::ZERO;
     }
 
+    void defaultBlending() noexcept {
+        blendEquationRGB = BlendEquation::ADD;
+        blendEquationAlpha = BlendEquation::ADD;
+        blendFunctionSrcRGB = BlendFunction::SRC_COLOR;
+        blendFunctionDstRGB = BlendFunction::ONE_MINUS_SRC_COLOR;
+        blendFunctionSrcAlpha = BlendFunction::SRC_ALPHA;
+        blendFunctionDstAlpha = BlendFunction::ONE_MINUS_SRC_ALPHA;
+    }
     // note: clang reduces this entire function to a simple load/mask/compare
     bool hasBlending() const noexcept {
         // This is used to decide if blending needs to be enabled in the h/w

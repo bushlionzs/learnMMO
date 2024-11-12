@@ -15,7 +15,7 @@ GameCamera::GameCamera(Camera* camera, SceneManager* sceneMgr)
 
 const Ogre::Vector3& GameCamera::getPosition() const
 {
-    return position;
+    return eyePosition;
 }
 
 void GameCamera::setDistance(float distance)
@@ -40,7 +40,7 @@ void GameCamera::setRotateSpeed(Real speed)
 
 void GameCamera::updatePosition(const Ogre::Vector3& camPosition)
 {
-    position = camPosition;
+    eyePosition = camPosition;
 }
 
 void GameCamera::updateRotate(const Ogre::Vector3& camRotate)
@@ -49,12 +49,16 @@ void GameCamera::updateRotate(const Ogre::Vector3& camRotate)
 }
 
 void GameCamera::lookAt(
-    const Ogre::Vector3& camPosition,
-    const Ogre::Vector3& targetPosition,
+    const Ogre::Vector3& camPos,
+    const Ogre::Vector3& targetPos,
     const Ogre::Vector3& up)
 {
-    position = camPosition;
-    Ogre::Vector3 lookDir = targetPosition - camPosition;
+    eyePosition = camPos;
+    targetPosition = targetPos;
+    auto m = Ogre::Math::makeLookAt(camPos, targetPos, up);
+    mCamera->updateViewMatrix(m);
+
+    Ogre::Vector3 lookDir = targetPos - camPos;
     lookDir.normalise();
     float y = lookDir.y;
     rotation.x = -asinf(y) ;
@@ -68,6 +72,11 @@ void GameCamera::lookAt(
         x /= n;
         z /= n;
         rotation.y = atan2f(x, z) ;
+
+        if (Ogre::Math::isRightHanded())
+        {
+            rotation.y -= Ogre::Math::PI;
+        }
     }
 
     rotation.y *=  180.0f / Ogre::Math::PI;
@@ -103,17 +112,17 @@ void GameCamera::injectMouseMove(int _absx, int _absy, int _absz)
     float yaw = 0.0f;
     if (mMouseDeltaX != 0)
     {
-        mYaw -= mMouseDeltaX * 0.15f;
+        mYaw -= mMouseDeltaX * mRotateSpeed;
         need = true;
 
-        yaw = mMouseDeltaX * 0.15f;
+        yaw = mMouseDeltaX * mRotateSpeed;
     }
 
 
     if (mMouseDeltaY != 0)
     {
-        mPitch -= mMouseDeltaY * 0.15f;
-        pitch = mMouseDeltaY * 0.15f;
+        mPitch -= mMouseDeltaY * mRotateSpeed;
+        pitch = mMouseDeltaY * mRotateSpeed;
         need = true;
     }
     rotation += Ogre::Vector3(pitch, -yaw, 0.0f);
@@ -209,7 +218,7 @@ bool GameCamera::update(float delta)
 {
     float x = rotation.x / 180.f * Ogre::Math::PI;
     float y = rotation.y / 180.f * Ogre::Math::PI;
-
+ 
     
     if (mGoingForward || mGoingBack || mGoingLeft || mGoingRight || mGoingUp || mGoingDown)
     {
@@ -255,28 +264,29 @@ bool GameCamera::update(float delta)
             move -= Ogre::Vector3(0.0f, 1.0f, 0.0f) * moveSpeed;
         }
 
-        position += move;
+        eyePosition += move;
     }
   
     auto rotM = Ogre::Math::makeRotateMatrixXY(-x, -y);
-    
-    //Ogre::Vector4 t = rotM * Ogre::Vector4(-position);
-    //rotM.setTrans(t.xyz());
-
-    Ogre::Matrix4 m;
+    //auto rotM = Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, -x, Ogre::Vector3::UNIT_X);
+    //rotM = Ogre::Math::makeRotateMatrix(rotM, -y, Ogre::Vector3::UNIT_Y);
+    Ogre::Matrix4 viewMatrix;
+    auto transM = Ogre::Math::makeTranslateMatrix(eyePosition);
     if (mCameraType == CameraMoveType_FirstPerson)
     {
-        auto transM = Ogre::Math::makeTranslateMatrix(-position);
-        m = rotM * transM;
+        auto transM = Ogre::Math::makeTranslateMatrix(-eyePosition);
+        viewMatrix = rotM * transM;
     }
     else
     {
-        auto transM = Ogre::Math::makeTranslateMatrix(position);
-        m = transM * rotM;
+        auto transM = Ogre::Math::makeTranslateMatrix(-eyePosition);
+        viewMatrix = transM * rotM;
     }
-    
-    mCamera->updateViewMatrix(m);
-    mCamera->updatePosition(position);
+    /*Ogre::Vector3 camPos = Ogre::Vector3(1, 0, 0);
+    Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
+    Ogre::Matrix4 look = Ogre::Math::makeLookAt(camPos, lookAt, Ogre::Vector3::UNIT_Y);*/
+    mCamera->updateViewMatrix(viewMatrix);
+    mCamera->updatePosition(eyePosition);
     return true;
 }
 

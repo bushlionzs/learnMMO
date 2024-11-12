@@ -28,15 +28,6 @@ public:
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
 	void update(float delta);
-
-
-	EngineType getEngineType();
-
-	virtual bool isUseCEGUI()
-	{
-		return true;
-	}
-
 	void uiInit();
 	void updateRenderMode(uint32_t mode);
 	void updateMaterialType(uint32_t type);
@@ -57,7 +48,11 @@ private:
 	CEGUI::GUIContext* mGUIContext = nullptr;
 	CEGUI::Window* mRoot = nullptr;
 	std::vector<Ogre::Entity*> matBallList;
-
+	uint32_t example_type = 1;
+	Entity* gltfEntity = nullptr;
+	Ogre::OgreTexture* prefilteredMap = nullptr;
+	Ogre::OgreTexture* irradianceMap = nullptr;
+	Ogre::OgreTexture* brdf = nullptr;
 	//SceneManager* mSceneManager;
 	//GameCamera* mGameCamera;
 	//RenderSystem* mRenderSystem;

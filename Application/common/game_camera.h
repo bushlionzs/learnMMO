@@ -38,8 +38,8 @@ private:
 
 
     Ogre::Vector3 rotation = Ogre::Vector3::ZERO;
-    Ogre::Vector3 position = Ogre::Vector3::ZERO;
-    Ogre::Vector4 viewPos = Ogre::Vector4::ZERO;
+    Ogre::Vector3 eyePosition = Ogre::Vector3::ZERO;
+    Ogre::Vector4 targetPosition = Ogre::Vector4::ZERO;
 
     bool mChanged = false;
 public:

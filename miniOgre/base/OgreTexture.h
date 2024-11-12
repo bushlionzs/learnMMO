@@ -50,8 +50,6 @@ namespace Ogre {
         TU_DEFAULT = UPLOADABLE | SAMPLEABLE,
     };
 
-    
-
     class TextureProperty
     {
     public:
@@ -71,7 +69,9 @@ namespace Ogre {
         filament::backend::SamplerParams _samplerParams;
         TextureProperty();
         bool isRenderTarget();
+        void gltfSampler();
     };
+
 
     class OgreTexture
     {

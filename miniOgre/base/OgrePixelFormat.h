@@ -28,10 +28,8 @@ THE SOFTWARE.
 #ifndef _PixelFormat_H__
 #define _PixelFormat_H__
 
-
-#include "OgreColourValue.h"
 #include "OgreCommon.h"
-
+#include "OgreColourValue.h"
 #define OGRE_ENDIAN_LITTLE 1
 #define OGRE_ENDIAN_BIG 2
 #define OGRE_ENDIAN OGRE_ENDIAN_LITTLE
@@ -82,16 +80,28 @@ namespace Ogre {
         PF_B8G8R8,
         /// 32-bit pixel format, 8 bits for alpha, red, green and blue.
         PF_A8R8G8B8,
+		/// 32-bit pixel format, 8 bits for alpha, red, green and blue.
+        PF_A8R8G8B8_SRGB,
         /// 32-bit pixel format, 8 bits for blue, green, red and alpha.
         PF_A8B8G8R8,
+		/// 32-bit pixel format, 8 bits for blue, green, red and alpha.
         PF_A8B8G8R8_SRGB,
         /// 32-bit pixel format, 8 bits for blue, green, red and alpha.
         PF_B8G8R8A8,
         /// 32-bit pixel format, 2 bits for alpha, 10 bits for red, green and blue.
-        PF_A8R8G8B8_SRGB,
         PF_A2R10G10B10,
         /// 32-bit pixel format, 10 bits for blue, green and red, 2 bits for alpha.
         PF_A2B10G10R10,
+        /// DDS (DirectDraw Surface) DXT1 format
+        PF_DXT1,
+        /// DDS (DirectDraw Surface) DXT2 format
+        PF_DXT2,
+        /// DDS (DirectDraw Surface) DXT3 format
+        PF_DXT3,
+        /// DDS (DirectDraw Surface) DXT4 format
+        PF_DXT4,
+        /// DDS (DirectDraw Surface) DXT5 format
+        PF_DXT5,
         /// 48-bit pixel format, 16 bits (float) for red, 16 bits (float) for green, 16 bits (float) for blue
         PF_FLOAT16_RGB,
         /// 64-bit pixel format, 16 bits (float) for red, 16 bits (float) for green, 16 bits (float) for blue, 16 bits (float) for alpha
@@ -191,25 +201,13 @@ namespace Ogre {
         PF_R32G32B32A32_SINT,
         /// 32-bit pixel format, 9 bits for blue, green, red plus a 5 bit exponent.
         PF_R9G9B9E5_SHAREDEXP,
-        /// DDS (DirectDraw Surface) DXT1 format
-        PF_DXT1,
-        /// DDS (DirectDraw Surface) DXT2 format
-        PF_DXT2,
-        /// DDS (DirectDraw Surface) DXT3 format
-        PF_DXT3,
-        /// DDS (DirectDraw Surface) DXT4 format
-        PF_DXT4,
-        /// DDS (DirectDraw Surface) DXT5 format
-        PF_DXT5,
-        /// BC1, aka DXT1 & DXT2
+		/// BC1, aka DXT1 & DXT2
         PFG_BC1_UNORM,
         PFG_BC1_UNORM_SRGB,
 
         /// BC2, aka DXT3 & DXT4
         PFG_BC2_UNORM,
         PFG_BC2_UNORM_SRGB,
-
-        /// BC3, aka DXT5
         PFG_BC3_UNORM,
         PFG_BC3_UNORM_SRGB,
         /// DDS (DirectDraw Surface) BC4 format (unsigned normalised)
@@ -294,7 +292,7 @@ namespace Ogre {
         PF_DEPTH32F,
         /// Depth texture format with 24-bit unsigned integer and 8-bit stencil
         PF_DEPTH24_STENCIL8,
-        /// Depth texture format with 32-bit unsigned integer and 8-bit stencil
+		/// Depth texture format with 32-bit unsigned integer and 8-bit stencil
         PF_DEPTH32_STENCIL8,
         /// Number of pixel formats currently defined
         PF_COUNT,
@@ -326,24 +324,24 @@ namespace Ogre {
      */
     enum PixelFormatFlags {
         /// This format has an alpha channel
-        PFF_HASALPHA = 0x00000001,
+        PFF_HASALPHA        = 0x00000001,      
         /** This format is compressed. This invalidates the values in elemBytes,
             elemBits and the bit counts as these might not be fixed in a compressed format. */
-            PFF_COMPRESSED = 0x00000002,
-            /// This is a floating point format
-            PFF_FLOAT = 0x00000004,
-            /// This is a depth format (for depth textures)
-            PFF_DEPTH = 0x00000008,
-            /** Format is in native endian. Generally true for the 16, 24 and 32 bits
-                formats which can be represented as machine integers. */
-                PFF_NATIVEENDIAN = 0x00000010,
-                /** This is an intensity format instead of a RGB one. The luminance
-                    replaces R,G and B. (but not A) */
-                    PFF_LUMINANCE = 0x00000020,
-                    /// This is an integer format
-                    PFF_INTEGER = 0x00000040
+        PFF_COMPRESSED    = 0x00000002,
+        /// This is a floating point format
+        PFF_FLOAT           = 0x00000004,         
+        /// This is a depth format (for depth textures)
+        PFF_DEPTH           = 0x00000008,
+        /** Format is in native endian. Generally true for the 16, 24 and 32 bits
+            formats which can be represented as machine integers. */
+        PFF_NATIVEENDIAN    = 0x00000010,
+        /** This is an intensity format instead of a RGB one. The luminance
+            replaces R,G and B. (but not A) */
+        PFF_LUMINANCE       = 0x00000020,
+        /// This is an integer format
+        PFF_INTEGER         = 0x00000040
     };
-
+    
     /** Pixel component format */
     enum PixelComponentType
     {
@@ -355,18 +353,18 @@ namespace Ogre {
         PCT_UINT = 5,   /// Unsigned integer per component
         PCT_COUNT = 6    /// Number of pixel types
     };
-
+    
     /** A primitive describing a volume (3D), image (2D) or line (1D) of pixels in memory.
-        In case of a rectangle, depth must be 1.
-        Pixels are stored as a succession of "depth" slices, each containing "height" rows of
+        In case of a rectangle, depth must be 1. 
+        Pixels are stored as a succession of "depth" slices, each containing "height" rows of 
         "width" pixels.
 
         @copydetails Ogre::Box
     */
-    class  PixelBox : public Box{
+    class  PixelBox: public Box, public ImageAlloc {
     public:
         /// Parameter constructor for setting the members manually
-        PixelBox() : data(NULL), format(PF_UNKNOWN) {}
+        PixelBox() : data(NULL), rowPitch(0), slicePitch(0), format(PF_UNKNOWN) {}
         ~PixelBox() {}
         /** Constructor providing extents in the form of a Box object. This constructor
             assumes the pixel data is laid out consecutively in memory. (this
@@ -375,7 +373,7 @@ namespace Ogre {
             @param pixelFormat  Format of this buffer
             @param pixelData    Pointer to the actual data
         */
-        PixelBox(const Box& extents, PixelFormat pixelFormat, void* pixelData = 0) :
+        PixelBox(const Box &extents, PixelFormat pixelFormat, void *pixelData=0):
             Box(extents), data((uchar*)pixelData), format(pixelFormat)
         {
             setConsecutive();
@@ -389,37 +387,37 @@ namespace Ogre {
             @param pixelFormat  Format of this buffer
             @param pixelData    Pointer to the actual data
         */
-        PixelBox(uint32 width, uint32 height, uint32 depth, PixelFormat pixelFormat, void* pixelData = 0) :
+        PixelBox(uint32 width, uint32 height, uint32 depth, PixelFormat pixelFormat, void *pixelData=0):
             Box(0, 0, 0, width, height, depth),
             data((uchar*)pixelData), format(pixelFormat)
         {
             setConsecutive();
         }
-
+        
         /// The data pointer 
         uchar* data;
         /** Number of elements between the leftmost pixel of one row and the left
-            pixel of the next. This value must always be equal to getWidth() (consecutive)
+            pixel of the next. This value must always be equal to getWidth() (consecutive) 
             for compressed formats.
         */
         size_t rowPitch;
-        /** Number of elements between the top left pixel of one (depth) slice and
+        /** Number of elements between the top left pixel of one (depth) slice and 
             the top left pixel of the next. This can be a negative value. Must be a multiple of
-            rowPitch. This value must always be equal to getWidth()*getHeight() (consecutive)
+            rowPitch. This value must always be equal to getWidth()*getHeight() (consecutive) 
             for compressed formats.
         */
         size_t slicePitch;
         /// The pixel format
         PixelFormat format;
-        /** Set the rowPitch and slicePitch so that the buffer is laid out consecutive
+        /** Set the rowPitch and slicePitch so that the buffer is laid out consecutive 
             in memory.
-        */
+        */        
         void setConsecutive()
         {
             rowPitch = getWidth();
-            slicePitch = getWidth() * getHeight();
+            slicePitch = getWidth()*getHeight();
         }
-        /** Get the number of elements between one past the rightmost pixel of
+        /** Get the number of elements between one past the rightmost pixel of 
             one row and the leftmost pixel of the next row. (IE this is zero if rows
             are consecutive).
         */
@@ -432,10 +430,10 @@ namespace Ogre {
 
         /** Return whether this buffer is laid out consecutive in memory (ie the pitches
             are equal to the dimensions)
-        */
-        bool isConsecutive() const
-        {
-            return rowPitch == getWidth() && slicePitch == getWidth() * getHeight();
+        */        
+        bool isConsecutive() const 
+        { 
+            return rowPitch == getWidth() && slicePitch == getWidth()*getHeight(); 
         }
         /** Return the size (in bytes) this image would take if it was
             laid out consecutive in memory
@@ -443,22 +441,22 @@ namespace Ogre {
         size_t getConsecutiveSize() const;
         /** Return a subvolume of this PixelBox.
             @param def  Defines the bounds of the subregion to return
-            @param resetOrigin Whether to reset left/top/front of returned PixelBox to zero
-                together with adjusting data pointer to compensate this, or do nothing
+            @param resetOrigin Whether to reset left/top/front of returned PixelBox to zero 
+                together with adjusting data pointer to compensate this, or do nothing 
                 so that returned PixelBox will have left/top/front of requested Box
             @return A pixel box describing the region and the data in it
             @remarks    This function does not copy any data, it just returns
-                a PixelBox object with a data pointer pointing somewhere inside
+                a PixelBox object with a data pointer pointing somewhere inside 
                 the data of object.
             @throws Exception(ERR_INVALIDPARAMS) if def is not fully contained
         */
-        PixelBox getSubVolume(const Box& def, bool resetOrigin = true) const;
-
+        PixelBox getSubVolume(const Box &def, bool resetOrigin = true) const;
+        
         /** Return a data pointer pointing to top left front pixel of the pixel box.
             @remarks Non consecutive pixel boxes are supported.
          */
         uchar* getTopLeftFrontPixelPtr() const;
-
+        
         /**
          * Get colour value from a certain location in the PixelBox. The z coordinate
          * is only valid for cubemaps and volume textures. This uses the first (largest)
@@ -471,9 +469,9 @@ namespace Ogre {
          * is only valid for cubemaps and volume textures. This uses the first (largest)
          * mipmap.
          */
-        void setColourAt(ColourValue const& cv, size_t x, size_t y, size_t z);
+        void setColourAt(ColourValue const &cv, size_t x, size_t y, size_t z);
     };
-
+    
 
     /**
      * Some utility functions for packing and unpacking pixel data
@@ -483,18 +481,18 @@ namespace Ogre {
         /** Returns the size in bytes of an element of the given pixel format.
          @return
                The size in bytes of an element. See Remarks.
-         @remarks
+
                Passing PF_UNKNOWN will result in returning a size of 0 bytes.
         */
-        static size_t getNumElemBytes(PixelFormat format);
+        static uint8 getNumElemBytes( PixelFormat format );
 
         /** Returns the size in bits of an element of the given pixel format.
           @return
                The size in bits of an element. See Remarks.
-           @remarks
+
                Passing PF_UNKNOWN will result in returning a size of 0 bits.
         */
-        static size_t getNumElemBits(PixelFormat format);
+        static uint8 getNumElemBits( PixelFormat format );
 
         /** Returns the size in memory of a region with the given extents and pixel
             format with consecutive memory layout.
@@ -508,21 +506,21 @@ namespace Ogre {
                 The format of the area
             @return
                 The size in bytes
-            @remarks
+
                 In case that the format is non-compressed, this simply returns
                 width * height * depth * PixelUtil::getNumElemBytes(format). In the compressed
                 case, this does serious magic.
         */
         static size_t getMemorySize(uint32 width, uint32 height, uint32 depth, PixelFormat format);
-
+        
         /** Returns the property flags for this pixel format
           @return
                A bitfield combination of PFF_HASALPHA, PFF_ISCOMPRESSED,
                PFF_FLOAT, PFF_DEPTH, PFF_NATIVEENDIAN, PFF_LUMINANCE
-          @remarks
+
                This replaces the separate functions for formatHasAlpha, formatIsFloat, ...
         */
-        static unsigned int getFlags(PixelFormat format);
+        static unsigned int getFlags( PixelFormat format );
 
         /** Shortcut method to determine if the format has an alpha component */
         static bool hasAlpha(PixelFormat format);
@@ -539,7 +537,7 @@ namespace Ogre {
         /** Shortcut method to determine if the format is a luminance format. */
         static bool isLuminance(PixelFormat format);
 
-        /** Gives the number of bits (RGBA) for a format. See remarks.
+        /** Gives the number of bits (RGBA) for a format. See remarks.          
           @remarks      For non-colour formats (dxt, depth) this returns [0,0,0,0].
         */
         static void getBitDepths(PixelFormat format, int rgba[4]);
@@ -564,17 +562,17 @@ namespace Ogre {
         fixed element size.
         */
         static bool isAccessible(PixelFormat srcformat);
-
+        
         /** Returns the component type for a certain pixel format. Returns PCT_BYTE
             in case there is no clear component type like with compressed formats.
             This is one of PCT_BYTE, PCT_SHORT, PCT_FLOAT16, PCT_FLOAT32.
         */
         static PixelComponentType getComponentType(PixelFormat fmt);
-
-        /** Returns the component count for a certain pixel format. Returns 3(no alpha) or
+        
+        /** Returns the component count for a certain pixel format. Returns 3(no alpha) or 
             4 (has alpha) in case there is no clear component type like with compressed formats.
          */
-        static size_t getComponentCount(PixelFormat fmt);
+        static uint8 getComponentCount(PixelFormat fmt);
 
         /** Gets the format from given name.
             @param  name            The string of format name
@@ -612,9 +610,9 @@ namespace Ogre {
             @param pf       Pixelformat in which to write the colour
             @param dest     Destination memory location
         */
-        static void packColour(const uint8 r, const uint8 g, const uint8 b, const uint8 a, const PixelFormat pf, void* dest);
+        static void packColour(const uint8 r, const uint8 g, const uint8 b, const uint8 a, const PixelFormat pf,  void* dest);
         /// @overload
-        static void packColour(const float r, const float g, const float b, const float a, const PixelFormat pf, void* dest);
+        static void packColour(const float r, const float g, const float b, const float a, const PixelFormat pf,  void* dest);
 
         /** Unpack a colour value from memory
             @param colour   The colour is returned here
@@ -635,15 +633,15 @@ namespace Ogre {
             @param pf       Pixelformat in which to read the colour
             @param src      Source memory location
         */
-        static void unpackColour(float* r, float* g, float* b, float* a, PixelFormat pf, const void* src);
+        static void unpackColour(float *r, float *g, float *b, float *a, PixelFormat pf,  const void* src); 
         /** @overload
             @note This function returns the colour components in 8 bit precision,
                 this will lose precision when coming from #PF_A2R10G10B10 or floating
                 point formats.
         */
-        static void unpackColour(uint8* r, uint8* g, uint8* b, uint8* a, PixelFormat pf, const void* src);
-
-        /** Convert consecutive pixels from one format to another. No dithering or filtering is being done.
+        static void unpackColour(uint8 *r, uint8 *g, uint8 *b, uint8 *a, PixelFormat pf,  const void* src);
+        
+        /** Convert consecutive pixels from one format to another. No dithering or filtering is being done. 
             Converting from RGB to luminance takes the R channel.  In case the source and destination format match,
             just a copy is done.
             @param  src         Pointer to source region
@@ -652,32 +650,32 @@ namespace Ogre {
             @param  dstFormat   Pixel format of destination region
             @param  count       The number of pixels to convert
          */
-        static void bulkPixelConversion(void* src, PixelFormat srcFormat, void* dst, PixelFormat dstFormat, unsigned int count)
+        static void bulkPixelConversion(void *src, PixelFormat srcFormat, void *dst, PixelFormat dstFormat, unsigned int count)
         {
             bulkPixelConversion(PixelBox(count, 1, 1, srcFormat, src), PixelBox(count, 1, 1, dstFormat, dst));
         }
 
         /** Convert pixels from one format to another. No dithering or filtering is being done. Converting
-            from RGB to luminance takes the R channel.
+            from RGB to luminance takes the R channel. 
             @param  src         PixelBox containing the source pixels, pitches and format
             @param  dst         PixelBox containing the destination pixels, pitches and format
             @remarks The source and destination boxes must have the same
             dimensions. In case the source and destination format match, a plain copy is done.
         */
-        static void bulkPixelConversion(const PixelBox& src, const PixelBox& dst);
+        static void bulkPixelConversion(const PixelBox &src, const PixelBox &dst);
 
         /** Flips pixels inplace in vertical direction.
             @param  box         PixelBox containing pixels, pitches and format
             @remarks Non consecutive pixel boxes are supported.
          */
-        static void bulkPixelVerticalFlip(const PixelBox& box);
+        static void bulkPixelVerticalFlip(const PixelBox &box);
     };
 
     inline const String& to_string(PixelFormat v) { return PixelUtil::getFormatName(v); }
     /** @} */
     /** @} */
-
-    class  ImageInfo
+	
+	class  ImageInfo
     {
     public:
         ImageInfo() :
@@ -696,7 +694,6 @@ namespace Ogre {
 
         PixelFormat format;
     };
-
 
 }
 

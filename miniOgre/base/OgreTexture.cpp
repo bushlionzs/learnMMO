@@ -52,6 +52,22 @@ namespace Ogre {
 		return false;
 	}
 
+	void TextureProperty::gltfSampler()
+	{
+		_samplerParams.filterMag = filament::backend::SamplerFilterType::LINEAR;
+		_samplerParams.filterMin = filament::backend::SamplerFilterType::LINEAR;
+		_samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
+		_samplerParams.wrapS = filament::backend::SamplerWrapMode::REPEAT;
+		_samplerParams.wrapT = filament::backend::SamplerWrapMode::REPEAT;
+		_samplerParams.wrapR = filament::backend::SamplerWrapMode::REPEAT;
+		_samplerParams.compareMode = filament::backend::SamplerCompareMode::NONE;
+		_samplerParams.compareFunc = filament::backend::SamplerCompareFunc::N;
+		_samplerParams.anisotropyLog2 = 3;
+		_samplerParams.padding0 = 0;
+		_samplerParams.padding1 = 0;
+		_samplerParams.padding2 = 0;
+	}
+
 	OgreTexture::OgreTexture(const String& name, TextureProperty* texProperty)
 	{
 		mName = name;

@@ -324,10 +324,7 @@ namespace Ogre {
 
         mRasterState = rhs.mRasterState;
 
-        if (mRasterState.culling == backend::CullingMode::BACK)
-        {
-            int kk = 0;
-        }
+        mMaterialFlags = rhs.mMaterialFlags;
         return *this;
     }
 

@@ -358,7 +358,14 @@ namespace Ogre
             Real AspectRatio, 
             Real zNear, 
             Real zFar);
+        static Matrix4 makePerspectiveMatrix(
+            Real FovAngleY,
+            Real AspectRatio,
+            Real zNear,
+            Real zFar);
 
+        static Matrix4 makePerspectiveMatrix(Real left, Real right, Real bottom, Real top,
+            Real zNear, Real zFar);
         static Matrix4 makePerspectiveMatrixLHReverseZ(
             float fovxRadians,
             float aspectInverse,
@@ -369,8 +376,10 @@ namespace Ogre
             float aspectInverse,
             float zNear,
             float zFar);
-        static Matrix4 makePerspectiveMatrix(Real left, Real right, Real bottom, Real top, 
-            Real zNear, Real zFar);
+        static Matrix4 makePerspectiveMatrixReverseZ(float fovxRadians,
+            float aspectInverse,
+            float zNear,
+            float zFar);
         static Matrix4 makeOrthoRH(
             float ViewLeft,
             float ViewRight,
@@ -393,7 +402,13 @@ namespace Ogre
             const Ogre::Vector3& position,
             const Ogre::Vector3& target,
             const Ogre::Vector3& up);
-        
+        static Matrix4 makeLookAt(
+            const Ogre::Vector3& position,
+            const Ogre::Vector3& target,
+            const Ogre::Vector3& up
+        );
+
+        static bool isRightHanded();
         static Real boundingRadiusFromAABB(const AxisAlignedBox& aabb);
 
         static size_t gcd( size_t a, size_t b )
