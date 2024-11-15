@@ -27,7 +27,7 @@ bool RenderSystem::engineInit(bool raytracing)
 
 void RenderSystem::render(FrameGraphPassCallback cb)
 {
-    utils::ArenaScope rootArena(mPerRenderPassArena);
+    filament::ArenaScope rootArena(mPerRenderPassArena);
     auto* rootJob = mJobSystem.setRootJob(mJobSystem.createJob());
     renderJob(rootArena, cb);
     mJobSystem.runAndWait(rootJob);
@@ -67,7 +67,7 @@ public:
 
 };
 
-void RenderSystem::renderJob(ArenaScope& arena, FrameGraphPassCallback cb)
+void RenderSystem::renderJob(filament::ArenaScope& arena, FrameGraphPassCallback cb)
 {
     static CircularBuffer buf(1000);
     backend::Driver* driver = (backend::Driver*)&buf;

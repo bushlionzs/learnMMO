@@ -25,9 +25,13 @@ static std::string getContentFromFile(const char* name)
 class MyIncluderInterface : public shaderc::CompileOptions::IncluderInterface
 {
 public:
-    MyIncluderInterface(const std::string& rootpath)
+    struct shaderc_include_result_private
     {
-        mRootPath = rootpath;
+        shaderc_include_result result;
+        std::string content;
+    };
+    MyIncluderInterface()
+    {
     }
     virtual shaderc_include_result* GetInclude(const char* requested_source,
         shaderc_include_type type,
@@ -35,26 +39,27 @@ public:
         size_t include_depth)
     {
         ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(requested_source);
-        mName = resInfo->_fullname;
-        mIncludeResult.source_name = mName.c_str();
-        mIncludeResult.source_name_length = mName.size();
+        assert(resInfo);
+        auto& name = resInfo->_fullname;
 
-        mContent = getContentFromFile(mName.c_str());
-        mIncludeResult.content = mContent.c_str();
-        mIncludeResult.content_length = mContent.length();
-        return &mIncludeResult;
+        auto context = new shaderc_include_result_private;
+
+        auto* result = &context->result;
+        result->source_name = name.c_str();
+        result->source_name_length = name.size();
+
+        context->content = getContentFromFile(name.c_str());
+        result->content = context->content.c_str();
+        result->content_length = context->content.length();
+        return result;
     }
 
     // Handles shaderc_include_result_release_fn callbacks.
     virtual void ReleaseInclude(shaderc_include_result* data)
     {
-
+        shaderc_include_result_private* context = (shaderc_include_result_private*)data;
+        delete context;
     }
-private:
-    shaderc_include_result mIncludeResult;
-    std::string mName;
-    std::string mContent;
-    std::string mRootPath;
 };
 
 std::string getGlslKey(
@@ -119,11 +124,10 @@ bool glslCompileShader(
     shaderc::CompileOptions options;
 
     options.SetTargetSpirv(shaderc_spirv_version_1_4);
-    auto pos = shaderName.find_last_of("\\");
-    std::string rootpath = shaderName.substr(0, pos+1);
 
 
-   options.SetIncluder(std::make_unique<MyIncluderInterface>(rootpath));
+
+   options.SetIncluder(std::make_unique<MyIncluderInterface>());
     // Like -DMY_DEFINE=1
     for (auto& pair : shaderMacros)
     {

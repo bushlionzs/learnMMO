@@ -15,6 +15,8 @@ class RenderableData;
 using namespace filament;
 
 namespace Ogre {
+    using RenderableFrameResourceCallback = std::function< bool(
+        std::vector<FrameResourceInfo>& frameResourceInfoList, Material* mat)>;
     class Renderable
     {
     public:
@@ -67,7 +69,7 @@ namespace Ogre {
 
         Ogre::OperationType getPrimitiveTopology();
 
-        bool createFrameResource();
+        bool createFrameResource(RenderableFrameResourceCallback callback = nullptr);
         void updateFrameResource(uint32_t frameIndex);
         void updateMaterialInfo(bool updateTexture);
         FrameResourceInfo* getFrameResourceInfo(uint32_t frameIndex);
@@ -79,5 +81,7 @@ namespace Ogre {
         uint64_t mSortValue;
         ObjectType mObjectType;
         std::vector<FrameResourceInfo> mFrameResourceInfoList;
+
+        RenderableFrameResourceCallback mCallback = nullptr;
     };
 }

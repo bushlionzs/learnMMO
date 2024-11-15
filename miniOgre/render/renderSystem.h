@@ -243,7 +243,7 @@ public:
     //destroy
     virtual void destroyBufferObject(Handle<HwBufferObject> bufHandle) {}
 private:
-    void renderJob(ArenaScope& arena, FrameGraphPassCallback cb);
+    void renderJob(filament::ArenaScope& arena, FrameGraphPassCallback cb);
 
 protected:
 	

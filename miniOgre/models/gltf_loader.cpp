@@ -374,19 +374,21 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             matInfo.baseColorFactor.y = tinyMat.pbrMetallicRoughness.baseColorFactor[1];
             matInfo.baseColorFactor.z = tinyMat.pbrMetallicRoughness.baseColorFactor[2];
             matInfo.baseColorFactor.w = tinyMat.pbrMetallicRoughness.baseColorFactor[3];
-            if (tinyMat.alphaMode == "BLEND")
+            if (tinyMat.alphaMode == "MASK")
             {
                 matInfo.alphaMask = 1;
                 matInfo.alphaMaskCutoff = tinyMat.alphaCutoff;
-
+            }
+            else if (tinyMat.alphaMode == "BLEND")
+            {
                 mat->setMaterialFlags(MATERIAL_FLAG_ALPHA_TESTED);
                 auto& rasterState = mat->getRasterState();
                 rasterState.blendEquationRGB = BlendEquation::ADD;
                 rasterState.blendEquationAlpha = BlendEquation::ADD;
                 rasterState.blendFunctionSrcRGB = BlendFunction::SRC_COLOR;
                 rasterState.blendFunctionDstRGB = BlendFunction::ONE_MINUS_SRC_COLOR;
-                rasterState.blendFunctionSrcAlpha = BlendFunction::ONE_MINUS_SRC_ALPHA;
-                rasterState.blendFunctionDstAlpha = BlendFunction::ZERO;
+                rasterState.blendFunctionSrcAlpha = BlendFunction::SRC_ALPHA;
+                rasterState.blendFunctionDstAlpha = BlendFunction::ONE_MINUS_SRC_ALPHA;
             }
             
             TextureProperty tp;

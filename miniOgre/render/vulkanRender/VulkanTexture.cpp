@@ -70,6 +70,11 @@ void VulkanTexture::_createSurfaceList(void)
     {
         return;
     }
+
+    if (mTextureProperty._texType == TEX_TYPE_3D)
+    {
+        return;
+    }
     
     // Create new list of surfaces
     mSurfaceList.clear();

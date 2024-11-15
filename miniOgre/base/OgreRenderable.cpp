@@ -56,14 +56,20 @@ namespace Ogre {
         return OT_TRIANGLE_LIST;
     }
 
-    bool Renderable::createFrameResource()
+    bool Renderable::createFrameResource(RenderableFrameResourceCallback callback)
     {
         if (!mFrameResourceInfoList.empty())
             return false;
         auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
         mFrameResourceInfoList.resize(ogreConfig.swapBufferCount);
-        auto* rs = Ogre::Root::getSingleton().getRenderSystem();
         Material* mat = mMaterial.get();
+        if (callback)
+        {
+            return callback(mFrameResourceInfoList, mat);
+        }
+        
+        auto* rs = Ogre::Root::getSingleton().getRenderSystem();
+        
         for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
         {
             FrameResourceInfo* resourceInfo = &mFrameResourceInfoList[i];
@@ -115,7 +121,7 @@ namespace Ogre {
                 rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 3,
                     &resourceInfo->skinObjectHandle, 1);
 
-                rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 3,
+                rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 3,
                     &resourceInfo->skinObjectHandle, 1);
             }
             //update texture
@@ -197,6 +203,7 @@ namespace Ogre {
 
                     rs->updateDescriptorSetTexture(
                         resourceInfo->firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
+                    index++;
                 }
             }
         }
