@@ -56,6 +56,19 @@ namespace Ogre
 		static DXGI_FORMAT _getPF(PixelFormat ogrePF);
 		/// utility method, optionally maps plain format to _SRGB counterparts
 		static DXGI_FORMAT _getGammaFormat(DXGI_FORMAT format, bool appendSRGB);
+
+		static DXGI_FORMAT dx12GetType(VertexElementType vType);
+
+		static D3D12_CULL_MODE getCullMode(backend::CullingMode mode);
+		static D3D12_BLEND getBlendFactor(BlendFunction mode);
+
+		static D3D12_BLEND_OP getBlendOp(BlendEquation equation);
+
+		static D3D12_COMPARISON_FUNC getComparisonFunc(RasterState::DepthFunc depthFunc);
+
+		static D3D12_DESCRIPTOR_RANGE_TYPE getRangeType(D3D_SHADER_INPUT_TYPE inputType);
+
+		static D3D12_SHADER_VISIBILITY getShaderVisibility(uint8_t stages);
 	};
 }
 #endif

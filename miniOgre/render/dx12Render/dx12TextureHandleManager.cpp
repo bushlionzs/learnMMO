@@ -1,3 +1,4 @@
+#include <OgreHeader.h>
 #include "dx12TextureHandleManager.h"
 
 Dx12TextureHandleManager::Dx12TextureHandleManager(ID3D12Device* device)

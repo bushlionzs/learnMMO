@@ -1,27 +1,24 @@
 #pragma once
 #include <d3d12.h>
 #include <d3d12shader.h>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include "shader.h"
-#include "UploadBuffer.h"
+#include <dx12Common.h>
+#include <OgreCommon.h>
 #include "engine_struct.h"
-
+#include "shaderReflection.h"
 class Dx12RenderSystem;
 class VertexDeclaration;
-class Dx12Pass;
 
-class Dx12Shader
+
+
+class DX12Program: public HwProgram
 {
 public:
     typedef std::vector<D3D12_SIGNATURE_PARAMETER_DESC> D3d12ShaderParameters;
 public:
-    Dx12Shader(ShaderInfo& info, bool shadow = false);
+    DX12Program(const ShaderInfo& info);
     // activate the shader
 
-    ~Dx12Shader();
+    ~DX12Program();
 
     bool load();
 
@@ -30,6 +27,10 @@ public:
         return mvsByteCode.Get();
     }
 
+    ID3DBlob* getGsBlob()
+    {
+        return mgsByteCode.Get();
+    }
     ID3DBlob* getPsBlob()
     {
         return mpsByteCode.Get();
@@ -40,34 +41,31 @@ public:
         return mInputDesc;
     }
 
-    
+    const std::vector <ShaderResource>& getShaderResourceList()
+    {
+        return mShaderResourceList;
+    }
 
     void updateInputDesc(VertexDeclaration* vDeclaration);
-    
-
-    ID3D12PipelineState* BuildPSO(
-        Dx12Pass* pass);
+    void updateShaderResource(Ogre::ShaderType shaderType);
+    void updateRootSignature(ID3D12RootSignature* rootSignature);
 private:
-    ID3D12PipelineState* BuildNormalPSO(Dx12Pass* pass);
-private:
-    std::vector<std::string*> mSerStrings;
+    std::vector<std::string> mSerStrings;
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> mInputDesc;
 
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
+    ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
-    Microsoft::WRL::ComPtr<ID3DBlob> mvsByteCode = nullptr;
-    Microsoft::WRL::ComPtr<ID3DBlob> mpsByteCode = nullptr;
-
+    ComPtr<ID3DBlob> mvsByteCode = nullptr;
+    ComPtr<ID3DBlob> mgsByteCode = nullptr;
+    ComPtr<ID3DBlob> mpsByteCode = nullptr;
+    ComPtr<ID3D12RootSignature> rootSignature;
+    std::vector<ShaderResource> mShaderResourceList;
 
     uint32_t mObjectCBSize = 0;
 
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO;
     D3d12ShaderParameters mD3d12ShaderInputParameters;
 
     ShaderInfo mShaderInfo;
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
-
-    bool mShadow;
 };

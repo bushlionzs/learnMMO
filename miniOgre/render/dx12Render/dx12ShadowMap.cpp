@@ -9,7 +9,7 @@ Dx12ShadowMap::Dx12ShadowMap(
 	uint32_t height)
 {
 	md3dDevice = DX12Helper::getSingleton().getDevice();
-	mDx12TextureHandleManager = DX12Helper::getSingleton().getDx12RenderSystem()->getTextureHandleManager();
+	//mDx12TextureHandleManager = DX12Helper::getSingleton().getDx12RenderSystem()->getTextureHandleManager();
 	mWidth = width;
 	mHeight = height;
 

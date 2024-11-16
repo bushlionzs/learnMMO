@@ -6,7 +6,7 @@
 
 template<> DX12Helper* Ogre::Singleton<DX12Helper>::msSingleton = 0;
 
-DX12Helper::DX12Helper(Dx12RenderSystem* rs)
+DX12Helper::DX12Helper(Dx12RenderSystemBase* rs)
 {
 	m4xMsaaState = false;
 	mDx12RenderSystem = rs;
@@ -94,7 +94,7 @@ ID3D12CommandQueue* DX12Helper::getCommandQueue()
 
 Dx12TextureHandleManager* DX12Helper::getDx12TextureMgr()
 {
-	return mDx12RenderSystem->getTextureHandleManager();
+	return nullptr;
 }
 
 void DX12Helper::executeCommand(ID3D12CommandList* commandList)
@@ -179,7 +179,7 @@ uint32_t DX12Helper::getMsaaQuality()
 
 ID3D12GraphicsCommandList* DX12Helper::getCurrentCommandList()
 {
-	return mDx12RenderSystem->getCommandList();
+	return nullptr;
 }
 
 ID3D12GraphicsCommandList* DX12Helper::getMipmapCommandList()
@@ -278,10 +278,7 @@ void DX12Helper::_createMipmapPrepare()
 		serializedRootSig->GetBufferSize(),
 		IID_PPV_ARGS(&mRootSignatureMipmap)));
 
-	ShaderInfo info;
-	info.shaderName = "mipmap";
-	mMipmapShader = new Dx12Shader(info);
-	mMipmapShader->load();
+	
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
 
@@ -294,19 +291,7 @@ void DX12Helper::_createMipmapPrepare()
 	psoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
 	psoDesc.pRootSignature = mRootSignatureMipmap.Get();
 
-	ID3DBlob* vsblob = mMipmapShader->getVsBlob();
-	psoDesc.VS =
-	{
-		reinterpret_cast<BYTE*>(vsblob->GetBufferPointer()),
-		vsblob->GetBufferSize()
-	};
-
-	ID3DBlob* psblob = mMipmapShader->getPsBlob();
-	psoDesc.PS =
-	{
-		reinterpret_cast<BYTE*>(psblob->GetBufferPointer()),
-		psblob->GetBufferSize()
-	};
+	
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 

@@ -5,7 +5,7 @@
 #include "dx12Common.h"
 
 
-class Dx12RenderSystem;
+class Dx12RenderSystemBase;
 class Dx12TextureHandleManager;
 class Dx12HardwareBuffer;
 class Dx12Shader;
@@ -13,7 +13,7 @@ class Dx12Shader;
 class DX12Helper : public Ogre::Singleton<DX12Helper>
 {
 public:
-	DX12Helper(Dx12RenderSystem* rs);
+	DX12Helper(Dx12RenderSystemBase* rs);
 	~DX12Helper();
 
 	void createBaseInfo();
@@ -25,8 +25,6 @@ public:
 	void executeCommand(ID3D12CommandList* commandList);
 
 	void FlushCommandQueue();
-
-	
 
 	uint64_t getFenceCompletedValue();
 	void waitFence(uint64_t fence);
@@ -41,7 +39,7 @@ public:
 	bool hasMsaa();
 	uint32_t getMsaaQuality();
 
-	Dx12RenderSystem* getDx12RenderSystem()
+	Dx12RenderSystemBase* getDx12RenderSystem()
 	{
 		return mDx12RenderSystem;
 	}
@@ -57,10 +55,10 @@ public:
 private:
 	
 private:
-	Microsoft::WRL::ComPtr<ID3D12Device> mDx12Device;
-	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
-	Microsoft::WRL::ComPtr<ID3D12Fence> mFence;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue;
+	ComPtr<ID3D12Device> mDx12Device;
+	ComPtr<IDXGIFactory4> mdxgiFactory;
+    ComPtr<ID3D12Fence> mFence;
+	ComPtr<ID3D12CommandQueue> mCommandQueue;
 	uint32_t mRtvDescriptorSize = 0;
 	uint32_t mDsvDescriptorSize = 0;
 	uint32_t mCbvSrvUavDescriptorSize = 0;
@@ -74,7 +72,7 @@ private:
 	bool      m4xMsaaState = false;    // 4X MSAA enabled
 	uint32_t  m4xMsaaQuality = 0;      // quality level of 4X MSAA
 
-	Dx12RenderSystem* mDx12RenderSystem;
+	Dx12RenderSystemBase* mDx12RenderSystem;
 
 	//for directx12 mipmap
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureMipmap = nullptr;

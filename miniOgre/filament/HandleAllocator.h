@@ -39,6 +39,7 @@
 
 #define HandleAllocatorGL  HandleAllocator<32,  64, 208>    // ~4520 / pool / MiB
 #define HandleAllocatorVK  HandleAllocator<64, 160, 880>    // ~1820 / pool / MiB
+#define HandleAllocatorDX12  HandleAllocator<64, 160, 880>    // ~1820 / pool / MiB
 #define HandleAllocatorMTL HandleAllocator<32,  48, 584>    // ~1660 / pool / MiB
 
 namespace filament::backend {

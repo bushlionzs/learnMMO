@@ -106,7 +106,10 @@ static constexpr size_t MAX_DESCRIPTOR_COUNT        = 64;   // per set
 static constexpr size_t MAX_PUSH_CONSTANT_COUNT     = 32;   // Vulkan 1.1 spec allows for 128-byte
                                                             // of push constant (we assume 4-byte
                                                             // types).
+static constexpr uint32_t SHADER_MODULE_COUNT = 3;
+static constexpr uint32_t VERTEX_ATTRIBUTE_COUNT = MAX_VERTEX_ATTRIBUTE_COUNT;
 
+using Timestamp = uint64_t;
 // Per feature level caps
 // Use (int)FeatureLevel to index this array
 static constexpr struct {
@@ -202,13 +205,14 @@ enum class ShaderStage : uint8_t {
     COMPUTE = 2
 };
 
-static constexpr size_t PIPELINE_STAGE_COUNT = 2;
+static constexpr size_t PIPELINE_STAGE_COUNT = 4;
 enum class ShaderStageFlags : uint8_t {
-    NONE        =    0,
-    VERTEX      =    0x1,
-    FRAGMENT    =    0x2,
-    COMPUTE     =    0x4,
-    ALL_SHADER_STAGE_FLAGS = VERTEX | FRAGMENT | COMPUTE
+    NONE = 0,
+    VERTEX = 0x1,
+    FRAGMENT = 0x2,
+    COMPUTE = 0x4,
+    GEOMETRY = 0x8,
+    ALL_SHADER_STAGE_FLAGS = VERTEX | FRAGMENT | COMPUTE | GEOMETRY
 };
 
 static inline constexpr bool hasShaderType(ShaderStageFlags flags, ShaderStage type) noexcept {

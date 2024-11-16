@@ -3,7 +3,8 @@
 #include "OgreTexture.h"
 #include "d3dutil.h"
 #include "engine_struct.h"
-class Dx12RenderSystem;
+class DX12Commands;
+class Dx12TextureHandleManager;
 class Dx12HardwarePixelBuffer;
 class Dx12Texture :public OgreTexture
 {
@@ -11,7 +12,8 @@ public:
     Dx12Texture(
         const std::string& name, 
         Ogre::TextureProperty* texProperty, 
-        Dx12RenderSystem* engine);
+        DX12Commands* commands,
+        Dx12TextureHandleManager* mgr);
     ~Dx12Texture();
 
     
@@ -43,11 +45,14 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> mTexUpload;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
-    Dx12RenderSystem* mRenderSystem = nullptr;
     CD3DX12_CPU_DESCRIPTOR_HANDLE mDescriptorHandle;
     bool mCreate = false;
     DXGI_FORMAT mD3DFormat;
     DXGI_SAMPLE_DESC mFSAAType;
 
     int32_t mTexStartIndex = -1;
+
+    DX12Commands* mDX12Commands;
+    Dx12TextureHandleManager* mDx12TextureHandleManager;
+
 };

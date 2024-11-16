@@ -12,7 +12,7 @@ Dx12RenderTexture::Dx12RenderTexture(
 	uint32_t zoffset)
 	:RenderTexture(buffer, zoffset)
 {
-	mRenderSystem = DX12Helper::getSingleton().getDx12RenderSystem();
+	mRenderSystem = (Dx12RenderSystem*)DX12Helper::getSingleton().getDx12RenderSystem();
 	mViewport = { 0.0f, 0.0f, (float)mWidth, (float)mHeight, 0.0f, 1.0f };
 	mScissorRect = { 0, 0, (int)mWidth, (int)mHeight };
 	rebind(buffer);

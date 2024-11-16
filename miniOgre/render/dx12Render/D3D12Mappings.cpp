@@ -160,4 +160,169 @@ namespace Ogre {
         }
         return format;
     }
+
+    DXGI_FORMAT D3D12Mappings::dx12GetType(VertexElementType vType)
+    {
+        switch (vType)
+        {
+            // Float32
+        case VET_FLOAT1:
+            return DXGI_FORMAT_R32_FLOAT;
+        case VET_FLOAT2:
+            return DXGI_FORMAT_R32G32_FLOAT;
+        case VET_FLOAT3:
+            return DXGI_FORMAT_R32G32B32_FLOAT;
+        case VET_FLOAT4:
+            return DXGI_FORMAT_R32G32B32A32_FLOAT;
+
+            // Signed short
+        case VET_SHORT1:
+            return DXGI_FORMAT_R16_SINT;
+        case VET_SHORT2:
+            return DXGI_FORMAT_R16G16_SINT;
+        case VET_SHORT4:
+            return DXGI_FORMAT_R16G16B16A16_SINT;
+        case VET_SHORT2_NORM:
+            return DXGI_FORMAT_R16G16_SNORM;
+        case VET_SHORT4_NORM:
+            return DXGI_FORMAT_R16G16B16A16_SNORM;
+
+            // Unsigned short
+        case VET_USHORT1:
+            return DXGI_FORMAT_R16_UINT;
+        case VET_USHORT2:
+            return DXGI_FORMAT_R16G16_UINT;
+        case VET_USHORT4:
+            return DXGI_FORMAT_R16G16B16A16_UINT;
+        case VET_USHORT2_NORM:
+            return DXGI_FORMAT_R16G16_UNORM;
+        case VET_USHORT4_NORM:
+            return DXGI_FORMAT_R16G16B16A16_UNORM;
+
+            // Signed int
+        case VET_INT1:
+            return DXGI_FORMAT_R32_SINT;
+        case VET_INT2:
+            return DXGI_FORMAT_R32G32_SINT;
+        case VET_INT3:
+            return DXGI_FORMAT_R32G32B32_SINT;
+        case VET_INT4:
+            return DXGI_FORMAT_R32G32B32A32_SINT;
+
+            // Unsigned int
+        case VET_UINT1:
+            return DXGI_FORMAT_R32_UINT;
+        case VET_UINT2:
+            return DXGI_FORMAT_R32G32_UINT;
+        case VET_UINT3:
+            return DXGI_FORMAT_R32G32B32_UINT;
+        case VET_UINT4:
+            return DXGI_FORMAT_R32G32B32A32_UINT;
+
+        case VET_BYTE4:
+            return DXGI_FORMAT_R8G8B8A8_SINT;
+        case VET_BYTE4_NORM:
+            return DXGI_FORMAT_R8G8B8A8_SNORM;
+        case VET_UBYTE4:
+            return DXGI_FORMAT_R8G8B8A8_UINT;
+        case VET_UBYTE4_NORM:
+            return DXGI_FORMAT_R8G8B8A8_UNORM;
+        }
+        // to keep compiler happy
+        return DXGI_FORMAT_R32G32B32_FLOAT;
+    }
+
+    D3D12_CULL_MODE D3D12Mappings::getCullMode(backend::CullingMode mode)
+    {
+        switch (mode) {
+        case backend::CullingMode::NONE:           return D3D12_CULL_MODE_NONE;
+        case backend::CullingMode::FRONT:          return D3D12_CULL_MODE_FRONT;
+        case backend::CullingMode::BACK:           return D3D12_CULL_MODE_BACK;
+        case backend::CullingMode::FRONT_AND_BACK: return D3D12_CULL_MODE_NONE;
+        }
+    }
+
+    D3D12_BLEND D3D12Mappings::getBlendFactor(BlendFunction mode) {
+        switch (mode) {
+        case BlendFunction::ZERO:                  return D3D12_BLEND_ZERO;
+        case BlendFunction::ONE:                   return D3D12_BLEND_ONE;
+        case BlendFunction::SRC_COLOR:             return D3D12_BLEND_SRC_COLOR;
+        case BlendFunction::ONE_MINUS_SRC_COLOR:   return D3D12_BLEND_INV_SRC_COLOR;
+        case BlendFunction::DST_COLOR:             return D3D12_BLEND_DEST_COLOR;
+        case BlendFunction::ONE_MINUS_DST_COLOR:   return D3D12_BLEND_INV_DEST_COLOR;
+        case BlendFunction::SRC_ALPHA:             return D3D12_BLEND_SRC_ALPHA;
+        case BlendFunction::ONE_MINUS_SRC_ALPHA:   return D3D12_BLEND_INV_SRC_ALPHA;
+        case BlendFunction::DST_ALPHA:             return D3D12_BLEND_DEST_ALPHA;
+        case BlendFunction::ONE_MINUS_DST_ALPHA:   return D3D12_BLEND_INV_DEST_ALPHA;
+        case BlendFunction::SRC_ALPHA_SATURATE:    return D3D12_BLEND_SRC_ALPHA_SAT;
+        default:
+            assert(false);
+            break;
+        }
+    }
+
+    D3D12_BLEND_OP D3D12Mappings::getBlendOp(BlendEquation equation)
+    {
+        
+        switch (equation)
+        {
+        case BlendEquation::ADD:
+            return D3D12_BLEND_OP_ADD;
+        case BlendEquation::SUBTRACT:
+            return D3D12_BLEND_OP_SUBTRACT;
+        case BlendEquation::REVERSE_SUBTRACT:
+            return D3D12_BLEND_OP_REV_SUBTRACT;
+        default:
+            assert(false);
+            break;
+        }
+    }
+
+    D3D12_COMPARISON_FUNC D3D12Mappings::getComparisonFunc(
+        RasterState::DepthFunc depthFunc)
+    {
+        switch (depthFunc)
+        {
+        case RasterState::DepthFunc::LE:
+            return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        case RasterState::DepthFunc::GE:
+            return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+        case RasterState::DepthFunc::L:
+            return D3D12_COMPARISON_FUNC_LESS;
+        case RasterState::DepthFunc::G:
+            return D3D12_COMPARISON_FUNC_GREATER;
+        case RasterState::DepthFunc::E:
+            return D3D12_COMPARISON_FUNC_EQUAL;
+        case RasterState::DepthFunc::NE:
+            return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+        case RasterState::DepthFunc::A:
+            return D3D12_COMPARISON_FUNC_ALWAYS;
+        case RasterState::DepthFunc::N:
+            return D3D12_COMPARISON_FUNC_NEVER;
+        };
+        return D3D12_COMPARISON_FUNC_ALWAYS;
+    }
+
+    D3D12_DESCRIPTOR_RANGE_TYPE D3D12Mappings::getRangeType(D3D_SHADER_INPUT_TYPE inputType)
+    {
+        switch (inputType)
+        {
+        case D3D_SIT_CBUFFER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+        case D3D_SIT_TEXTURE:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        case D3D_SIT_SAMPLER:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        default:
+            assert(false);
+            break;
+        }
+    }
+
+    D3D12_SHADER_VISIBILITY D3D12Mappings::getShaderVisibility(uint8_t stages)
+    {
+        D3D12_SHADER_VISIBILITY shaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        
+        return shaderVisibility;
+    }
 }

@@ -61,10 +61,6 @@ void Dx12RenderWindow::create(const String& name, unsigned int width, unsigned i
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
 
 	resize(width, height);
-
-	mDx12ShadowMap = new Dx12ShadowMap(1024, 1024);
-
-	mDx12ShadowMap->buildDescriptors();
 }
 
 
@@ -209,36 +205,7 @@ void Dx12RenderWindow::preRender(ID3D12GraphicsCommandList* cl)
 {
 	auto cam = mRenderSystem->getCamera();
 
-	mUseShadow = cam->getCameraType() == CameraType_Light;
-
-	if (mUseShadow)
-	{
-		auto viewport = mDx12ShadowMap->viewport();
-		auto scissorRect = mDx12ShadowMap->scissorRect();
-		cl->RSSetViewports(1, &viewport);
-		cl->RSSetScissorRects(1, &scissorRect);
-		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(mDx12ShadowMap->resource(),
-			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		cl->ResourceBarrier(1, &barrier);
-
-		mCurrentDst = mDx12ShadowMap->dsvHandle();
-		cl->OMSetRenderTargets(0, nullptr, false, &mCurrentDst);
-	}
-	else
-	{
-		/*auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(mDx12ShadowMap->resource(),
-			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
-		cl->ResourceBarrier(1, &barrier);*/
-		cl->RSSetViewports(1, &mScreenViewport);
-		cl->RSSetScissorRects(1, &mScissorRect);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = mDx12ShadowMap->gpuSrvHandle();
-		cl->SetGraphicsRootDescriptorTable(1, gpuHandle);
-
-		mCurrentRtv = mMsaaRenderTarget.getRtvCpuHandle();
-		mCurrentDst = mMsaaRenderTarget.getDsvCpuHandle();
-
-		cl->OMSetRenderTargets(1, &mCurrentRtv, FALSE, &mCurrentDst);
-	}
+	
 }
 
 void Dx12RenderWindow::clearFrameBuffer(uint32_t buffers,
@@ -248,20 +215,15 @@ void Dx12RenderWindow::clearFrameBuffer(uint32_t buffers,
 	auto cl = mRenderSystem->getCommandList();
 	auto cam = mRenderSystem->getCamera();
 	
-	if (!mUseShadow)
-	{
-		/*D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(mDx12ShadowMap->resource(),
-			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
-		cl->ResourceBarrier(1, &barrier);*/
 
-		ID3D12Resource* renderTarget = mMsaaRenderTarget.getRenderTarget();
-		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			renderTarget,
-			D3D12_RESOURCE_STATE_COPY_SOURCE,
-			D3D12_RESOURCE_STATE_RENDER_TARGET);
-		cl->ResourceBarrier(1, &barrier);
-		cl->ClearRenderTargetView(mCurrentRtv, colour.ptr(), 0, nullptr);
-	}
+	ID3D12Resource* renderTarget = mMsaaRenderTarget.getRenderTarget();
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		renderTarget,
+		D3D12_RESOURCE_STATE_COPY_SOURCE,
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+	cl->ResourceBarrier(1, &barrier);
+	cl->ClearRenderTargetView(mCurrentRtv, colour.ptr(), 0, nullptr);
+	
 	
 	cl->ClearDepthStencilView(mCurrentDst, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 }

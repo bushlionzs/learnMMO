@@ -9,25 +9,25 @@
 #include "dx12HardwarePixelBuffer.h"
 #include "D3D12Mappings.h"
 #include "dx12HardwareBuffer.h"
-#include "OgreViewport.h"
+#include "dx12Commands.h"
 
 
 Dx12Texture::Dx12Texture(
     const std::string& name, 
     Ogre::TextureProperty* texProperty, 
-    Dx12RenderSystem* rs):OgreTexture(name, texProperty)
+    DX12Commands* commands,
+    Dx12TextureHandleManager* mgr)
+    :
+    mDX12Commands(commands),
+    mDx12TextureHandleManager(mgr),
+    OgreTexture(name, texProperty)
 {
-    mRenderSystem = rs;
+    
 }
 
 Dx12Texture::~Dx12Texture()
 {
-
 }
-
-
-
-
 
 void Dx12Texture::_createSurfaceList(void)
 {
@@ -182,105 +182,11 @@ void Dx12Texture::postLoad()
     updateTextureData();
 
    // generateMipmaps();
-
-    DX12Helper::getSingleton()._submitCommandList();
 }
 
 void Dx12Texture::generateMipmaps()
 {
-    auto mipLevels = mTex->GetDesc().MipLevels;
-
-    auto device = DX12Helper::getSingleton().getDevice();
-
-
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = mipLevels;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&mRtvHeap));
-
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
-    UINT rtvSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    rtvHandle.Offset(rtvSize);
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-    rtvDesc.Format = mD3DFormat;
-    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    rtvDesc.Texture2D.PlaneSlice = 0;
-    for (UINT i = 1; i < mipLevels; ++i)
-    {
-        rtvDesc.Texture2D.MipSlice = i;
-        device->CreateRenderTargetView(mTex.Get(), &rtvDesc, rtvHandle);
-        rtvHandle.Offset(rtvSize);
-    }
-
-    
-    ID3D12GraphicsCommandList* cl = DX12Helper::getSingleton().getMipmapCommandList();
-    
    
-   /* for (UINT i = 1; i < mipLevels; ++i)
-    {
-        cl->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mTex.Get(),
-            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET, i));
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE mipRtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), i, rtvSize);
-        cl->ClearRenderTargetView(mipRtvHandle, DirectX::Colors::Gold, 0, nullptr);
-    }*/
-
-    auto mgr = DX12Helper::getSingleton().getDx12RenderSystem()->getTextureHandleManager();
-    if (mTexStartIndex < 0)
-    {
-        mTexStartIndex = mgr->allocStartIndex(10);
-    }
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-    srvDesc.Format = mTex->GetDesc().Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = mipLevels;
-    auto handle = mgr->getCpuHandleByIndex(mTexStartIndex);
-    device->CreateShaderResourceView(mTex.Get(), &srvDesc, handle);
-
-
-    std::vector<ID3D12DescriptorHeap*> dhs = mgr->getHeaps();
-    cl->SetDescriptorHeaps(dhs.size(), dhs.data());
-    cl->SetGraphicsRootSignature(DX12Helper::getSingleton().getMipmapRootSignature());
-    cl->SetPipelineState(DX12Helper::getSingleton().getMipmapPipelineState());
-    auto vertexbuffer = DX12Helper::getSingleton().getMipmapVetexBuffer();
-    vertexbuffer->bind(cl, 0);
-    auto cb = DX12Helper::getSingleton().getMipmapFrameCB();
-    D3D12_GPU_VIRTUAL_ADDRESS frameAddress = cb->Resource()->GetGPUVirtualAddress();
-    cl->SetGraphicsRootConstantBufferView(1, frameAddress);
-    int width = getWidth();
-    int height = getHeight();
-
-    
-    for (UINT i = 1; i < mipLevels; ++i)
-    {
-        width = 256;
-        height = 256;
-        D3D12_VIEWPORT mViewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f };
-        D3D12_RECT mScissorRect = { 0, 0, (int)width, (int)height };
-        cl->RSSetViewports(1, &mViewport);
-        cl->RSSetScissorRects(1, &mScissorRect);
-        auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(mTex.Get(),
-            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET, i);
-        cl->ResourceBarrier(1, &barrier);
-        
-        CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = mgr->getGpuHandleByIndex(mTexStartIndex);
-        cl->SetGraphicsRootDescriptorTable(0, gpuHandle);
-        cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE mipRtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), i, rtvSize);
-        cl->OMSetRenderTargets(1, &mipRtvHandle, FALSE, nullptr);
-        cl->ClearRenderTargetView(mipRtvHandle, DirectX::Colors::Gold, 0, nullptr);
-        cl->DrawInstanced(6, 1, 0, 0);
-        barrier = CD3DX12_RESOURCE_BARRIER::Transition(mTex.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, i);
-        cl->ResourceBarrier(1, &barrier);
-
-       }
 
 }
 
@@ -307,7 +213,8 @@ void Dx12Texture::updateTextureData()
                 mSurfaceList[i]->getFormat());
     }
 
-    ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
+    ID3D12GraphicsCommandList* cmdList = mDX12Commands->get();
+
 
     UpdateSubresources(
         cmdList,
@@ -362,8 +269,8 @@ void Dx12Texture::buildDescriptorHeaps(int32_t handleIndex)
 
         mCreate = true;
     }
-    Dx12TextureHandleManager* mgr = mRenderSystem->getTextureHandleManager();
-    auto dstHandle = mgr->getCpuHandleByIndex(handleIndex);
+
+    auto dstHandle = mDx12TextureHandleManager->getCpuHandleByIndex(handleIndex);
     device->CopyDescriptorsSimple(1, dstHandle, mDescriptorHandle,
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }

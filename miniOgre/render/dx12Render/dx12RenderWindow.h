@@ -56,6 +56,4 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE mCurrentRtv;
 	D3D12_CPU_DESCRIPTOR_HANDLE mCurrentDst;
 
-	bool mUseShadow = false;
-	Dx12ShadowMap* mDx12ShadowMap;
 };

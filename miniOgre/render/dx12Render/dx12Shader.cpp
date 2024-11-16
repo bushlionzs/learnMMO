@@ -14,18 +14,17 @@
 #include "dx12Helper.h"
 
 
-Dx12Shader::Dx12Shader(ShaderInfo& info, bool shadow)
+DX12Program::DX12Program(const ShaderInfo& info)
 {
     mShaderInfo = info;
-    mShadow = shadow;
 }
 
-Dx12Shader::~Dx12Shader()
+DX12Program::~DX12Program()
 {
 
 }
 
-bool Dx12Shader::load()
+bool DX12Program::load()
 {
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(mShaderInfo.shaderName, EngineType_Dx12);
@@ -69,99 +68,13 @@ bool Dx12Shader::load()
         "ps_5_1",
         res->_fullname);
 
-    ID3D12ShaderReflection* shaderReflection = nullptr;
-
-    HRESULT hr = D3DReflect((void*)mvsByteCode->GetBufferPointer(), mvsByteCode->GetBufferSize(),
-        IID_ID3D11ShaderReflection, (void**)&shaderReflection);
-
-    D3D12_SHADER_DESC shaderDesc;
-    hr = shaderReflection->GetDesc(&shaderDesc);
-
-    mD3d12ShaderInputParameters.resize(shaderDesc.InputParameters);
-    for (UINT i = 0; i < shaderDesc.InputParameters; i++)
-    {
-        D3D12_SIGNATURE_PARAMETER_DESC& curParam = mD3d12ShaderInputParameters[i];
-        shaderReflection->GetInputParameterDesc(i, &curParam);
-        std::string* name = new std::string(curParam.SemanticName);
-        mSerStrings.push_back(name);
-        curParam.SemanticName = &(*name)[0];
-    }
-    ReleaseCOM(shaderReflection);
+    updateShaderResource(ShaderType::VertexShader);
+    updateShaderResource(ShaderType::GeometryShader);
+    updateShaderResource(ShaderType::PixelShader);
     return true;
 }
 
-DXGI_FORMAT dx12GetType(VertexElementType vType)
-{
-    switch (vType)
-    {
-        // Float32
-    case VET_FLOAT1:
-        return DXGI_FORMAT_R32_FLOAT;
-    case VET_FLOAT2:
-        return DXGI_FORMAT_R32G32_FLOAT;
-    case VET_FLOAT3:
-        return DXGI_FORMAT_R32G32B32_FLOAT;
-    case VET_FLOAT4:
-        return DXGI_FORMAT_R32G32B32A32_FLOAT;
-
-        // Signed short
-    case VET_SHORT1:
-        return DXGI_FORMAT_R16_SINT;
-    case VET_SHORT2:
-        return DXGI_FORMAT_R16G16_SINT;
-    case VET_SHORT4:
-        return DXGI_FORMAT_R16G16B16A16_SINT;
-    case VET_SHORT2_NORM:
-        return DXGI_FORMAT_R16G16_SNORM;
-    case VET_SHORT4_NORM:
-        return DXGI_FORMAT_R16G16B16A16_SNORM;
-
-        // Unsigned short
-    case VET_USHORT1:
-        return DXGI_FORMAT_R16_UINT;
-    case VET_USHORT2:
-        return DXGI_FORMAT_R16G16_UINT;
-    case VET_USHORT4:
-        return DXGI_FORMAT_R16G16B16A16_UINT;
-    case VET_USHORT2_NORM:
-        return DXGI_FORMAT_R16G16_UNORM;
-    case VET_USHORT4_NORM:
-        return DXGI_FORMAT_R16G16B16A16_UNORM;
-
-        // Signed int
-    case VET_INT1:
-        return DXGI_FORMAT_R32_SINT;
-    case VET_INT2:
-        return DXGI_FORMAT_R32G32_SINT;
-    case VET_INT3:
-        return DXGI_FORMAT_R32G32B32_SINT;
-    case VET_INT4:
-        return DXGI_FORMAT_R32G32B32A32_SINT;
-
-        // Unsigned int
-    case VET_UINT1:
-        return DXGI_FORMAT_R32_UINT;
-    case VET_UINT2:
-        return DXGI_FORMAT_R32G32_UINT;
-    case VET_UINT3:
-        return DXGI_FORMAT_R32G32B32_UINT;
-    case VET_UINT4:
-        return DXGI_FORMAT_R32G32B32A32_UINT;
-
-    case VET_BYTE4:
-        return DXGI_FORMAT_R8G8B8A8_SINT;
-    case VET_BYTE4_NORM:
-        return DXGI_FORMAT_R8G8B8A8_SNORM;
-    case VET_UBYTE4:
-        return DXGI_FORMAT_R8G8B8A8_UINT;
-    case VET_UBYTE4_NORM:
-        return DXGI_FORMAT_R8G8B8A8_UNORM;
-    }
-    // to keep compiler happy
-    return DXGI_FORMAT_R32G32B32_FLOAT;
-}
-
-void Dx12Shader::updateInputDesc(VertexDeclaration* vDeclaration)
+void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
 {
     if (!mInputDesc.empty())
     {
@@ -179,7 +92,7 @@ void Dx12Shader::updateInputDesc(VertexDeclaration* vDeclaration)
             LPCSTR semanticName = D3D12Mappings::getSemanticName(e.getSemantic());
             if (strcmp(semanticName, it.SemanticName) == 0 && e.getIndex() == it.SemanticIndex)
             {
-                elem.Format = dx12GetType(e.getType());
+                elem.Format = D3D12Mappings::dx12GetType(e.getType());
                 elem.InputSlot = e.getSource();
                 elem.AlignedByteOffset = static_cast<WORD>(e.getOffset());
                 break;
@@ -202,94 +115,103 @@ void Dx12Shader::updateInputDesc(VertexDeclaration* vDeclaration)
     D3delems.swap(mInputDesc);
 }
 
-
-ID3D12PipelineState* Dx12Shader::BuildPSO(Dx12Pass* pass)
+void DX12Program::updateShaderResource(Ogre::ShaderType shaderType)
 {
-    return BuildNormalPSO(pass);
-}
+    ID3D12ShaderReflection* shaderReflection = nullptr;
 
-ID3D12PipelineState* Dx12Shader::BuildNormalPSO(Dx12Pass* pass)
-{
-    if (!mPSO)
+    void* byteCode = nullptr;
+    uint32_t byteCodeSize = 0;
+
+    uint8_t stageFlags = (uint8_t)ShaderStageFlags::NONE;
+    switch (shaderType)
     {
-        ID3D12Device* device = DX12Helper::getSingleton().getDevice();
-        ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-
-        auto desc = getInputDesc();
-        psoDesc.InputLayout = { desc.data(), (UINT)desc.size() };
-        psoDesc.pRootSignature = pass->mRootSignature;
-
-        ID3DBlob* vsblob = getVsBlob();
-        psoDesc.VS =
+    case ShaderType::VertexShader:
+        if (mvsByteCode)
         {
-            reinterpret_cast<BYTE*>(vsblob->GetBufferPointer()),
-            vsblob->GetBufferSize()
-        };
-
-        ID3DBlob* psblob = getPsBlob();
-        psoDesc.PS =
-        {
-            reinterpret_cast<BYTE*>(psblob->GetBufferPointer()),
-            psblob->GetBufferSize()
-        };
-        psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-        if (pass->mMaterial->getCullMode() == backend::CullingMode::NONE)
-        {
-            psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+            byteCode = mvsByteCode->GetBufferPointer();
+            byteCodeSize = mvsByteCode->GetBufferSize();
+            stageFlags = (uint8_t)ShaderStageFlags::VERTEX;
         }
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-        psoDesc.RasterizerState.FrontCounterClockwise = true;
-        psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
-        psoDesc.RasterizerState.MultisampleEnable = true;
-        psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-        psoDesc.SampleMask = UINT_MAX;
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-        psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.SampleDesc.Count = DX12Helper::getSingleton().hasMsaa()?4:1;
-        psoDesc.SampleDesc.Quality = 0;
-        psoDesc.DSVFormat = DX12Helper::getSingleton().getDepthStencilFormat();
-
-        if (mShadow)
+        break;
+    case ShaderType::GeometryShader:
+        if (mgsByteCode)
         {
-            psoDesc.SampleDesc.Count = 1;
-            psoDesc.NumRenderTargets = 0;
-            psoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
-            psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+            byteCode = mgsByteCode->GetBufferPointer();
+            byteCodeSize = mgsByteCode->GetBufferSize();
+            stageFlags = (uint8_t)ShaderStageFlags::GEOMETRY;
         }
-        if (!pass->mMaterial->isWriteDepth())
+        break;
+    case ShaderType::PixelShader:
+        if (mpsByteCode)
         {
-            D3D12_DEPTH_STENCIL_DESC depthDSS;
-            depthDSS.DepthEnable = true;
-            depthDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            depthDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-            depthDSS.StencilEnable = false;
-            psoDesc.DepthStencilState = depthDSS;
+            byteCode = mpsByteCode->GetBufferPointer();
+            byteCodeSize = mpsByteCode->GetBufferSize();
+            stageFlags = (uint8_t)ShaderStageFlags::FRAGMENT;
         }
-        auto blendState = pass->mMaterial->getBlendState();
-        if (blendState.blendingEnabled())
-        {
-            D3D12_RENDER_TARGET_BLEND_DESC transparencyBlendDesc;
-
-            transparencyBlendDesc.BlendEnable = true;
-            transparencyBlendDesc.LogicOpEnable = false;
-            transparencyBlendDesc.SrcBlend = D3D12Mappings::get(blendState.sourceFactor, false);
-            transparencyBlendDesc.DestBlend = D3D12Mappings::get(blendState.destFactor, false);
-            transparencyBlendDesc.BlendOp = D3D12Mappings::get(blendState.operation);
-            transparencyBlendDesc.SrcBlendAlpha = D3D12Mappings::get(blendState.sourceFactorAlpha, true);
-            transparencyBlendDesc.DestBlendAlpha = D3D12Mappings::get(blendState.destFactorAlpha, true);
-            transparencyBlendDesc.BlendOpAlpha = D3D12Mappings::get(blendState.alphaOperation);
-            transparencyBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
-            transparencyBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-            psoDesc.BlendState.RenderTarget[0] = transparencyBlendDesc;
-        }
-        ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mPSO)));
+        break;
     }
 
-    
-    return mPSO.Get();
+    if (byteCode == nullptr)
+    {
+        return;
+    }
+    HRESULT hr = D3DReflect(byteCode, byteCodeSize,
+        IID_ID3D11ShaderReflection, (void**)&shaderReflection);
+
+    D3D12_SHADER_DESC shaderDesc;
+    hr = shaderReflection->GetDesc(&shaderDesc);
+
+    if (shaderType == ShaderType::VertexShader)
+    {
+        mD3d12ShaderInputParameters.resize(shaderDesc.InputParameters);
+        for (auto i = 0; i < shaderDesc.InputParameters; i++)
+        {
+            D3D12_SIGNATURE_PARAMETER_DESC& curParam = mD3d12ShaderInputParameters[i];
+            shaderReflection->GetInputParameterDesc(i, &curParam);
+            std::string* name = new std::string(curParam.SemanticName);
+            mSerStrings.emplace_back();
+            mSerStrings[mSerStrings.size() - 1] = curParam.SemanticName;
+            curParam.SemanticName = mSerStrings.back().c_str();
+        }
+    }
+    std::vector<ShaderResource> shaderResourceList;
+    int kk = 0;
+    for (auto i = 0; i < shaderDesc.BoundResources; i++)
+    {
+        D3D12_SHADER_INPUT_BIND_DESC desc;
+        shaderReflection->GetResourceBindingDesc(i, &desc);
+        shaderResourceList.emplace_back();
+        auto& back = shaderResourceList.back();
+        back.name = desc.Name;
+        back.reg = desc.BindPoint;
+        back.size = desc.BindCount;
+        back.type = desc.Type;
+        back.used_stages = stageFlags;
+    }
+
+    for (auto& current : shaderResourceList)
+    {
+        bool have = false;
+        for (auto& shaderResource : mShaderResourceList)
+        {
+            if (current.name == shaderResource.name)
+            {
+                shaderResource.used_stages |= stageFlags;
+                have = true;
+                break;
+            }
+        }
+
+        if (!have)
+        {
+            mShaderResourceList.push_back(current);
+        }
+    }
+
+    ReleaseCOM(shaderReflection);
+}
+
+void DX12Program::updateRootSignature(ID3D12RootSignature* rootSignature)
+{
+    rootSignature = rootSignature;
 }

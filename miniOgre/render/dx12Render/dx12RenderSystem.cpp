@@ -11,15 +11,17 @@
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
 #include "OgreCamera.h"
+#include "OgreRoot.h"
+#include "OgreSceneManager.h"
+#include "OgreViewport.h"
 #include "dx12RenderTarget.h"
 #include "dx12TextureHandleManager.h"
 #include "dx12ShadowMap.h"
 #include "dx12RenderWindow.h"
 #include "dx12Helper.h"
-#include "OgreViewport.h"
 #include "dx12Frame.h"
-#include "OgreRoot.h"
-#include "OgreSceneManager.h"
+#include "dx12Commands.h"
+
 
 Dx12RenderSystem::Dx12RenderSystem(HWND wnd)
 {
@@ -32,15 +34,17 @@ Dx12RenderSystem::~Dx12RenderSystem()
 
 }
 
-bool Dx12RenderSystem::engineInit()
+bool Dx12RenderSystem::engineInit(bool raytracing)
 {
-	RenderSystem::engineInit();
+	RenderSystem::engineInit(raytracing);
 	new Dx12HardwareBufferManager();
 
 	auto helper = new DX12Helper(this);
 	helper->createBaseInfo();
 
 	auto device = helper->getDevice();
+
+	mDX12Commands = new DX12Commands(device);
 	mDx12TextureHandleManager = new Dx12TextureHandleManager(device);
 	createFrameResource();
 	buildRootSignature();
@@ -55,11 +59,6 @@ void Dx12RenderSystem::ready()
 	cl->Close();
 	DX12Helper::getSingleton().executeCommand(cl);
 	DX12Helper::getSingleton().FlushCommandQueue();
-
-	ShaderInfo info;
-	info.shaderName = "shadows";
-	mShadowShader = new Dx12Shader(info, true);
-	mShadowShader->load();
 }
 
 void Dx12RenderSystem::_resourceLoaded()
@@ -114,7 +113,7 @@ void Dx12RenderSystem::frameEnd()
 
 void Dx12RenderSystem::render(Renderable* r, RenderListType t)
 {
-	const std::shared_ptr<Material>& mat = r->getMaterial();
+	const std::shared_ptr<Ogre::Material>& mat = r->getMaterial();
 	if (!mat)
 	{
 		return;
@@ -141,8 +140,8 @@ void Dx12RenderSystem::render(Renderable* r, RenderListType t)
 	}
 	else*/
 	{
-		mCurrentPass.mShader->updateInputDesc(vd);
-		ID3D12PipelineState* pso = mCurrentPass.mShader->BuildPSO(&mCurrentPass);
+
+		ID3D12PipelineState* pso = nullptr;
 		mCurrentFrame->getCommandList()->SetPipelineState(pso);
 	}
 	
@@ -172,7 +171,8 @@ void Dx12RenderSystem::multiRender(std::vector<Ogre::Renderable*>& objs, bool mu
 
 OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, TextureProperty* texProperty)
 {
-	Dx12Texture* tex = new Dx12Texture(name, texProperty, this);
+	Dx12Texture* tex = new Dx12Texture(
+		name, texProperty, mDX12Commands, mDx12TextureHandleManager);
 
 	if (!tex->load(nullptr))
 	{
@@ -305,7 +305,7 @@ void Dx12RenderSystem::renderImpl(Dx12Pass* pass)
 	VertexData* vertexData = pass->mRenderable->getVertexData();
 	IndexData* indexData = pass->mRenderable->getIndexData();
 	auto vd = vertexData->getVertexDeclaration();
-	pass->mShader->updateInputDesc(vd);
+
 	
 	auto commandlist = mCurrentFrame->getCommandList();
 

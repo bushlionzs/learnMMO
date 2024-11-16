@@ -44,9 +44,6 @@
         VulkanPipelineCache(VulkanPipelineCache const&) = delete;
         VulkanPipelineCache& operator=(VulkanPipelineCache const&) = delete;
 
-        static constexpr uint32_t SHADER_MODULE_COUNT = 3;
-        static constexpr uint32_t VERTEX_ATTRIBUTE_COUNT = MAX_VERTEX_ATTRIBUTE_COUNT;
-
         // The ProgramBundle contains weak references to the compiled vertex and fragment shaders.
         struct ProgramBundle {
             VkShaderModule vertex;
@@ -218,7 +215,7 @@
         // events since the cache was constructed. If any cache entry was most recently used over
         // FVK_MAX_PIPELINE_AGE flushes in the past, then we can be sure that it is no longer
         // being used by the GPU, and is therefore safe to destroy or reclaim.
-        using Timestamp = uint64_t;
+        
         Timestamp mCurrentTime = 0;
 
         struct PipelineCacheEntry {
@@ -245,7 +242,6 @@
 
         // These helpers all return unstable pointers that should not be stored.
         PipelineCacheEntry* createPipeline() noexcept;
-        PipelineLayoutCacheEntry* getOrCreatePipelineLayout() noexcept;
 
         // Immutable state.
         VkDevice mDevice = VK_NULL_HANDLE;

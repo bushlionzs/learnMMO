@@ -1,4 +1,8 @@
+#include <OgreHeader.h>
 #include "d3dutil.h"
+#include <DriverEnums.h>
+#include "dx12Common.h"
+#include "D3D12Mappings.h"
 #include <comdef.h>
 #include <fstream>
 #include <array>
@@ -200,4 +204,53 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers()
         pointWrap, pointClamp,
         linearWrap, linearClamp,
         anisotropicWrap, anisotropicClamp, shadow };
+}
+
+/// Creates a root descriptor table parameter from the input table layout for root signature version 1_1
+void d3dUtil::create_descriptor_table(
+    uint32_t numDescriptors, 
+    const ShaderResource* shaderResource,
+    D3D12_DESCRIPTOR_RANGE1* pRange,
+    D3D12_ROOT_PARAMETER1* pRootParam)
+{
+    pRootParam->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    uint8_t stageCount = 0;
+    for (uint32_t i = 0; i < numDescriptors; ++i)
+    {
+        const ShaderResource* res = shaderResource;
+
+        pRange[i].BaseShaderRegister = res->reg;
+        pRange[i].RegisterSpace = res->set;
+        pRange[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+        pRange[i].NumDescriptors = res->size;
+        pRange[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        pRange[i].RangeType = D3D12Mappings::getRangeType(res->type);
+        stageCount |= res->used_stages;
+    }
+    pRootParam->ShaderVisibility = D3D12Mappings::getShaderVisibility(stageCount);
+    pRootParam->DescriptorTable.NumDescriptorRanges = numDescriptors;
+    pRootParam->DescriptorTable.pDescriptorRanges = pRange;
+}
+
+/// Creates a root descriptor / root constant parameter for root signature version 1_1
+void d3dUtil::create_root_descriptor(
+    const ShaderResource* shaderResource,
+    D3D12_ROOT_PARAMETER1* pRootParam)
+{
+    pRootParam->ShaderVisibility = D3D12Mappings::getShaderVisibility(shaderResource->used_stages);
+    pRootParam->ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    pRootParam->Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC;
+    pRootParam->Descriptor.ShaderRegister = shaderResource->reg;
+    pRootParam->Descriptor.RegisterSpace = shaderResource->set;
+}
+
+void d3dUtil::create_root_constant(
+    const ShaderResource* shaderResource,
+    D3D12_ROOT_PARAMETER1* pRootParam)
+{
+    pRootParam->ShaderVisibility = D3D12Mappings::getShaderVisibility(shaderResource->used_stages);
+    pRootParam->ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    pRootParam->Constants.Num32BitValues = shaderResource->size;
+    pRootParam->Constants.ShaderRegister = shaderResource->reg;
+    pRootParam->Constants.RegisterSpace = shaderResource->set;
 }
