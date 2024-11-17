@@ -3,9 +3,14 @@
 #include "dx12Helper.h"
 
 DX12BufferObject::DX12BufferObject(
-    uint32_t byteCount,
-    uint32_t bufferCreationFlags)
+    BufferObjectBinding bufferObjectBinding,
+    ResourceMemoryUsage memoryUsage,
+    uint32_t bufferCreationFlags,
+    uint32_t byteCount
+   )
 {
+    mBufferObjectBinding = bufferObjectBinding;
+    mMemoryUsage = memoryUsage;
     ID3D12Device* dx12Device = DX12Helper::getSingleton().getDevice();
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteCount);
@@ -35,12 +40,12 @@ void DX12BufferObject::copyData(
     void* mapData = lock(0, size);
     memcpy(mapData, data, size);
     unlock(cmdList);
-    auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
+    /*auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
         D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-    cmdList->ResourceBarrier(1, &dstBarrier);
+    cmdList->ResourceBarrier(1, &dstBarrier);*/
     
     cmdList->CopyBufferRegion(BufferGPU.Get(), 0, BufferUploader.Get(), 0, size);
-    dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
+    auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
         D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
     cmdList->ResourceBarrier(1, &dstBarrier);
 }

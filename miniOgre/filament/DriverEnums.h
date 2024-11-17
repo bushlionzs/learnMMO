@@ -493,17 +493,7 @@ enum class ElementType : uint8_t {
     HALF4,
 };
 
-//! Buffer object binding type
-enum  BufferObjectBinding
-{
-    BufferObjectBinding_None = 0,
-    BufferObjectBinding_Vertex = 1,
-    BufferObjectBinding_Index = BufferObjectBinding_Vertex << 1,
-    BufferObjectBinding_Uniform = BufferObjectBinding_Index << 1,
-    BufferObjectBinding_Storge = BufferObjectBinding_Uniform << 1,
-    BufferObjectBinding_InDirectBuffer = BufferObjectBinding_Storge << 1,
-    BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
-};
+
 
 enum BufferCreationFlags :uint16_t
 {
@@ -1445,7 +1435,6 @@ utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::Shade
 utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::TextureCubemapFace face);
 utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::TextureFormat format);
 utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::TextureUsage usage);
-utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::BufferObjectBinding binding);
 utils::io::ostream& operator<<(utils::io::ostream& out, filament::backend::TextureSwizzle swizzle);
 utils::io::ostream& operator<<(utils::io::ostream& out, const filament::backend::AttributeArray& type);
 utils::io::ostream& operator<<(utils::io::ostream& out, const filament::backend::PolygonOffset& po);

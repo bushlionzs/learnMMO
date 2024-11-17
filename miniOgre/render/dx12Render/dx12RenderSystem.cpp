@@ -42,10 +42,10 @@ bool Dx12RenderSystem::engineInit(bool raytracing)
 	auto helper = new DX12Helper(this);
 	helper->createBaseInfo();
 
-	auto device = helper->getDevice();
+	mDevice = helper->getDevice();
 
-	mDX12Commands = new DX12Commands(device);
-	mDx12TextureHandleManager = new Dx12TextureHandleManager(device);
+	mCommands = new DX12Commands(mDevice);
+	mDx12TextureHandleManager = new Dx12TextureHandleManager(mDevice);
 	createFrameResource();
 	buildRootSignature();
 
@@ -66,50 +66,50 @@ void Dx12RenderSystem::_resourceLoaded()
 
 }
 
-void Dx12RenderSystem::frameStart()
-{
-	DX12Helper::getSingleton()._submitCommandList(true);
-	mTriangleCount = 0;
-	mBatchCount = 0;
-	mLoadResCount = 0;
-	mCurrentFrame = mFrameList[mCurrFrameResourceIndex++];
-
-	mCurrFrameResourceIndex = mCurrFrameResourceIndex % FRAME_RESOURCE_COUNT;
-
-	if (mCurrentFrame->getFence() != 0 &&
-		DX12Helper::getSingleton().getFenceCompletedValue() < mCurrentFrame->getFence())
-	{
-		DX12Helper::getSingleton().waitFence(mCurrentFrame->getFence());
-	}
-
-	mCurrentFrame->resetCommandList();
-	auto commandlist = mCurrentFrame->getCommandList();
-
-	mFrameConstantBuffer.Shadow = 0;
-
-	const std::vector<ID3D12DescriptorHeap*> dhs = mDx12TextureHandleManager->getHeaps();
-	commandlist->SetDescriptorHeaps(dhs.size(), dhs.data());
-	commandlist->SetGraphicsRootSignature(mRootSignature.Get());
-
-	mCurrentPass.mRootSignature = mRootSignature.Get();
-	mCurrentPass.mPassState = PassState_Normal;
-}
-
-void Dx12RenderSystem::frameEnd()
-{
-	auto commandList = DX12Helper::getSingleton().getCurrentCommandList();
-
-	// Done recording commands.
-	ThrowIfFailed(commandList->Close());
-
-	// Add the command list to the queue for execution.
-
-	DX12Helper::getSingleton().executeCommand(commandList);
-
-	mRenderWindow->present();
-	mCurrentFrame->setFence(DX12Helper::getSingleton().incrFence());
-	DX12Helper::getSingleton().signalFence(mCurrentFrame->getFence());
-}
+//void Dx12RenderSystem::frameStart()
+//{
+//	DX12Helper::getSingleton()._submitCommandList(true);
+//	mTriangleCount = 0;
+//	mBatchCount = 0;
+//	mLoadResCount = 0;
+//	mCurrentFrame = mFrameList[mCurrFrameResourceIndex++];
+//
+//	mCurrFrameResourceIndex = mCurrFrameResourceIndex % FRAME_RESOURCE_COUNT;
+//
+//	if (mCurrentFrame->getFence() != 0 &&
+//		DX12Helper::getSingleton().getFenceCompletedValue() < mCurrentFrame->getFence())
+//	{
+//		DX12Helper::getSingleton().waitFence(mCurrentFrame->getFence());
+//	}
+//
+//	mCurrentFrame->resetCommandList();
+//	auto commandlist = mCurrentFrame->getCommandList();
+//
+//	mFrameConstantBuffer.Shadow = 0;
+//
+//	const std::vector<ID3D12DescriptorHeap*> dhs = mDx12TextureHandleManager->getHeaps();
+//	commandlist->SetDescriptorHeaps(dhs.size(), dhs.data());
+//	commandlist->SetGraphicsRootSignature(mRootSignature.Get());
+//
+//	mCurrentPass.mRootSignature = mRootSignature.Get();
+//	mCurrentPass.mPassState = PassState_Normal;
+//}
+//
+//void Dx12RenderSystem::frameEnd()
+//{
+//	auto commandList = DX12Helper::getSingleton().getCurrentCommandList();
+//
+//	// Done recording commands.
+//	ThrowIfFailed(commandList->Close());
+//
+//	// Add the command list to the queue for execution.
+//
+//	DX12Helper::getSingleton().executeCommand(commandList);
+//
+//	mRenderWindow->present();
+//	mCurrentFrame->setFence(DX12Helper::getSingleton().incrFence());
+//	DX12Helper::getSingleton().signalFence(mCurrentFrame->getFence());
+//}
 
 void Dx12RenderSystem::render(Renderable* r, RenderListType t)
 {
@@ -172,7 +172,7 @@ void Dx12RenderSystem::multiRender(std::vector<Ogre::Renderable*>& objs, bool mu
 OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, TextureProperty* texProperty)
 {
 	Dx12Texture* tex = new Dx12Texture(
-		name, texProperty, mDX12Commands, mDx12TextureHandleManager);
+		name, texProperty, mCommands, mDx12TextureHandleManager);
 
 	if (!tex->load(nullptr))
 	{
@@ -220,7 +220,7 @@ void Dx12RenderSystem::_setViewport(ICamera* cam, Ogre::Viewport* vp)
 	target = vp->getTarget();
 
 	mActiveDx12RenderTarget = dynamic_cast<Dx12RenderTarget*>(target);
-	mActiveDx12RenderTarget->preRender(mCurrentFrame->getCommandList());
+
 }
 
 EngineType Dx12RenderSystem::getRenderType()
@@ -232,18 +232,7 @@ void Dx12RenderSystem::clearFrameBuffer(uint32 buffers,
 	const ColourValue& colour,
 	float depth, uint16 stencil)
 {
-	mActiveDx12RenderTarget->clearFrameBuffer(buffers, colour, depth, stencil);
-}
-
-Ogre::RenderWindow* Dx12RenderSystem::createRenderWindow(
-	const String& name, unsigned int width, unsigned int height,
-	const NameValuePairList* miscParams)
-{
-	mRenderWindow = new Dx12RenderWindow(this);
-
-	mRenderWindow->create(name, width, height, false, miscParams);
-
-	return mRenderWindow;
+	
 }
 
 void Dx12RenderSystem::buildRootSignature()

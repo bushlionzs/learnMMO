@@ -215,20 +215,20 @@ void d3dUtil::create_descriptor_table(
 {
     pRootParam->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     uint8_t stageCount = 0;
-    for (uint32_t i = 0; i < numDescriptors; ++i)
+    for (uint32_t i = 0; i < 1; ++i)
     {
         const ShaderResource* res = shaderResource;
-
+        pRange[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         pRange[i].BaseShaderRegister = res->reg;
         pRange[i].RegisterSpace = res->set;
         pRange[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
-        pRange[i].NumDescriptors = res->size;
+        pRange[i].NumDescriptors = numDescriptors;
         pRange[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         pRange[i].RangeType = D3D12Mappings::getRangeType(res->type);
         stageCount |= res->used_stages;
     }
     pRootParam->ShaderVisibility = D3D12Mappings::getShaderVisibility(stageCount);
-    pRootParam->DescriptorTable.NumDescriptorRanges = numDescriptors;
+    pRootParam->DescriptorTable.NumDescriptorRanges = 1;
     pRootParam->DescriptorTable.pDescriptorRanges = pRange;
 }
 

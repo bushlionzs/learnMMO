@@ -1088,6 +1088,35 @@ namespace Ogre {
         VES_SPECULAR = VES_COLOUR2
     };
 
+
+    //! Buffer object binding type
+    enum  BufferObjectBinding
+    {
+        BufferObjectBinding_None = 0,
+        BufferObjectBinding_Vertex = 1,
+        BufferObjectBinding_Index = BufferObjectBinding_Vertex << 1,
+        BufferObjectBinding_Uniform = BufferObjectBinding_Index << 1,
+        BufferObjectBinding_Storge = BufferObjectBinding_Uniform << 1,
+        BufferObjectBinding_InDirectBuffer = BufferObjectBinding_Storge << 1,
+        BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
+    };
+
+    typedef enum ResourceMemoryUsage
+    {
+        /// No intended memory usage specified.
+        RESOURCE_MEMORY_USAGE_UNKNOWN = 0,
+        /// Memory will be used on device only, no need to be mapped on host.
+        RESOURCE_MEMORY_USAGE_GPU_ONLY = 1,
+        /// Memory will be mapped on host. Could be used for transfer to device.
+        RESOURCE_MEMORY_USAGE_CPU_ONLY = 2,
+        /// Memory will be used for frequent (dynamic) updates from host and reads on device.
+        RESOURCE_MEMORY_USAGE_CPU_TO_GPU = 3,
+        /// Memory will be used for writing on device and readback on host.
+        RESOURCE_MEMORY_USAGE_GPU_TO_CPU = 4,
+        RESOURCE_MEMORY_USAGE_COUNT,
+        RESOURCE_MEMORY_USAGE_MAX_ENUM = 0x7FFFFFFF
+    } ResourceMemoryUsage;
+
     enum BackendResourceState
     {
         RESOURCE_STATE_UNDEFINED = 0,
@@ -1113,8 +1142,8 @@ namespace Ogre {
     typedef struct BufferBarrier
     {
         Handle<HwBufferObject> buffer;
-        uint32_t mCurrentState; //BackendResourceState
-        uint32_t mNewState; //BackendResourceState
+        BackendResourceState mCurrentState; //BackendResourceState
+        BackendResourceState mNewState; //BackendResourceState
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
     } BufferBarrier;
@@ -1122,8 +1151,8 @@ namespace Ogre {
     typedef struct TextureBarrier
     {
         OgreTexture* pTexture;
-        uint32_t mCurrentState;
-        uint32_t mNewState;
+        BackendResourceState mCurrentState;
+        BackendResourceState mNewState;
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
         uint8_t       mAcquire : 1;
@@ -1139,8 +1168,8 @@ namespace Ogre {
     typedef struct RenderTargetBarrier
     {
         Ogre::RenderTarget* pRenderTarget;
-        uint32_t mCurrentState;
-        uint32_t mNewState;
+        BackendResourceState mCurrentState;
+        BackendResourceState mNewState;
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
         uint8_t       mAcquire : 1;

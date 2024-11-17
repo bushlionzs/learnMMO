@@ -69,7 +69,7 @@ void PbrMaterial::setup(
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	ogreConfig.reverseDepth = true;
 	uiInit();
-	if (1)
+	if (0)
 	{
 		example1(renderPipeline, rs, renderWindow, sceneManager, gameCamera);
 	}
@@ -253,6 +253,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 {
 	example_type = 2;
 	std::string name = "FlightHelmet.gltf";
+	name = "Sponza.gltf";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
@@ -323,13 +324,13 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 				mat->addTexture(brdfLutName, &tp);
 			});
 	}
-	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, 1);
+	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, -1);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 
 	
 	gameCamera->lookAt(camPos, lookAt);
-	gameCamera->setMoveSpeed(1);
-	gameCamera->setRotateSpeed(1.5);
+	gameCamera->setMoveSpeed(50);
+	gameCamera->setRotateSpeed(0.5);
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	Ogre::Matrix4 projectMatrix;

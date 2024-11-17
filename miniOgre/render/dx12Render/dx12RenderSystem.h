@@ -19,8 +19,7 @@ public:
     virtual bool engineInit(bool raytracing);
     virtual void ready();
     virtual void _resourceLoaded();
-    virtual void frameStart();
-    virtual void frameEnd();
+    
     virtual void render(Ogre::Renderable* r, RenderListType t);
     virtual void multiRender(std::vector<Ogre::Renderable*>& objs, bool multithread);
     virtual Ogre::OgreTexture* createTextureFromFile(const std::string& name, Ogre::TextureProperty* texProperty);
@@ -31,10 +30,6 @@ public:
     void clearFrameBuffer(uint32 buffers,
         const Ogre::ColourValue& colour,
         float depth, uint16 stencil);
-    Ogre::RenderWindow* createRenderWindow(
-        const String& name, unsigned int width, unsigned int height,
-        const NameValuePairList* miscParams);
-
     Dx12TextureHandleManager* getTextureHandleManager()
     {
         return mDx12TextureHandleManager;
@@ -58,7 +53,7 @@ private:
     void UpdateShadowPassCBForTest(Ogre::ICamera* camera);
     void createFrameResource();
 private:
-    Dx12RenderWindow* mRenderWindow = nullptr;    
+      
     Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
     uint64_t mCurrentFence = 0;
@@ -80,6 +75,4 @@ private:
     Dx12RenderTarget* mActiveDx12RenderTarget;
 
     FrameConstantBuffer  mFrameConstantBuffer;
-
-    Dx12TextureHandleManager* mDx12TextureHandleManager = nullptr;
 };

@@ -242,7 +242,6 @@ public:
         return result;                                                                          \
     }
 
-#include "DriverAPI.inc"
 
 public:
     // This is for debugging only. Currently, CircularBuffer can only be written from a

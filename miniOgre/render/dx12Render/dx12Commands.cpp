@@ -68,14 +68,20 @@ ID3D12GraphicsCommandList* DX12Commands::get()
     return cmdList;
 }
 
+ID3D12CommandQueue* DX12Commands::getCommandQueue()
+{
+	return mCommandQueue;
+}
+
 bool DX12Commands::flush(bool waitCmd)
 {
 	if (mCurrentCommandBufferIndex < 0) {
 		return false;
 	}
 
-	ID3D12CommandList* commandList = mCommandList[mCurrentCommandBufferIndex].commandList;
-	mCommandQueue->ExecuteCommandLists(1, &commandList);
+	auto* commandList = mCommandList[mCurrentCommandBufferIndex].commandList;
+	commandList->Close();
+	mCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &commandList);
 
 	mLastCommandBufferIndex = mCurrentCommandBufferIndex;
 

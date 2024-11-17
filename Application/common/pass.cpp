@@ -25,6 +25,7 @@ public:
 			mFrameBufferObjectList[i] =
 				rs->createBufferObject(
 					BufferObjectBinding::BufferObjectBinding_Uniform, 
+					RESOURCE_MEMORY_USAGE_GPU_ONLY,
 					0, sizeof(mFrameConstantBuffer));
 		}
 		auto width = ogreConfig.width;
@@ -141,7 +142,7 @@ public:
 	}
 	virtual void update(float delta)
 	{
-		updateFrameData(mPassInput.cam, nullptr);
+		//updateFrameData(mPassInput.cam, nullptr);
 	}
 private:
 	void updateFrameData(ICamera* camera, ICamera* light)
@@ -177,7 +178,7 @@ private:
 		else
 		{
 			mFrameConstantBuffer.Shadow = 0;
-			mFrameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(0.739942074, -0.642787576, 0.198266909);
+			mFrameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(0.739942074, 0.642787576, 0.198266909);
 			mFrameConstantBuffer.directionLights[0].Direction.normalise();
 		}
 

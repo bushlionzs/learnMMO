@@ -22,7 +22,8 @@ void VertexSlotInfo::createBuffer(uint32_t vertexSize, uint32_t vertexCount)
             BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
     }
     mVertexBufferHandle = rs->createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding::BufferObjectBinding_Vertex,
+        BufferObjectBinding::BufferObjectBinding_Vertex,
+        RESOURCE_MEMORY_USAGE_GPU_ONLY,
         bufferCreationFlags,
         vertexSize * vertexCount,
         "VertexBuffer");

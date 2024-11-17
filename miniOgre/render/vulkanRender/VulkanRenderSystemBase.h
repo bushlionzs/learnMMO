@@ -86,7 +86,8 @@ protected:
     virtual void bindVertexBuffer(Handle<HwBufferObject> bufHandle, uint32_t binding);
     virtual void bindIndexBuffer(Handle<HwBufferObject>, uint32_t indexSize);
     virtual Handle<HwBufferObject> createBufferObject(
-        uint32_t bindingType,
+        BufferObjectBinding bufferObjectBinding,
+        ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
         uint32_t byteCount,
         const char* debugName) override;

@@ -12,6 +12,7 @@ public:
     DX12Commands(ID3D12Device* device);
     ~DX12Commands();
     ID3D12GraphicsCommandList* get();
+    ID3D12CommandQueue* getCommandQueue();
     bool flush(bool waitCmd);
 private:
     void signalFence();

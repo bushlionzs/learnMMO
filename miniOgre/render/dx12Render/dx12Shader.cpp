@@ -164,14 +164,13 @@ void DX12Program::updateShaderResource(Ogre::ShaderType shaderType)
     if (shaderType == ShaderType::VertexShader)
     {
         mD3d12ShaderInputParameters.resize(shaderDesc.InputParameters);
+        mSerStrings.resize(shaderDesc.InputParameters);
         for (auto i = 0; i < shaderDesc.InputParameters; i++)
         {
             D3D12_SIGNATURE_PARAMETER_DESC& curParam = mD3d12ShaderInputParameters[i];
             shaderReflection->GetInputParameterDesc(i, &curParam);
-            std::string* name = new std::string(curParam.SemanticName);
-            mSerStrings.emplace_back();
-            mSerStrings[mSerStrings.size() - 1] = curParam.SemanticName;
-            curParam.SemanticName = mSerStrings.back().c_str();
+            mSerStrings[i] = curParam.SemanticName;
+            curParam.SemanticName = mSerStrings[i].c_str();
         }
     }
     std::vector<ShaderResource> shaderResourceList;

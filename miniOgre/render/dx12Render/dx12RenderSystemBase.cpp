@@ -11,10 +11,12 @@
 #include "OgreViewport.h"
 #include "OgreRoot.h"
 #include "OgreSceneManager.h"
+#include "OgreStringConverter.h"
 #include "dx12Buffer.h"
 #include "dx12Shader.h"
 #include "dx12Texture.h"
 #include "dx12Handles.h"
+#include "dx12RenderTarget.h"
 #include "dx12Commands.h"
 #include "dx12RenderTarget.h"
 #include "dx12TextureHandleManager.h"
@@ -24,11 +26,17 @@
 #include "dx12Frame.h"
 #include "D3D12Mappings.h"
 #include "d3dutil.h"
+#include "dx12RenderTarget.h"
+#include "dx12SwapChain.h"
+
+#define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) \
+    ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
 
 Dx12RenderSystemBase::Dx12RenderSystemBase()
     :mResourceAllocator(83886080, false)
 {
 	mRenderSystemName = "Directx12";
+    mRenderType = EngineType_Dx12;
 }
 
 
@@ -54,8 +62,117 @@ void Dx12RenderSystemBase::ready()
 
 }
 
+Ogre::RenderWindow* Dx12RenderSystemBase::createRenderWindow(
+    const String& name, unsigned int width, unsigned int height,
+    const NameValuePairList* miscParams)
+{
+
+    auto itor = miscParams->find("externalWindowHandle");
+    if (itor == miscParams->end())
+    {
+        OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "externalWindowHandle should be provided");
+    }
+
+    auto wnd = (HWND)StringConverter::parseSizeT(itor->second);
+    mSwapChain = new DX12SwapChain(mCommands, wnd);
+    mRenderWindow = new Dx12RenderWindow();
+    mRenderWindow->create(mSwapChain);
+    return mRenderWindow;
+}
+Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
+    const String& name,
+    uint32_t width,
+    uint32_t height,
+    Ogre::PixelFormat format,
+    uint32_t usage)
+{
+    TextureProperty texProperty;
+    texProperty._width = width;
+    texProperty._height = height;
+    texProperty._tex_usage = usage;
+    texProperty._tex_format = format;
+    texProperty._need_mipmap = false;
+
+    if (usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    {
+        texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
+        texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
+        texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
+    }
+    Dx12RenderTarget* renderTarget = new Dx12RenderTarget(
+        name, mCommands, texProperty, mDx12TextureHandleManager);
+    return renderTarget;
+}
+
+void Dx12RenderSystemBase::frameStart()
+{
+    bool reized = false;
+    mSwapChain->acquire(reized);
+}
+
+void Dx12RenderSystemBase::frameEnd()
+{
+
+}
+
+void Dx12RenderSystemBase::present()
+{
+    mSwapChain->present();
+}
+
 void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
 {
+    auto* cl = mCommands->get();
+
+    uint32_t width = 0;
+    uint32_t height = 0;
+
+    bool hasColor = false;
+    for (auto i = 0; i < renderPassInfo.renderTargetCount; i++)
+    {
+        Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
+        auto* tex = colorTarget->getTarget();
+        auto cpuHandle = tex->getCpuHandle();
+        float* ptr = (float*) & renderPassInfo.renderTargets->clearColour;
+        cl->ClearRenderTargetView(cpuHandle, ptr, 0, nullptr);
+        hasColor = true;
+    }
+    bool hasDepth = false;
+    if (renderPassInfo.depthTarget.depthStencil)
+    {
+        Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
+        auto* tex = depthTarget->getTarget();
+        auto cpuHandle = tex->getCpuHandle();
+        cl->ClearDepthStencilView(cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 
+            renderPassInfo.depthTarget.clearValue.depth, renderPassInfo.depthTarget.clearValue.stencil, 0, nullptr);
+
+        hasDepth = true;
+    }
+
+    if (hasColor)
+    {
+        Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[0].renderTarget;
+        width = colorTarget->getWidth();
+        height = colorTarget->getHeight();
+    }
+    else if (hasDepth)
+    {
+        Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
+        width = depthTarget->getWidth();
+        height = depthTarget->getHeight();
+    }
+    D3D12_VIEWPORT viewport;
+    D3D12_RECT scissorRect;
+
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    scissorRect = { 0, 0, (LONG)width, (LONG)height };
+    cl->RSSetViewports(1, &viewport);
+    cl->RSSetScissorRects(1, &scissorRect);
 }
 
 void Dx12RenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
@@ -111,12 +228,6 @@ void Dx12RenderSystemBase::endComputePass()
 
 void Dx12RenderSystemBase::dispatchComputeShader()
 {
-
-}
-
-void Dx12RenderSystemBase::present()
-{
-
 }
 
 void Dx12RenderSystemBase::pushGroupMarker(const char* maker) 
@@ -155,12 +266,13 @@ void Dx12RenderSystemBase::unlockBuffer(Handle<HwBufferObject> boh)
 {
     DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(boh);
 
-    auto* cmdList = mDX12Commands->get();
+    auto* cmdList = mCommands->get();
     bo->unlock(cmdList);
 }
 
 Handle<HwBufferObject> Dx12RenderSystemBase::createBufferObject(
-    uint32_t bindingType,
+    BufferObjectBinding bindingType,
+    ResourceMemoryUsage memoryUsage,
     uint32_t bufferCreationFlags,
     uint32_t byteCount,
     const char* debugName)
@@ -168,7 +280,7 @@ Handle<HwBufferObject> Dx12RenderSystemBase::createBufferObject(
     Handle<HwBufferObject> boh = mResourceAllocator.allocHandle<DX12BufferObject>();
 
     DX12BufferObject* bufferObject = mResourceAllocator.construct<DX12BufferObject>(
-        boh, byteCount, bufferCreationFlags);
+        boh, bindingType, memoryUsage, bufferCreationFlags, byteCount);
 
     return boh;
 }
@@ -179,7 +291,7 @@ void Dx12RenderSystemBase::updateBufferObject(
     uint32_t size)
 {
     DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(boh);
-    auto* cmdList = mDX12Commands->get();
+    auto* cmdList = mCommands->get();
     bo->copyData(cmdList, data, size);
 }
 
@@ -213,7 +325,7 @@ Handle<HwProgram> Dx12RenderSystemBase::createShaderProgram(
     const std::vector <ShaderResource>& shaderResourceList = program->getShaderResourceList();
     D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
     UINT rootParamCount = 0;
-
+    D3D12_DESCRIPTOR_RANGE1 range[32];
     for (auto& shaderResource : shaderResourceList)
     {
         if (shaderResource.type == D3D_SIT_SAMPLER)
@@ -223,12 +335,8 @@ Handle<HwProgram> Dx12RenderSystemBase::createShaderProgram(
 
         if (shaderResource.type == D3D_SIT_TEXTURE)
         {
-            D3D12_DESCRIPTOR_RANGE1 range{};
-            range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            range.BaseShaderRegister = shaderResource.reg;
-            range.NumDescriptors = shaderResource.size;
             d3dUtil::create_descriptor_table(shaderResource.size,
-                &shaderResource, &range, &rootParams[rootParamCount]);
+                &shaderResource, range, &rootParams[rootParamCount]);
         }
         else if (shaderResource.type == D3D_SIT_CBUFFER)
         {
@@ -402,14 +510,154 @@ void Dx12RenderSystemBase::updateDescriptorSetSampler(
 }
 
 void Dx12RenderSystemBase::resourceBarrier(
-    uint32_t numBufferBarriers,
-    BufferBarrier* pBufferBarriers,
-    uint32_t textureBarrierCount,
-    TextureBarrier* pTextureBarriers,
-    uint32_t numRtBarriers,
-    RenderTargetBarrier* pRtBarriers
+    uint32_t numBufferBarriers, BufferBarrier* pBufferBarriers, 
+    uint32_t numTextureBarriers, TextureBarrier* pTextureBarriers, 
+    uint32_t numRtBarriers, RenderTargetBarrier* pRtBarriers
 )
 {
+    D3D12_RESOURCE_BARRIER* barriers =
+        (D3D12_RESOURCE_BARRIER*)alloca((numBufferBarriers + numTextureBarriers + numRtBarriers) * sizeof(D3D12_RESOURCE_BARRIER));
+    uint32_t transitionCount = 0;
+
+    for (uint32_t i = 0; i < numBufferBarriers; ++i)
+    {
+        BufferBarrier* pTransBarrier = &pBufferBarriers[i];
+        D3D12_RESOURCE_BARRIER* pBarrier = &barriers[transitionCount];
+
+        DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(pTransBarrier->buffer);
+
+        auto memoryUsage = bo->getMemoryUsage();
+        auto bufferObjectType = bo->getBufferObjectBinding();
+        // Only transition GPU visible resources.
+        // Note: General CPU_TO_GPU resources have to stay in generic read state. They are created in upload heap.
+        // There is one corner case: CPU_TO_GPU resources with UAV usage can have state transition. And they are created in custom heap.
+        if (memoryUsage == RESOURCE_MEMORY_USAGE_GPU_ONLY || memoryUsage == RESOURCE_MEMORY_USAGE_GPU_TO_CPU ||
+            (memoryUsage == RESOURCE_MEMORY_USAGE_CPU_TO_GPU && (bufferObjectType & BufferObjectBinding_Storge)))
+        {
+            // if (!(pBuffer->mCurrentState & pTransBarrier->mNewState) && pBuffer->mCurrentState != pTransBarrier->mNewState)
+            if (RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->mCurrentState &&
+                RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->mNewState)
+            {
+                pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                pBarrier->UAV.pResource = bo->getResource();
+                ++transitionCount;
+            }
+            else
+            {
+                pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                if (pTransBarrier->mBeginOnly)
+                {
+                    pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY;
+                }
+                else if (pTransBarrier->mEndOnly)
+                {
+                    pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
+                }
+                pBarrier->Transition.pResource = bo->getResource();
+                pBarrier->Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                pBarrier->Transition.StateBefore = D3D12Mappings::util_to_dx12_resource_state(pTransBarrier->mCurrentState);
+                pBarrier->Transition.StateAfter = D3D12Mappings::util_to_dx12_resource_state(pTransBarrier->mNewState);
+
+                ++transitionCount;
+            }
+        }
+    }
+
+    for (uint32_t i = 0; i < numTextureBarriers; ++i)
+    {
+        TextureBarrier* pTrans = &pTextureBarriers[i];
+        D3D12_RESOURCE_BARRIER* pBarrier = &barriers[transitionCount];
+        Dx12Texture* pTexture = (Dx12Texture*)pTrans->pTexture;
+
+        auto texMipLevel = pTexture->getMipLevel();
+
+        if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
+        {
+            pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            pBarrier->UAV.pResource = pTexture->getResource();
+            ++transitionCount;
+        }
+        else
+        {
+            pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            if (pTrans->mBeginOnly)
+            {
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY;
+            }
+            else if (pTrans->mEndOnly)
+            {
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
+            }
+            pBarrier->Transition.pResource = pTexture->getResource();
+            pBarrier->Transition.Subresource = pTrans->mSubresourceBarrier
+                ? CALC_SUBRESOURCE_INDEX(pTrans->mMipLevel, pTrans->mArrayLayer, 0, texMipLevel, 1)
+                : D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            if (pTrans->mAcquire)
+                pBarrier->Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+            else
+                pBarrier->Transition.StateBefore = D3D12Mappings::util_to_dx12_resource_state(pTrans->mCurrentState);
+
+            if (pTrans->mRelease)
+                pBarrier->Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+            else
+                pBarrier->Transition.StateAfter = D3D12Mappings::util_to_dx12_resource_state(pTrans->mNewState);
+
+            ++transitionCount;
+        }
+    }
+
+    for (uint32_t i = 0; i < numRtBarriers; ++i)
+    {
+        RenderTargetBarrier* pTrans = &pRtBarriers[i];
+        D3D12_RESOURCE_BARRIER* pBarrier = &barriers[transitionCount];
+        Dx12Texture* pTexture = (Dx12Texture*)pTrans->pRenderTarget->getTarget();
+        auto texMipLevel = pTexture->getMipLevel();
+        if (RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mCurrentState && RESOURCE_STATE_UNORDERED_ACCESS == pTrans->mNewState)
+        {
+            pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            pBarrier->UAV.pResource = pTexture->getResource();
+            ++transitionCount;
+        }
+        else
+        {
+            pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            if (pTrans->mBeginOnly)
+            {
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY;
+            }
+            else if (pTrans->mEndOnly)
+            {
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
+            }
+            pBarrier->Transition.pResource = pTexture->getResource();
+            pBarrier->Transition.Subresource = pTrans->mSubresourceBarrier
+                ? CALC_SUBRESOURCE_INDEX(pTrans->mMipLevel, pTrans->mArrayLayer, 0, texMipLevel, 1)
+                : D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            if (pTrans->mAcquire)
+                pBarrier->Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+            else
+                pBarrier->Transition.StateBefore = D3D12Mappings::util_to_dx12_resource_state(pTrans->mCurrentState);
+
+            if (pTrans->mRelease)
+                pBarrier->Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+            else
+                pBarrier->Transition.StateAfter = D3D12Mappings::util_to_dx12_resource_state(pTrans->mNewState);
+
+            ++transitionCount;
+        }
+    }
+
+    if (transitionCount)
+    {
+        auto* cl = mCommands->get();
+        cl->ResourceBarrier(transitionCount, barriers);
+    }
 }
 
 

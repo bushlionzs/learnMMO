@@ -65,7 +65,7 @@ bool ManualApplication::appInit()
 	}
 	InputManager::getSingletonPtr()->createInput((size_t)wnd);
 
-	mRenderSystem = Ogre::Root::getSingleton().createRenderEngine(wnd, EngineType_Vulkan);
+	mRenderSystem = Ogre::Root::getSingleton().createRenderEngine(wnd, mAppInfo->engineType);
 	if (!mRenderSystem)
 	{
 		return false;
@@ -151,20 +151,36 @@ void ManualApplication::render()
 	mRenderSystem->frameStart();
 	Ogre::Root::getSingleton()._fireFrameStarted();
 
+	{
+		RenderTargetBarrier rtBarriers[] =
+		{
+			{
+				mRenderWindow->getColorTarget(),
+				RESOURCE_STATE_PRESENT,
+				RESOURCE_STATE_RENDER_TARGET
+			}
+		};
+		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+	}
+	
+
 	for (auto pass : mPassList)
 	{
 		pass->execute(mRenderSystem);
 	}
 
-	RenderTargetBarrier rtBarriers[] =
 	{
+		RenderTargetBarrier rtBarriers[] =
 		{
-			mRenderWindow->getColorTarget(),
-			RESOURCE_STATE_RENDER_TARGET,
-			RESOURCE_STATE_PRESENT
-		}
-	};
-	mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+			{
+				mRenderWindow->getColorTarget(),
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_PRESENT
+			}
+		};
+		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+	}
+	
 
 	mRenderSystem->present();
 	mRenderSystem->frameEnd();
@@ -255,6 +271,7 @@ void ManualApplication::addUIPass()
 	auto frameHandle =
 		rs->createBufferObject(
 			BufferObjectBinding::BufferObjectBinding_Uniform,
+			RESOURCE_MEMORY_USAGE_GPU_ONLY,
 			0, sizeof(frameConstantBuffer));
 
 	updateFrameData(cam, frameConstantBuffer, frameHandle);

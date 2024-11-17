@@ -154,7 +154,8 @@ public:
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes) { return nullptr; }
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle) {}
     virtual Handle<HwBufferObject> createBufferObject(
-        uint32_t bindingType,
+        BufferObjectBinding bindingType,
+        ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
         uint32_t byteCount,
         const char* debugName = nullptr);

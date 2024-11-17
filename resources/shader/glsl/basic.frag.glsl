@@ -1,6 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
-
+#extension GL_ARB_shading_language_include : enable
 #include "common.glsl"
 
 layout (location = 0) in vec4 inPosH;

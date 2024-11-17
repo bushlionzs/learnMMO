@@ -1,28 +1,35 @@
 #pragma once
 #include "dx12Common.h"
 #include "OgreColourValue.h"
-class Dx12RenderTarget
+#include "OgreRenderTarget.h"
+#include "dx12Texture.h"
+
+class DX12SwapChain;
+class DX12Commands;
+class Dx12TextureHandleManager;
+
+class Dx12RenderTarget: public Ogre::RenderTarget
 {
 public:
-	Dx12RenderTarget
-	(
-	);
+	Dx12RenderTarget(
+		const String& name,
+		DX12Commands* commands,
+		TextureProperty& texProperty,
+		Dx12TextureHandleManager* mgr);
+	Dx12RenderTarget(DX12SwapChain* swapChain, bool depth = false);
 	~Dx12RenderTarget();
 
-	virtual void preRender(ID3D12GraphicsCommandList* cl) = 0;
-	virtual ID3D12Resource* getCurrentBackBuffer()const = 0;
-	virtual D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView()const = 0;
-	virtual D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView()const = 0;
 
-	virtual D3D12_RESOURCE_STATES getResourceStates() = 0;
+	virtual Dx12Texture* getTarget();
+	
 
 	virtual bool useMsaa() 
 	{
 		return false;
 	}
-
-	virtual void clearFrameBuffer(uint32_t buffers,
-		const Ogre::ColourValue& colour,
-		float depth, uint16_t stencil) = 0;
 private:
+	Dx12Texture* mTarget = nullptr;
+
+	DX12SwapChain* mSwapChain = nullptr;
+	bool mDepth = false;
 };

@@ -110,7 +110,7 @@ namespace filament {
         assert_invariant(!mInUseTextures.size());
         auto& textureCache = mTextureCache;
         for (auto it = textureCache.begin(); it != textureCache.end();) {
-            mBackend.destroyTexture(it->second.handle);
+            //mBackend.destroyTexture(it->second.handle);
             it = textureCache.erase(it);
         }
     }
@@ -119,12 +119,13 @@ namespace filament {
         TargetBufferFlags targetBufferFlags, uint32_t width, uint32_t height,
         uint8_t samples, uint8_t layerCount, MRT color, TargetBufferInfo depth,
         TargetBufferInfo stencil) noexcept {
-        return mBackend.createRenderTarget(targetBufferFlags,
-            width, height, samples ? samples : 1u, layerCount, color, depth, stencil);
+        /*return mBackend.createRenderTarget(targetBufferFlags,
+            width, height, samples ? samples : 1u, layerCount, color, depth, stencil);*/
+        return RenderTargetHandle();
     }
 
     void ResourceAllocator::destroyRenderTarget(RenderTargetHandle h) noexcept {
-        mBackend.destroyRenderTarget(h);
+        //mBackend.destroyRenderTarget(h);
     }
 
     backend::TextureHandle ResourceAllocator::createTexture(const char* name,
@@ -132,52 +133,8 @@ namespace filament {
         uint32_t width, uint32_t height, uint32_t depth,
         std::array<backend::TextureSwizzle, 4> swizzle,
         backend::TextureUsage usage) noexcept {
-        // The frame graph descriptor uses "0" to mean "auto" but the sample count that is passed to the
-        // backend should always be 1 or greater.
-        samples = samples ? samples : uint8_t(1);
-
-        using TS = backend::TextureSwizzle;
-        constexpr const auto defaultSwizzle = std::array<backend::TextureSwizzle, 4>{
-            TS::CHANNEL_0, TS::CHANNEL_1, TS::CHANNEL_2, TS::CHANNEL_3};
-
-        // do we have a suitable texture in the cache?
-        TextureHandle handle;
-        if constexpr (mEnabled) {
-            auto& textureCache = mTextureCache;
-            const TextureKey key{ name, target, levels, format, samples, width, height, depth, usage, swizzle };
-            auto it = textureCache.find(key);
-            if (UTILS_LIKELY(it != textureCache.end())) {
-                // we do, move the entry to the in-use list, and remove from the cache
-                handle = it->second.handle;
-                mCacheSize -= it->second.size;
-                textureCache.erase(it);
-            }
-            else {
-                // we don't, allocate a new texture and populate the in-use list
-                if (swizzle == defaultSwizzle) {
-                    handle = mBackend.createTexture(
-                        target, levels, format, samples, width, height, depth, usage);
-                }
-                else {
-                    handle = mBackend.createTextureSwizzled(
-                        target, levels, format, samples, width, height, depth, usage,
-                        swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
-                }
-            }
-            mInUseTextures.emplace(handle, key);
-        }
-        else {
-            if (swizzle == defaultSwizzle) {
-                handle = mBackend.createTexture(
-                    target, levels, format, samples, width, height, depth, usage);
-            }
-            else {
-                handle = mBackend.createTextureSwizzled(
-                    target, levels, format, samples, width, height, depth, usage,
-                    swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
-            }
-        }
-        return handle;
+        
+        return TextureHandle();
     }
 
     void ResourceAllocator::destroyTexture(TextureHandle h) noexcept {
@@ -197,7 +154,7 @@ namespace filament {
             mInUseTextures.erase(it);
         }
         else {
-            mBackend.destroyTexture(h);
+            //mBackend.destroyTexture(h);
         }
     }
 
@@ -237,7 +194,7 @@ namespace filament {
     void ResourceAllocator::purge(
         ResourceAllocator::CacheContainer::iterator const& pos) {
         //slog.d << "purging " << pos->second.handle.getId() << ", age=" << pos->second.age << io::endl;
-        mBackend.destroyTexture(pos->second.handle);
+        //mBackend.destroyTexture(pos->second.handle);
         mCacheSize -= pos->second.size;
         mTextureCache.erase(pos);
     }

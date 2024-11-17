@@ -77,6 +77,7 @@ namespace Ogre {
             Handle<HwBufferObject> objectBufferHandle =
                 rs->createBufferObject(
                     BufferObjectBinding::BufferObjectBinding_Uniform, 
+                    RESOURCE_MEMORY_USAGE_GPU_ONLY,
                     0,
                     sizeof(ObjectConstantBuffer));
             resourceInfo->modelObjectHandle = objectBufferHandle;
@@ -85,13 +86,18 @@ namespace Ogre {
             if (mat->isPbr())
             {
                 matBufferHandle =
-                    rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, 0,
+                    rs->createBufferObject(
+                        BufferObjectBinding::BufferObjectBinding_Uniform, 
+                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
+                        0,
                         sizeof(PbrMaterialConstanceBuffer));
             }
             else
             {
                 matBufferHandle =
-                    rs->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform,
+                    rs->createBufferObject(
+                        BufferObjectBinding::BufferObjectBinding_Uniform,
+                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
                         0, sizeof(GeneralMaterialConstantBuffer));
             }
 
@@ -115,6 +121,7 @@ namespace Ogre {
                 resourceInfo->skinObjectHandle =
                     rs->createBufferObject(
                         BufferObjectBinding::BufferObjectBinding_Uniform,
+                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
                         0,
                         sizeof(SkinnedConstantBuffer));
 

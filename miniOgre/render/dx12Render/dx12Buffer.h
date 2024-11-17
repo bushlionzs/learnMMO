@@ -30,5 +30,4 @@ private:
     std::string mMemBuffer;
     DXGI_FORMAT mIndexFormat;
     
-    DX12BufferObject mDX12BufferObject;
 };

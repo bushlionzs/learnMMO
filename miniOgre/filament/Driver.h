@@ -111,7 +111,6 @@ public:
     virtual RetType methodName##S() noexcept = 0; \
     void methodName##R(RetType, paramsDecl) {}
 
-#include "DriverAPI.inc"
 };
 
 } // namespace filament::backend

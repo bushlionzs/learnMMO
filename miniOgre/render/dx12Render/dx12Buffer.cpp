@@ -9,7 +9,7 @@ Dx12Buffer::Dx12Buffer(
     HardwareBuffer::BufferType btype, 
     size_t vertexSize, 
     size_t numVerts, 
-    uint32_t bufferCreationFlags):mDX12BufferObject(vertexSize* numVerts, bufferCreationFlags)
+    uint32_t bufferCreationFlags)
 {
     mBufferType = btype;
     mVertexSize = vertexSize;
@@ -45,7 +45,7 @@ void* Dx12Buffer::lockimpl(size_t offset, size_t length, HardwareBuffer::LockOpt
 void Dx12Buffer::unlock()
 {
     ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
-    mDX12BufferObject.copyData(cmdList, mMemBuffer.data(), mMemBuffer.size());
+   
 }
 
 void Dx12Buffer::bind(int32_t slot, void* cb)
@@ -55,7 +55,7 @@ void Dx12Buffer::bind(int32_t slot, void* cb)
     if (mBufferType == HardwareBuffer::VERTEX_BUFFER)
     {
         D3D12_VERTEX_BUFFER_VIEW vbv;
-        vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
+        //vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
         vbv.StrideInBytes = mVertexSize;
         vbv.SizeInBytes = mVertexSize * mNumVerts;
         cmdList->IASetVertexBuffers(slot, 1, &vbv);
@@ -63,7 +63,7 @@ void Dx12Buffer::bind(int32_t slot, void* cb)
     else if (mBufferType == HardwareBuffer::INDEX_BUFFER)
     {
         D3D12_INDEX_BUFFER_VIEW ibv;
-        ibv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
+       // ibv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
         ibv.Format = mIndexFormat;
         ibv.SizeInBytes = mVertexSize * mNumVerts;
         cmdList->IASetIndexBuffer(&ibv);
@@ -74,7 +74,7 @@ void Dx12Buffer::bind(int32_t slot, void* cb)
 void Dx12Buffer::bind(ID3D12GraphicsCommandList* cmdList, int32_t slot)
 {
     D3D12_VERTEX_BUFFER_VIEW vbv;
-    vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
+    //vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
     vbv.StrideInBytes = mVertexSize;
     vbv.SizeInBytes = mVertexSize * mNumVerts;
     cmdList->IASetVertexBuffers(slot, 1, &vbv);

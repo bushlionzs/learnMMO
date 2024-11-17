@@ -69,6 +69,10 @@ namespace Ogre
 		static D3D12_DESCRIPTOR_RANGE_TYPE getRangeType(D3D_SHADER_INPUT_TYPE inputType);
 
 		static D3D12_SHADER_VISIBILITY getShaderVisibility(uint8_t stages);
+
+		static Ogre::PixelFormat getPixelFormat(DXGI_FORMAT format);
+
+		static D3D12_RESOURCE_STATES util_to_dx12_resource_state(BackendResourceState state);
 	};
 }
 #endif

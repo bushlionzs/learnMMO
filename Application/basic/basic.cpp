@@ -73,10 +73,7 @@ void BasicApplication::addCustomDirectory()
 
 void BasicApplication::base1()
 {
-	
-
 	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
-
 	float aa = 1.0f;
 	Ogre::Vector3 leftop = Ogre::Vector3(-aa, aa, 0.0f);
 	Ogre::Vector3 leftbottom = Ogre::Vector3(-aa, -aa, 0.0f);
@@ -93,13 +90,13 @@ void BasicApplication::base1()
 
 	Entity* rect = mSceneManager->createEntity("rect", meshName);
 	SceneNode* rectnode = root->createChildSceneNode("rect");
-	rectnode->attachObject(rect);
+	//rectnode->attachObject(rect);
 
 	SubEntity* subEntry = rect->getSubEntity(0);
 	auto& mat = subEntry->getMaterial();
 	ShaderInfo& info = mat->getShaderInfo();
 	//info.shaderName = "testShader";
-	mSceneManager->setSkyBox(true, "SkyLan", 1000.0f);
+	//mSceneManager->setSkyBox(true, "SkyLan", 1000.0f);
 	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, 3.f), Ogre::Vector3::ZERO);
 	mGameCamera->setCameraType(CameraMoveType_FirstPerson);
 	mGameCamera->setMoveSpeed(5);
@@ -108,20 +105,16 @@ void BasicApplication::base1()
 	if (ogreConfig.reverseDepth)
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
-		m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
 			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 6000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
-		m = Ogre::Math::makePerspectiveMatrixLH(
+		m = Ogre::Math::makePerspectiveMatrix(
 			Ogre::Math::PI / 2.0f, aspect, 0.1, 6000);
 	}
-
 	mGameCamera->getCamera()->updateProjectMatrix(m);
-	
-
-
 }
 
 void BasicApplication::base2()

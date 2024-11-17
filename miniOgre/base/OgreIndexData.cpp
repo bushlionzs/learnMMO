@@ -38,7 +38,8 @@ void IndexData::createBuffer(uint32_t indexSize, uint32_t indexCount)
     }
 
     mIndexBufferHandle = rs->createBufferObject(
-        backend::BufferObjectBinding_Storge | backend::BufferObjectBinding_Index,
+        BufferObjectBinding_Index,
+        RESOURCE_MEMORY_USAGE_GPU_ONLY,
         bufferCreationFlags,
         indexSize * indexCount,
         "IndexBuffer");

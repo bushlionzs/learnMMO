@@ -27,6 +27,8 @@ struct AppInfo
 	FrameGraphPassCallback  fgpass;
     CleanupCallback cleanup;
     UpdateCallback update;
+
+    EngineType engineType = EngineType_Vulkan;
     bool enableRayTracing = false;
     bool useCEGUI = false;
     bool useSRGB = false;

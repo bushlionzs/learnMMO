@@ -5,15 +5,33 @@
 
 struct DX12BufferObject : public HwBufferObject {
     DX12BufferObject(
-        uint32_t byteCount,
-        uint32_t bufferCreationFlags);
+        BufferObjectBinding bufferObjectBinding,
+        ResourceMemoryUsage memoryUsage,
+        uint32_t bufferCreationFlags,
+        uint32_t byteCount
+        );
     void copyData(ID3D12GraphicsCommandList* cmdList, const char* data, uint32_t size);
     D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress();
+    ResourceMemoryUsage getMemoryUsage()
+    {
+        return mMemoryUsage;
+    }
+
+    BufferObjectBinding getBufferObjectBinding()
+    {
+        return mBufferObjectBinding;
+    }
 
     void* lock(uint32_t offset, uint32_t numBytes);
     void unlock(ID3D12GraphicsCommandList* cmdList);
+
+    ID3D12Resource* getResource()
+    {
+        return BufferGPU.Get();
+    }
 private:
-    BufferUsage usage;
+    BufferObjectBinding mBufferObjectBinding;
+    ResourceMemoryUsage mMemoryUsage;
     BufferObjectBinding bindingType;
 
     D3D12_RANGE mRange;

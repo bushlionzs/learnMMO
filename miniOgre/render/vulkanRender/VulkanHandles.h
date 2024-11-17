@@ -569,11 +569,11 @@ struct VulkanBufferObject : public HwBufferObject, VulkanResource {
         VmaAllocator allocator, 
         VulkanStagePool& stagePool, 
         uint32_t byteCount,
-        uint32_t bindingType,
+        BufferObjectBinding bindingType,
         uint32_t bufferCreationFlags);
 
     VulkanBuffer buffer;
-    const VkBufferUsageFlags bindingType;
+    const BufferObjectBinding bindingType;
 };
 
 struct VulkanSamplerGroup : public HwSamplerGroup, VulkanResource {

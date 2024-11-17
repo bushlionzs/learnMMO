@@ -42,7 +42,6 @@ public:
 #define DECL_DRIVER_API(methodName, paramsDecl, params)                     Execute methodName##_;
 #define DECL_DRIVER_API_RETURN(RetType, methodName, paramsDecl, params)     Execute methodName##_;
 
-#include "DriverAPI.inc"
 };
 
 } // namespace filament::backend

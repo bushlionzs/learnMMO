@@ -9,7 +9,6 @@
 #ifndef NUM_SPOT_LIGHTS
     #define NUM_SPOT_LIGHTS 0
 #endif
-
 struct Light {
     vec3 Strength;
     float FalloffStart; // point/spot light only

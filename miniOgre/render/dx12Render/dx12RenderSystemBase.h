@@ -10,9 +10,9 @@
 class Dx12GraphicsCommandList;
 class Dx12RenderTarget;
 class Dx12TextureHandleManager;
-class Dx12ShadowMap;
 class Dx12RenderWindow;
 class DX12Commands;
+class DX12SwapChain;
 
 class Dx12RenderSystemBase : public RenderSystem
 {
@@ -27,7 +27,18 @@ public:
 
     virtual bool engineInit();
     virtual void ready();
-   
+    virtual Ogre::RenderWindow* createRenderWindow(
+        const String& name, unsigned int width, unsigned int height,
+        const NameValuePairList* miscParams) override;
+    virtual Ogre::RenderTarget* createRenderTarget(
+        const String& name,
+        uint32_t width,
+        uint32_t height,
+        Ogre::PixelFormat format,
+        uint32_t usage) override;
+    virtual void frameStart();
+    virtual void frameEnd();
+    virtual void present();
     virtual void beginRenderPass(
         RenderPassInfo& renderPassInfo);
     virtual void endRenderPass(RenderPassInfo& renderPassInfo);
@@ -58,7 +69,6 @@ public:
     virtual void endComputePass();
 
     virtual void dispatchComputeShader();
-    virtual void present();
 
     virtual void pushGroupMarker(const char* maker);
     virtual void popGroupMarker();
@@ -75,7 +85,8 @@ public:
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle);
     virtual Handle<HwBufferObject> createBufferObject(
-        uint32_t bindingType,
+        BufferObjectBinding bindingType,
+        ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
         uint32_t byteCount,
         const char* debugName = nullptr);
@@ -143,11 +154,13 @@ public:
     virtual void flushCmd(bool waitCmd);
 protected:
     Dx12ResourceAllocator mResourceAllocator;
-    DX12Commands* mDX12Commands;
+    DX12Commands* mCommands;
 
     DX12PipelineCache mDX12PipelineCache;
 
-    Dx12RenderWindow* mRenderWindow;
+    Dx12TextureHandleManager* mDx12TextureHandleManager = nullptr;
 
+    Dx12RenderWindow* mRenderWindow;
+    DX12SwapChain* mSwapChain;
     ID3D12Device* mDevice;
 };

@@ -22,12 +22,8 @@ public:
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
 	void update(float delta);
-	void updateFrameData(ICamera* camera, ICamera* light);
 
-	Handle<HwBufferObject> getFrameHandle(uint32_t frameIndex)
-	{
-		return mFrameBufferObjectList[frameIndex];
-	}
+
 private:
 	void renderObject(
 		Ogre::Renderable* r, 
@@ -40,10 +36,11 @@ private:
 	RenderSystem* mRenderSystem = nullptr;
 	RenderWindow* mRenderWindow = nullptr;
 	FrameConstantBuffer mFrameConstantBuffer;
-	std::vector<Handle<HwBufferObject>> mFrameBufferObjectList;
+	
 
 	std::vector<FrameData> mFrameData;
 
-	OgreTexture* voxelOpacityTexture = nullptr;
-	OgreTexture* voxelRadianceTexture = nullptr;
+	
+	VoxelizationContext mVoxelizationContext;
+	VoxelPassInfo mVoxelPassInfo;
 };

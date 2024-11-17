@@ -273,7 +273,7 @@ layout (location = 5) in vec4 inColor0;
 
 layout (location = 0) out vec4 outColor;
 
-void main1()
+void main()
 {
     // Metallic and Roughness material properties are packed together
     // In glTF, these factors can be specified by fixed scalar values
@@ -292,7 +292,13 @@ void main1()
 #endif
   
 
-    
+    #ifdef HAS_METALMAP
+        metalness = texture(metal_roughness_pbr, inUV0).r;
+    #endif
+
+    #ifdef HAS_ROUGHNESSMAP
+        roughness = texture(roughness_pbr, inUV0).r;
+    #endif
 
     // The albedo may be defined from a base texture or a flat color
 	float4 baseColorSource = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -330,7 +336,7 @@ void main1()
 #else
     float3 n = inNormal;
 #endif
-    n.y *= -1.0f;
+    //n.y *= -1.0f;
 	
 	float3 v = normalize(cbPass.gEyePosW - inWorldPos);        // Vector from surface point to camera
 	
@@ -383,7 +389,7 @@ void main1()
 	float ao = 0.0f;
 #ifdef HAS_OCCLUSIONMAP
 	ao = texture(ao_pbr, inUV0).r;
-    color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
+    //color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
 #endif
 
 #ifdef HAS_EMISSIVEMAP
@@ -419,7 +425,7 @@ void main1()
 	}
 }
 
-void main()
+void main1()
 {
     // Metallic and Roughness material properties are packed together
     // In glTF, these factors can be specified by fixed scalar values
