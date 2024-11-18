@@ -129,9 +129,6 @@ namespace Ogre {
 
         mProgramHandle = rs->createShaderProgram(mShaderInfo, mVertexDeclaration);
         mPipelineHandle = rs->createPipeline(mRasterState, mProgramHandle);
-
-        mUboLayoutHandle = rs->getDescriptorSetLayout(mProgramHandle, 0);
-        mSamplerLayoutHandle = rs->getDescriptorSetLayout(mProgramHandle, 1);
         
         if (mPbr)
         {

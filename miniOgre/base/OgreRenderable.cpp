@@ -77,7 +77,7 @@ namespace Ogre {
             Handle<HwBufferObject> objectBufferHandle =
                 rs->createBufferObject(
                     BufferObjectBinding::BufferObjectBinding_Uniform, 
-                    RESOURCE_MEMORY_USAGE_GPU_ONLY,
+                    RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
                     0,
                     sizeof(ObjectConstantBuffer));
             resourceInfo->modelObjectHandle = objectBufferHandle;
@@ -88,7 +88,7 @@ namespace Ogre {
                 matBufferHandle =
                     rs->createBufferObject(
                         BufferObjectBinding::BufferObjectBinding_Uniform, 
-                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
+                        RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
                         0,
                         sizeof(PbrMaterialConstanceBuffer));
             }
@@ -97,18 +97,16 @@ namespace Ogre {
                 matBufferHandle =
                     rs->createBufferObject(
                         BufferObjectBinding::BufferObjectBinding_Uniform,
-                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
+                        RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
                         0, sizeof(GeneralMaterialConstantBuffer));
             }
 
             resourceInfo->matObjectHandle = matBufferHandle;
 
             Handle<HwProgram> programHandle = mat->getProgram();
-            auto zeroLayoutHandle = rs->getDescriptorSetLayout(programHandle, 0);
-            auto firstLayoutHandle = rs->getDescriptorSetLayout(programHandle, 1);
-            resourceInfo->zeroShadowSet = rs->createDescriptorSet(zeroLayoutHandle);
-            resourceInfo->zeroSet = rs->createDescriptorSet(zeroLayoutHandle);
-            resourceInfo->firstSet = rs->createDescriptorSet(firstLayoutHandle);
+            resourceInfo->zeroShadowSet = rs->createDescriptorSet(programHandle, 0);
+            resourceInfo->zeroSet = rs->createDescriptorSet(programHandle, 0);
+            resourceInfo->firstSet = rs->createDescriptorSet(programHandle, 1);
 
             rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 0, &objectBufferHandle, 1);
             rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 2, &matBufferHandle, 1);

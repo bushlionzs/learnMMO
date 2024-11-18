@@ -1,20 +1,8 @@
 #pragma once
 #include <string>
-
-
 #include "dx12Common.h"
 
-
-
-
-
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
-
-
-
-
-
-
 
 class d3dUtil
 {
@@ -49,7 +37,7 @@ public:
         UINT64 byteSize,
         Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 
-    static Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
+    static ID3DBlob* CompileShader(
         const std::string& content,
         const D3D_SHADER_MACRO* defines,
         const std::string& entrypoint,
@@ -69,4 +57,6 @@ public:
     static void create_root_constant(
        const  ShaderResource* shaderResource,
         D3D12_ROOT_PARAMETER1* pRootParam);
+
+    
 };

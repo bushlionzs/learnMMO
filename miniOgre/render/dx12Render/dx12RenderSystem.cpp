@@ -36,29 +36,12 @@ Dx12RenderSystem::~Dx12RenderSystem()
 
 bool Dx12RenderSystem::engineInit(bool raytracing)
 {
-	RenderSystem::engineInit(raytracing);
-	new Dx12HardwareBufferManager();
-
-	auto helper = new DX12Helper(this);
-	helper->createBaseInfo();
-
-	mDevice = helper->getDevice();
-
-	mCommands = new DX12Commands(mDevice);
-	mDx12TextureHandleManager = new Dx12TextureHandleManager(mDevice);
-	createFrameResource();
-	buildRootSignature();
-
-	
+	Dx12RenderSystemBase::engineInit();
 	return true;
 }
 
 void Dx12RenderSystem::ready()
 {
-	auto cl = getCurrentFrame()->getCommandList();
-	cl->Close();
-	DX12Helper::getSingleton().executeCommand(cl);
-	DX12Helper::getSingleton().FlushCommandQueue();
 }
 
 void Dx12RenderSystem::_resourceLoaded()

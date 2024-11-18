@@ -97,15 +97,16 @@ protected:
         const char* data, 
         uint32_t size) override;
 
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(Handle<HwProgram> programHandle, uint32_t index) override;
-    virtual Handle<HwDescriptorSet> createDescriptorSet(Handle<HwDescriptorSetLayout> dslh) override;
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwProgram> programHandle,
+        uint32_t set) override;
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwComputeProgram> programHandle,
+        uint32_t set) override;
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts) override;
     virtual Handle<HwProgram> createShaderProgram(
         const ShaderInfo& mShaderInfo, 
         VertexDeclaration* decl) override;
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwComputeProgram> programHandle, 
-        uint32_t set) override;
     virtual void updatePushConstants(
         Handle<HwProgram> program,
         uint32_t offset,

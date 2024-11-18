@@ -90,7 +90,7 @@ void BasicApplication::base1()
 
 	Entity* rect = mSceneManager->createEntity("rect", meshName);
 	SceneNode* rectnode = root->createChildSceneNode("rect");
-	//rectnode->attachObject(rect);
+	rectnode->attachObject(rect);
 
 	SubEntity* subEntry = rect->getSubEntity(0);
 	auto& mat = subEntry->getMaterial();

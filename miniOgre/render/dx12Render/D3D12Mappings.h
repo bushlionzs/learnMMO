@@ -72,7 +72,7 @@ namespace Ogre
 
 		static Ogre::PixelFormat getPixelFormat(DXGI_FORMAT format);
 
-		static D3D12_RESOURCE_STATES util_to_dx12_resource_state(BackendResourceState state);
+		static D3D12_RESOURCE_STATES util_to_dx12_resource_state(uint32_t state);
 	};
 }
 #endif

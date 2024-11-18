@@ -8,8 +8,8 @@
 #include "dx12RenderTarget.h"
 #include "dx12SwapChain.h"
 
-Dx12RenderWindow::Dx12RenderWindow():
-    mSwapChain(nullptr),
+Dx12RenderWindow::Dx12RenderWindow(DX12SwapChain* swapChain):
+    mSwapChain(swapChain),
     mColorTarget(nullptr),
     mDepthTarget(nullptr)
 {
@@ -21,15 +21,13 @@ Dx12RenderWindow::~Dx12RenderWindow()
 
 }
 
-void Dx12RenderWindow::create(DX12SwapChain* swapChain)
+void Dx12RenderWindow::create()
 {
-    mSwapChain = swapChain;
-
     mWidth = mSwapChain->getWidth();
     mHeight = mSwapChain->getHeight();
 
-    mColorTarget = new Dx12RenderTarget(swapChain);
-    mDepthTarget = new Dx12RenderTarget(swapChain, true);
+    mColorTarget = new Dx12RenderTarget(mSwapChain);
+    mDepthTarget = new Dx12RenderTarget(mSwapChain, true);
 }
 
 Ogre::PixelFormat Dx12RenderWindow::getColorFormat()

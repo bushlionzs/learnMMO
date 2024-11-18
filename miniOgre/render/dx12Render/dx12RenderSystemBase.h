@@ -7,12 +7,14 @@
 #include "dx12ResourceAllocator.h"
 #include "dx12PipelineCache.h"
 
+
 class Dx12GraphicsCommandList;
 class Dx12RenderTarget;
 class Dx12TextureHandleManager;
 class Dx12RenderWindow;
 class DX12Commands;
 class DX12SwapChain;
+class DxMemoryAllocator;
 
 class Dx12RenderSystemBase : public RenderSystem
 {
@@ -163,4 +165,6 @@ protected:
     Dx12RenderWindow* mRenderWindow;
     DX12SwapChain* mSwapChain;
     ID3D12Device* mDevice;
+
+    DxMemoryAllocator* mMemoryAllocator;
 };

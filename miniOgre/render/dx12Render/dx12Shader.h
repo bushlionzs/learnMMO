@@ -20,52 +20,58 @@ public:
 
     ~DX12Program();
 
-    bool load();
+    
 
     ID3DBlob* getVsBlob()
     {
-        return mvsByteCode.Get();
+        return mvsByteCode;
     }
 
     ID3DBlob* getGsBlob()
     {
-        return mgsByteCode.Get();
+        return mgsByteCode;
     }
     ID3DBlob* getPsBlob()
     {
-        return mpsByteCode.Get();
+        return mpsByteCode;
     }
     
-    const std::vector<D3D12_INPUT_ELEMENT_DESC>& getInputDesc()
+    ID3D12RootSignature* getRootSignature()
+    {
+        return mRootSignature;
+    }   
+
+    const std::array<D3D12_INPUT_ELEMENT_DESC, 10>& getInputDesc()
     {
         return mInputDesc;
     }
 
-    const std::vector <ShaderResource>& getShaderResourceList()
+    uint32_t getInputDescSize()
     {
-        return mShaderResourceList;
+        return mInputSize;
     }
 
+    int32_t getRootParamIndex(const std::string& name);
+
+    static std::vector<ShaderResource> parseShaderResource(
+        ShaderStageFlags stageFlags,
+        void* byteCode, 
+        uint32_t byteCodeSize);
     void updateInputDesc(VertexDeclaration* vDeclaration);
-    void updateShaderResource(Ogre::ShaderType shaderType);
+
     void updateRootSignature(ID3D12RootSignature* rootSignature);
+    void updateNameMapping(const std::map<std::string, uint32_t>& rootParamMap);
 private:
-    std::vector<std::string> mSerStrings;
-
-    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputDesc;
-
-    ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
-
-    ComPtr<ID3DBlob> mvsByteCode = nullptr;
-    ComPtr<ID3DBlob> mgsByteCode = nullptr;
-    ComPtr<ID3DBlob> mpsByteCode = nullptr;
-    ComPtr<ID3D12RootSignature> rootSignature;
-    std::vector<ShaderResource> mShaderResourceList;
+    bool load(const ShaderInfo& info);
+private:
+    std::array<D3D12_INPUT_ELEMENT_DESC, 10> mInputDesc;
+    uint32_t mInputSize = 0;
+    
+    ID3DBlob* mvsByteCode = nullptr;
+    ID3DBlob* mgsByteCode = nullptr;
+    ID3DBlob* mpsByteCode = nullptr;
+    ID3D12RootSignature* mRootSignature;
 
     uint32_t mObjectCBSize = 0;
-
-    D3d12ShaderParameters mD3d12ShaderInputParameters;
-
-    ShaderInfo mShaderInfo;
-
+    std::map<std::string, uint32_t>* mRootParamMap = nullptr;
 };

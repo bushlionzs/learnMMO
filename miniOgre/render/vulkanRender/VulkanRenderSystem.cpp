@@ -678,12 +678,19 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     return program;
 }
 
-Handle<HwDescriptorSetLayout> VulkanRenderSystem::getDescriptorSetLayout(
-    Handle<HwRaytracingProgram> programHandle, uint32_t set)
+Handle<HwDescriptorSet> VulkanRenderSystem::createDescriptorSet(
+    Handle<HwRaytracingProgram> programHandle,
+    uint32_t set)
 {
     VulkanRaytracingProgram* program = mResourceAllocator.handle_cast<VulkanRaytracingProgram*>(programHandle);
 
-    return program->getLayout(set);
+    auto layoutHandle =  program->getLayout(set);
+
+    Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
+    VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
+    VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
+    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
+    return dsh;
 }
 
 void VulkanRenderSystem::bindPipeline(

@@ -1142,8 +1142,8 @@ namespace Ogre {
     typedef struct BufferBarrier
     {
         Handle<HwBufferObject> buffer;
-        BackendResourceState mCurrentState; //BackendResourceState
-        BackendResourceState mNewState; //BackendResourceState
+        uint32_t mCurrentState; //BackendResourceState
+        uint32_t mNewState; //BackendResourceState
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
     } BufferBarrier;
@@ -1151,8 +1151,8 @@ namespace Ogre {
     typedef struct TextureBarrier
     {
         OgreTexture* pTexture;
-        BackendResourceState mCurrentState;
-        BackendResourceState mNewState;
+        uint32_t mCurrentState;//BackendResourceState
+        uint32_t mNewState;//BackendResourceState
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
         uint8_t       mAcquire : 1;
@@ -1168,8 +1168,8 @@ namespace Ogre {
     typedef struct RenderTargetBarrier
     {
         Ogre::RenderTarget* pRenderTarget;
-        BackendResourceState mCurrentState;
-        BackendResourceState mNewState;
+        uint32_t mCurrentState;//BackendResourceState
+        uint32_t mNewState;//BackendResourceState
         uint8_t       mBeginOnly : 1;
         uint8_t       mEndOnly : 1;
         uint8_t       mAcquire : 1;

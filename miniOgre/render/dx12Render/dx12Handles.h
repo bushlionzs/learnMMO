@@ -1,10 +1,11 @@
 #pragma once
 #include <DriverBase.h>
 #include "dx12Common.h"
-
+class DxMemoryAllocator;
 
 struct DX12BufferObject : public HwBufferObject {
     DX12BufferObject(
+        DxMemoryAllocator* allocator,
         BufferObjectBinding bufferObjectBinding,
         ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
@@ -12,6 +13,10 @@ struct DX12BufferObject : public HwBufferObject {
         );
     void copyData(ID3D12GraphicsCommandList* cmdList, const char* data, uint32_t size);
     D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress();
+    D3D12_CPU_DESCRIPTOR_HANDLE getGpuHandle()
+    {
+        return mGpuHandle;
+    }
     ResourceMemoryUsage getMemoryUsage()
     {
         return mMemoryUsage;
@@ -30,13 +35,15 @@ struct DX12BufferObject : public HwBufferObject {
         return BufferGPU.Get();
     }
 private:
+    DxMemoryAllocator* mAllocator;
     BufferObjectBinding mBufferObjectBinding;
     ResourceMemoryUsage mMemoryUsage;
     BufferObjectBinding bindingType;
-
     D3D12_RANGE mRange;
     ComPtr<ID3D12Resource> BufferGPU = nullptr;
     ComPtr<ID3D12Resource> BufferUploader = nullptr;
+
+    D3D12_CPU_DESCRIPTOR_HANDLE mGpuHandle;
 };
 
 struct DX12Pipeline : public HwPipeline

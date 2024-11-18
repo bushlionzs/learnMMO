@@ -4,13 +4,13 @@
 #include "dx12SwapChain.h"
 
 Dx12RenderTarget::Dx12RenderTarget(
-	const String& name,
+	const std::string& name,
 	DX12Commands* commands,
-	TextureProperty& texProperty,
+	TextureProperty* texProperty,
 	Dx12TextureHandleManager* mgr)
 {
 	mName = name;
-	mTarget = new Dx12Texture(name, &texProperty, commands, mgr);
+	mTarget = new Dx12Texture(mName, texProperty, commands, mgr);
 	mTarget->load(nullptr);
 	mWidth = mTarget->getWidth();
 	mHeight = mTarget->getHeight();

@@ -49,6 +49,7 @@ public:
 		info.renderTargets[0].renderTarget = mPassInput.color;
 		info.depthTarget.depthStencil = mPassInput.depth;
 		info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+		//info.renderTargets[0].clearColour = { 0.678431f, 0, 0, 1.000000000f };
 		float depthValue = 1.0f;
 		if (ogreConfig.reverseDepth)
 		{

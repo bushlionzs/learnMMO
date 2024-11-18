@@ -389,6 +389,7 @@ void ShadowMap::base2()
     meshConstantsBuffer =
         rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Storge,
+            RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0,
             meshConstantsBufferSize,
             "meshConstantsBuffer");
@@ -426,7 +427,8 @@ void ShadowMap::base2()
     {
         filteredIndexBuffer[i] =
             rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding::BufferObjectBinding_Index,
+                BufferObjectBinding::BufferObjectBinding_Index,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 maxIndices * sizeof(uint32_t));
     }
@@ -445,6 +447,7 @@ void ShadowMap::base2()
     filterDispatchGroupDataBuffer =
         rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Storge,
+            RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0,
             filterDispatchGroupSize);
     BufferHandleLockGuard lockGuard(filterDispatchGroupDataBuffer);
@@ -495,13 +498,16 @@ void ShadowMap::base2()
     }
 
     vbConstantsBuffer =
-        mRenderSystem->createBufferObject(BufferObjectBinding::BufferObjectBinding_Uniform, 
+        mRenderSystem->createBufferObject(
+            BufferObjectBinding::BufferObjectBinding_Uniform, 
+            RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0, sizeof(VBConstants) * 2);
 
     rs->updateBufferObject(vbConstantsBuffer, (const char*)&constants[0], sizeof(VBConstants) * 2);
 
     renderSettingsUniformHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
+        RESOURCE_MEMORY_USAGE_GPU_ONLY,
         0,
         sizeof(renderSetting)
     );
@@ -511,6 +517,7 @@ void ShadowMap::base2()
 
     esmInputConstantsHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
+        RESOURCE_MEMORY_USAGE_GPU_ONLY,
         0,
         sizeof(ESMInputConstants)
     );
@@ -519,6 +526,7 @@ void ShadowMap::base2()
         (const char*)&esmConstants, sizeof(esmConstants));
     sssEnabledHandle = rs->createBufferObject(
         BufferObjectBinding::BufferObjectBinding_Uniform,
+        RESOURCE_MEMORY_USAGE_GPU_ONLY,
         0,
         sizeof(uint32_t)
     );
@@ -534,17 +542,20 @@ void ShadowMap::base2()
         frameData.frameBufferObject =
             mRenderSystem->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0, sizeof(FrameConstantBuffer));
 
         frameData.indirectDrawArgBuffer =
             mRenderSystem->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Storge | BufferObjectBinding_InDirectBuffer,
+                BufferObjectBinding_InDirectBuffer,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 indirectDrawArgBufferSize);
 
         frameData.objectUniformBlockHandle =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 sizeof(MeshInfoUniformBlock),
                 "objectUniformBlock Buffer");
@@ -552,12 +563,14 @@ void ShadowMap::base2()
         frameData.indirectDataBuffer =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Storge,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 maxIndices * sizeof(uint32_t));
 
         frameData.perFrameConstantsBuffer =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 sizeof(PerFrameVBConstants),
                 "PerFrameVBConstants Buffer Desc");
@@ -565,17 +578,20 @@ void ShadowMap::base2()
         frameData.esmUniformBlockHandle =
             rs->createBufferObject(
                 BufferObjectBinding::BufferObjectBinding_Uniform,
+                RESOURCE_MEMORY_USAGE_GPU_ONLY,
                 0,
                 sizeof(MeshInfoUniformBlock),
                 "esmUniformBlock Buffer");
 
         frameData.cameraUniformHandle = rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Uniform,
+            RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0,
             sizeof(cameraUniform)
         );
         frameData.ligthUniformHandle = rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Uniform,
+            RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0,
             sizeof(lightUniformBlock)
         );
@@ -590,13 +606,9 @@ void ShadowMap::base2()
         shaderInfo.shaderName = "clearBuffer";
         auto clearBufferProgramHandle = rs->createComputeProgram(shaderInfo);
 
-        Handle<HwDescriptorSetLayout> zeroLayout = rs->getDescriptorSetLayout(clearBufferProgramHandle, 0);
-        
-
-
         for (auto i = 0; i < numFrame; i++)
         {
-            Handle<HwDescriptorSet> descrSet = rs->createDescriptorSet(zeroLayout);
+            Handle<HwDescriptorSet> descrSet = rs->createDescriptorSet(clearBufferProgramHandle, 0);
             rs->updateDescriptorSetBuffer(descrSet, 0, &mFrameData[i].indirectDrawArgBuffer, 1);
             rs->updateDescriptorSetBuffer(descrSet, 2, &vbConstantsBuffer, 1);
 
@@ -648,18 +660,11 @@ void ShadowMap::base2()
         shaderInfo.shaderName = "filterTriangles";
         auto filterTrianglesProgramHandle = rs->createComputeProgram(shaderInfo);
        
-        Handle<HwDescriptorSetLayout> zeroLayoutHandle =
-            rs->getDescriptorSetLayout(filterTrianglesProgramHandle, 0);
-
-        Handle<HwDescriptorSetLayout> firstLayoutHandle =
-            rs->getDescriptorSetLayout(filterTrianglesProgramHandle, 1);
-
-
         for (auto i = 0; i < numFrame; i++)
         {
             auto& frameData = mFrameData[i];
             
-            Handle <HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(zeroLayoutHandle);
+            Handle <HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(filterTrianglesProgramHandle, 0);
             frameData.zeroDescSetOfFilter = zeroDescSet;
             rs->updateDescriptorSetBuffer(zeroDescSet, 0, &frameData.indirectDrawArgBuffer, 1);
 
@@ -671,7 +676,7 @@ void ShadowMap::base2()
             rs->updateDescriptorSetBuffer(zeroDescSet, 5, &meshConstantsBuffer, 1);
 
 
-            Handle <HwDescriptorSet> firstDescSet = rs->createDescriptorSet(firstLayoutHandle);
+            Handle <HwDescriptorSet> firstDescSet = rs->createDescriptorSet(filterTrianglesProgramHandle, 1);
             frameData.firstDescSetOfFilter = firstDescSet;
             rs->updateDescriptorSetBuffer(firstDescSet, 1, &frameData.perFrameConstantsBuffer, 1);
 
@@ -776,15 +781,6 @@ void ShadowMap::base2()
         auto meshDepthPipelineHandle = rs->createPipeline(rasterState, meshDepthHandle);
 
         auto meshDepthAlphaPipelineHandle = rs->createPipeline(rasterState, meshDepthAlphaHandle);
-
-  
-        auto zeroLayout = rs->getDescriptorSetLayout(meshDepthHandle, 0);
-        auto thirdLayout = rs->getDescriptorSetLayout(meshDepthHandle, 3);
-
-        auto zeroLayoutAlpha = rs->getDescriptorSetLayout(meshDepthAlphaHandle, 0);
-        auto firstLayoutAlpha = rs->getDescriptorSetLayout(meshDepthAlphaHandle, 1);
-        auto thirdLayoutAlpha = rs->getDescriptorSetLayout(meshDepthAlphaHandle, 3);
-
         std::vector<OgreTexture*> diffuseList;
         bool alpha = true;
         if (1)
@@ -813,10 +809,10 @@ void ShadowMap::base2()
         {
             FrameData& frameData = mFrameData[i];
 
-            auto zeroDescrSetOfShadowPass = rs->createDescriptorSet(zeroLayout);
+            auto zeroDescrSetOfShadowPass = rs->createDescriptorSet(meshDepthHandle, 0);
             rs->updateDescriptorSetBuffer(zeroDescrSetOfShadowPass, 4, &vertexDataHandle, 1);
 
-            auto thirdDescrSetOfShadowPass = rs->createDescriptorSet(thirdLayout);
+            auto thirdDescrSetOfShadowPass = rs->createDescriptorSet(meshDepthHandle, 3);
             rs->updateDescriptorSetBuffer(thirdDescrSetOfShadowPass, 0,
                 &frameData.esmUniformBlockHandle, 1);
             frameData.zeroDescrSetOfShadowPass = zeroDescrSetOfShadowPass;
@@ -827,17 +823,17 @@ void ShadowMap::base2()
             if (alpha)
             {
                 auto zeroDescrSetOfShadowPassAlpha =
-                    rs->createDescriptorSet(zeroLayoutAlpha);
+                    rs->createDescriptorSet(meshDepthAlphaHandle, 0);
                 rs->updateDescriptorSetBuffer(zeroDescrSetOfShadowPassAlpha, 4, &vertexDataHandle, 1);
 
                 auto firstDescrSetOfShadowPassAlpha =
-                    rs->createDescriptorSet(firstLayoutAlpha);
+                    rs->createDescriptorSet(meshDepthAlphaHandle, 1);
 
                 rs->updateDescriptorSetBuffer(firstDescrSetOfShadowPassAlpha, 2,
                     &frameData.indirectDataBuffer, 1);
 
                 auto thirdDescrSetOfShadowPassAlpha =
-                    rs->createDescriptorSet(thirdLayoutAlpha);
+                    rs->createDescriptorSet(meshDepthAlphaHandle, 3);
 
                 rs->updateDescriptorSetBuffer(thirdDescrSetOfShadowPassAlpha, 0,
                     &frameData.esmUniformBlockHandle, 1);
@@ -933,16 +929,6 @@ void ShadowMap::base2()
         visibilityBufferTarget = rs->createRenderTarget("visibilityBufferTarget",
             width, height, Ogre::PixelFormat::PF_A8B8G8R8, Ogre::TextureUsage::COLOR_ATTACHMENT);
 
-
-
-        auto zeroLayout = rs->getDescriptorSetLayout(vbBufferPassHandle, 0);
-        auto thirdLayout = rs->getDescriptorSetLayout(vbBufferPassHandle, 3);
-
-
-        auto zeroLayoutAlpha = rs->getDescriptorSetLayout(vbBufferPassAlphaHandle, 0);
-        auto firstLayoutAlpha = rs->getDescriptorSetLayout(vbBufferPassAlphaHandle, 1);
-        auto thirdLayoutAlpha = rs->getDescriptorSetLayout(vbBufferPassAlphaHandle, 3);
-
         auto subMeshCount = mesh->getSubMeshCount();
 
         std::vector<OgreTexture*> diffuseList;
@@ -965,19 +951,19 @@ void ShadowMap::base2()
         for (auto i = 0; i < numFrame; i++)
         {
             FrameData& frameData = mFrameData[i];
-            frameData.zeroDescrSetOfVbPass = rs->createDescriptorSet(zeroLayout);
+            frameData.zeroDescrSetOfVbPass = rs->createDescriptorSet(vbBufferPassHandle, 0);
             rs->updateDescriptorSetBuffer(frameData.zeroDescrSetOfVbPass, 3, &vertexDataHandle, 1);
 
 
-            frameData.thirdDescrSetOfVbPass = rs->createDescriptorSet(thirdLayout);
+            frameData.thirdDescrSetOfVbPass = rs->createDescriptorSet(vbBufferPassHandle, 3);
             rs->updateDescriptorSetBuffer(
                 frameData.thirdDescrSetOfVbPass,
                 0, 
                 &frameData.objectUniformBlockHandle, 1);
             ///
-            auto zeroDescrSetOfVbPassAlpha  = rs->createDescriptorSet(zeroLayoutAlpha);
-            auto firstDescrSetOfVbPassAlpha = rs->createDescriptorSet(firstLayoutAlpha);
-            auto thirdDescrSetOfVbPassAlpha = rs->createDescriptorSet(thirdLayoutAlpha);
+            auto zeroDescrSetOfVbPassAlpha  = rs->createDescriptorSet(vbBufferPassAlphaHandle, 0);
+            auto firstDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 1);
+            auto thirdDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 3);
             frameData.zeroDescrSetOfVbPassAlpha = zeroDescrSetOfVbPassAlpha;
             frameData.firstDescrSetOfVbPassAlpha = firstDescrSetOfVbPassAlpha;
             frameData.thirdDescrSetOfVbPassAlpha = thirdDescrSetOfVbPassAlpha;
@@ -1060,8 +1046,6 @@ void ShadowMap::base2()
         rasterState.renderTargetCount = 1;
         rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
         auto pipelineHandle = rs->createPipeline(rasterState, programHandle);
-        auto zeroLayout = rs->getDescriptorSetLayout(programHandle, 0);
-        auto firstLayout = rs->getDescriptorSetLayout(programHandle, 1);
 
         backend::SamplerParams samplerParams;
 
@@ -1124,9 +1108,9 @@ void ShadowMap::base2()
         {
             FrameData& frameData = mFrameData[frame];
             frameData.zeroDescrSetOfVbShadePass =
-                rs->createDescriptorSet(zeroLayout);
+                rs->createDescriptorSet(programHandle, 0);
             frameData.firstDescrSetOfVbShadePass =
-                rs->createDescriptorSet(firstLayout);
+                rs->createDescriptorSet(programHandle, 1);
             auto& zeroSet = frameData.zeroDescrSetOfVbShadePass;
             auto& firstSet = frameData.firstDescrSetOfVbShadePass;
 
@@ -1252,11 +1236,10 @@ void ShadowMap::base2()
         ShaderInfo shaderInfo;
         shaderInfo.shaderName = "presentShade";
         auto presentHandle = rs->createShaderProgram(shaderInfo, nullptr);
-        auto zeroLayout = rs->getDescriptorSetLayout(presentHandle, 0);
         for (auto i = 0; i < numFrame; i++)
         {
             FrameData& frameData = mFrameData[i];
-            auto zeroSet = rs->createDescriptorSet(zeroLayout);
+            auto zeroSet = rs->createDescriptorSet(presentHandle, 0);
             frameData.zeroDescrSetOfPresentPass = zeroSet;
             auto* tex = shadePassTarget->getTarget();
             rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Combined_Image_Sampler);
@@ -1333,7 +1316,6 @@ void ShadowMap::execute(RenderSystem* rs)
     info.depthTarget.depthStencil = mRenderWindow->getDepthTarget();;
     info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
     info.depthTarget.clearValue = { 0.0f, 0.0f };
-    info.cam = cam;
     static EngineRenderList engineRenerList;
     sceneManager->getSceneRenderList(cam, engineRenerList, false);
     auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();

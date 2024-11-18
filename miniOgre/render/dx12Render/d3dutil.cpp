@@ -7,6 +7,7 @@
 #include <fstream>
 #include <array>
 
+
 std::wstring AnsiToWString(const std::string& str)
 {
     WCHAR buffer[512];
@@ -113,7 +114,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
     return defaultBuffer;
 }
 
-Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(
+ID3DBlob* d3dUtil::CompileShader(
     const std::string& content,
     const D3D_SHADER_MACRO* defines,
     const std::string& entrypoint,
@@ -127,7 +128,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(
 
     HRESULT hr = S_OK;
 
-    Microsoft::WRL::ComPtr<ID3DBlob> byteCode = nullptr;
+    ID3DBlob* byteCode = nullptr;
     Microsoft::WRL::ComPtr<ID3DBlob> errors;
     hr = D3DCompile2(content.c_str(), content.size(), sourceName.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
         entrypoint.c_str(), target.c_str(), compileFlags, 0, 0, nullptr, 0, &byteCode, &errors);
@@ -254,3 +255,4 @@ void d3dUtil::create_root_constant(
     pRootParam->Constants.ShaderRegister = shaderResource->reg;
     pRootParam->Constants.RegisterSpace = shaderResource->set;
 }
+

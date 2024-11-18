@@ -16,7 +16,7 @@
 
 DX12Program::DX12Program(const ShaderInfo& info)
 {
-    mShaderInfo = info;
+    load(info);
 }
 
 DX12Program::~DX12Program()
@@ -24,17 +24,17 @@ DX12Program::~DX12Program()
 
 }
 
-bool DX12Program::load()
+bool DX12Program::load(const ShaderInfo& shaderInfo)
 {
     Ogre::ShaderPrivateInfo* privateInfo =
-        ShaderManager::getSingleton().getShader(mShaderInfo.shaderName, EngineType_Dx12);
+        ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
 
     const D3D_SHADER_MACRO* macro = nullptr;
 
     std::vector<D3D_SHADER_MACRO> macros;
-    if (!mShaderInfo.shaderMacros.empty())
+    if (!shaderInfo.shaderMacros.empty())
     {
-        for (auto& o : mShaderInfo.shaderMacros)
+        for (auto& o : shaderInfo.shaderMacros)
         {
             macros.emplace_back();
             macros.back().Name = o.first.c_str();
@@ -68,10 +68,18 @@ bool DX12Program::load()
         "ps_5_1",
         res->_fullname);
 
-    updateShaderResource(ShaderType::VertexShader);
-    updateShaderResource(ShaderType::GeometryShader);
-    updateShaderResource(ShaderType::PixelShader);
     return true;
+}
+
+int32_t DX12Program::getRootParamIndex(const std::string& name)
+{
+    auto itor = mRootParamMap->find(name);
+    if (itor != mRootParamMap->end())
+    {
+        return itor->second;
+    }
+    assert(false);
+    return -1;
 }
 
 void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
@@ -82,9 +90,27 @@ void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
     }
     const VertexDeclaration::VertexElementList& elementList = vDeclaration->getElementList();
 
-    std::vector<D3D12_INPUT_ELEMENT_DESC> D3delems;
+    D3d12ShaderParameters shaderInputParameters;
+    ID3D12ShaderReflection* shaderReflection = nullptr;
+    void* byteCode = mvsByteCode->GetBufferPointer();
+    uint32_t byteCodeSize = mvsByteCode->GetBufferSize();
+    HRESULT hr = D3DReflect(byteCode, byteCodeSize,
+        IID_ID3D11ShaderReflection, (void**)&shaderReflection);
 
-    for (auto& it : mD3d12ShaderInputParameters)
+    D3D12_SHADER_DESC shaderDesc;
+    hr = shaderReflection->GetDesc(&shaderDesc);
+
+    shaderInputParameters.resize(shaderDesc.InputParameters);
+
+    for (auto i = 0; i < shaderDesc.InputParameters; i++)
+    {
+        D3D12_SIGNATURE_PARAMETER_DESC& curParam = shaderInputParameters[i];
+        shaderReflection->GetInputParameterDesc(i, &curParam);
+    }
+
+    
+    uint32_t index = 0;
+    for (auto& it : shaderInputParameters)
     {
         D3D12_INPUT_ELEMENT_DESC elem = {};
         for (const auto& e : elementList)
@@ -104,56 +130,38 @@ void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
             std::throw_with_nested("No VertexElement for semantic");
         }
 
-        elem.SemanticName = it.SemanticName;
+        uint32_t  semanticSize = strlen(it.SemanticName);
+        char* data = (char*)malloc(semanticSize + 1);
+        if (data)
+        {
+            memcpy((void*)data, it.SemanticName, semanticSize);
+            data[semanticSize] = 0;
+        }
+        
+        elem.SemanticName = data;
         elem.SemanticIndex = it.SemanticIndex;
         elem.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         elem.InstanceDataStepRate = 0;
-
-        D3delems.push_back(elem);
+        mInputDesc[index] = elem;
+        index++;
     }
+    mInputSize = index;
 
-    D3delems.swap(mInputDesc);
+    ReleaseCOM(shaderReflection);
 }
 
-void DX12Program::updateShaderResource(Ogre::ShaderType shaderType)
+std::vector<ShaderResource> DX12Program::parseShaderResource(
+    ShaderStageFlags stageFlags,
+    void* byteCode, 
+    uint32_t byteCodeSize)
 {
+
     ID3D12ShaderReflection* shaderReflection = nullptr;
 
-    void* byteCode = nullptr;
-    uint32_t byteCodeSize = 0;
-
-    uint8_t stageFlags = (uint8_t)ShaderStageFlags::NONE;
-    switch (shaderType)
-    {
-    case ShaderType::VertexShader:
-        if (mvsByteCode)
-        {
-            byteCode = mvsByteCode->GetBufferPointer();
-            byteCodeSize = mvsByteCode->GetBufferSize();
-            stageFlags = (uint8_t)ShaderStageFlags::VERTEX;
-        }
-        break;
-    case ShaderType::GeometryShader:
-        if (mgsByteCode)
-        {
-            byteCode = mgsByteCode->GetBufferPointer();
-            byteCodeSize = mgsByteCode->GetBufferSize();
-            stageFlags = (uint8_t)ShaderStageFlags::GEOMETRY;
-        }
-        break;
-    case ShaderType::PixelShader:
-        if (mpsByteCode)
-        {
-            byteCode = mpsByteCode->GetBufferPointer();
-            byteCodeSize = mpsByteCode->GetBufferSize();
-            stageFlags = (uint8_t)ShaderStageFlags::FRAGMENT;
-        }
-        break;
-    }
-
+    std::vector<ShaderResource> shaderResourceList;
     if (byteCode == nullptr)
     {
-        return;
+        return shaderResourceList;
     }
     HRESULT hr = D3DReflect(byteCode, byteCodeSize,
         IID_ID3D11ShaderReflection, (void**)&shaderReflection);
@@ -161,20 +169,7 @@ void DX12Program::updateShaderResource(Ogre::ShaderType shaderType)
     D3D12_SHADER_DESC shaderDesc;
     hr = shaderReflection->GetDesc(&shaderDesc);
 
-    if (shaderType == ShaderType::VertexShader)
-    {
-        mD3d12ShaderInputParameters.resize(shaderDesc.InputParameters);
-        mSerStrings.resize(shaderDesc.InputParameters);
-        for (auto i = 0; i < shaderDesc.InputParameters; i++)
-        {
-            D3D12_SIGNATURE_PARAMETER_DESC& curParam = mD3d12ShaderInputParameters[i];
-            shaderReflection->GetInputParameterDesc(i, &curParam);
-            mSerStrings[i] = curParam.SemanticName;
-            curParam.SemanticName = mSerStrings[i].c_str();
-        }
-    }
-    std::vector<ShaderResource> shaderResourceList;
-    int kk = 0;
+    
     for (auto i = 0; i < shaderDesc.BoundResources; i++)
     {
         D3D12_SHADER_INPUT_BIND_DESC desc;
@@ -185,32 +180,28 @@ void DX12Program::updateShaderResource(Ogre::ShaderType shaderType)
         back.reg = desc.BindPoint;
         back.size = desc.BindCount;
         back.type = desc.Type;
-        back.used_stages = stageFlags;
+        back.set = desc.Space;
+        back.used_stages = (uint8_t)stageFlags;
     }
 
-    for (auto& current : shaderResourceList)
-    {
-        bool have = false;
-        for (auto& shaderResource : mShaderResourceList)
-        {
-            if (current.name == shaderResource.name)
-            {
-                shaderResource.used_stages |= stageFlags;
-                have = true;
-                break;
-            }
-        }
-
-        if (!have)
-        {
-            mShaderResourceList.push_back(current);
-        }
-    }
+   
 
     ReleaseCOM(shaderReflection);
+
+    return shaderResourceList;
 }
 
 void DX12Program::updateRootSignature(ID3D12RootSignature* rootSignature)
 {
-    rootSignature = rootSignature;
+    mRootSignature = rootSignature;
+}
+
+void DX12Program::updateNameMapping(const std::map<std::string, uint32_t>& rootParamMap)
+{
+    if (mRootParamMap == nullptr)
+    {
+        mRootParamMap = new std::map<std::string, uint32_t>;
+    }
+
+    *mRootParamMap = rootParamMap;
 }

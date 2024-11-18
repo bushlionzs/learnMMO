@@ -39,6 +39,7 @@ endmacro()
 
 add_subdir(animation)
 add_subdir(base)
+add_subdir(Utilities)
 add_subdir(component)
 add_subdir(models)
 add_subdir(parser)
@@ -65,6 +66,7 @@ list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/render/dx12Render)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/render/vulkanRender)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/wow)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/base)
+list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/Utilities)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/filament)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR}/fg)
 list(APPEND MINIOGRE_INC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -89,6 +91,7 @@ target_include_directories(${MINIOGRE_LIB_NAME}
 	${ROOT_INC}/3rdSource/utils/include
 	${ROOT_INC}/3rdSource/math/include
 	${ROOT_INC}/3rdSource/vkmemalloc/include
+	${ROOT_INC}/3rdSource/D3D12MemoryAllocator
 	${ROOT_INC}/3rdSource/bluevk/include
 	${ROOT_INC}/3rdSource
 	${DYNETWORK_INCLUDE_HEADERS}

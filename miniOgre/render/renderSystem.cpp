@@ -188,19 +188,26 @@ void RenderSystem::updateBufferObject(
     assert(false);
 }
 
-Handle<HwDescriptorSetLayout> RenderSystem::createDescriptorSetLayout(DescriptorSetLayout& info)
+
+Handle<HwDescriptorSet> RenderSystem::createDescriptorSet(
+    Handle<HwProgram> programHandle,
+    uint32_t set)
 {
     assert(false);
-    return Handle<HwDescriptorSetLayout>();
+    return Handle<HwDescriptorSet>();
 }
 
-Handle<HwDescriptorSetLayout> RenderSystem::getDescriptorSetLayout(Handle<HwProgram> programHandle, uint32_t index)
+Handle<HwDescriptorSet> RenderSystem::createDescriptorSet(
+    Handle<HwComputeProgram> programHandle,
+    uint32_t set)
 {
     assert(false);
-    return Handle<HwDescriptorSetLayout>();
+    return Handle<HwDescriptorSet>();
 }
 
-Handle<HwDescriptorSet> RenderSystem::createDescriptorSet(Handle<HwDescriptorSetLayout> dslh)
+Handle<HwDescriptorSet> RenderSystem::createDescriptorSet(
+    Handle<HwRaytracingProgram> programHandle,
+    uint32_t set)
 {
     assert(false);
     return Handle<HwDescriptorSet>();
@@ -218,26 +225,11 @@ Handle<HwProgram> RenderSystem::createShaderProgram(const ShaderInfo& mShaderInf
     return Handle<HwProgram>();
 }
 
-Handle<HwDescriptorSetLayout> RenderSystem::getDescriptorSetLayout(
-    Handle<HwComputeProgram> programHandle,
-    uint32_t set)
-{
-    assert(false);
-    return Handle<HwDescriptorSetLayout>();
-}
-
 Handle<HwRaytracingProgram> RenderSystem::createRaytracingProgram(
     const ShaderInfo& mShaderInfo)
 {
     assert(false);
     return Handle<HwRaytracingProgram>();
-}
-
-Handle<HwDescriptorSetLayout> RenderSystem::getDescriptorSetLayout(
-    Handle<HwRaytracingProgram> programHandle, uint32_t set)
-{
-    assert(false);
-    return Handle<HwDescriptorSetLayout>();
 }
 
 Handle<HwSampler> RenderSystem::createTextureSampler(filament::backend::SamplerParams& samplerParams)

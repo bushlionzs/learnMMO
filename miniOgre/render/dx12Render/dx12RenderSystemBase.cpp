@@ -28,9 +28,12 @@
 #include "d3dutil.h"
 #include "dx12RenderTarget.h"
 #include "dx12SwapChain.h"
+#include "memoryAllocator.h"
+
 
 #define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) \
     ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
+
 
 Dx12RenderSystemBase::Dx12RenderSystemBase()
     :mResourceAllocator(83886080, false)
@@ -48,10 +51,14 @@ Dx12RenderSystemBase::~Dx12RenderSystemBase()
 bool Dx12RenderSystemBase::engineInit()
 {
 	RenderSystem::engineInit();
-	new Dx12HardwareBufferManager();
 
 	auto helper = new DX12Helper(this);
 	helper->createBaseInfo();
+    mDevice = helper->getDevice();
+    mCommands = new DX12Commands(mDevice);
+    mDx12TextureHandleManager = new Dx12TextureHandleManager(mDevice);
+
+    mMemoryAllocator = new DxMemoryAllocator(mDevice);
 
 	
 	return true;
@@ -75,8 +82,8 @@ Ogre::RenderWindow* Dx12RenderSystemBase::createRenderWindow(
 
     auto wnd = (HWND)StringConverter::parseSizeT(itor->second);
     mSwapChain = new DX12SwapChain(mCommands, wnd);
-    mRenderWindow = new Dx12RenderWindow();
-    mRenderWindow->create(mSwapChain);
+    mRenderWindow = new Dx12RenderWindow(mSwapChain);
+    mRenderWindow->create();
     return mRenderWindow;
 }
 Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
@@ -100,7 +107,7 @@ Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
         texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
     }
     Dx12RenderTarget* renderTarget = new Dx12RenderTarget(
-        name, mCommands, texProperty, mDx12TextureHandleManager);
+        name, mCommands, &texProperty, mDx12TextureHandleManager);
     return renderTarget;
 }
 
@@ -128,22 +135,25 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     uint32_t height = 0;
 
     bool hasColor = false;
+    float* ptr = (float*)&renderPassInfo.renderTargets->clearColour;
+    D3D12_CPU_DESCRIPTOR_HANDLE renderTargetHandle[8];
     for (auto i = 0; i < renderPassInfo.renderTargetCount; i++)
     {
         Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
         auto* tex = colorTarget->getTarget();
         auto cpuHandle = tex->getCpuHandle();
-        float* ptr = (float*) & renderPassInfo.renderTargets->clearColour;
+        renderTargetHandle[i] = cpuHandle;
         cl->ClearRenderTargetView(cpuHandle, ptr, 0, nullptr);
         hasColor = true;
     }
     bool hasDepth = false;
+    D3D12_CPU_DESCRIPTOR_HANDLE depthHandle;
     if (renderPassInfo.depthTarget.depthStencil)
     {
         Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
         auto* tex = depthTarget->getTarget();
-        auto cpuHandle = tex->getCpuHandle();
-        cl->ClearDepthStencilView(cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 
+        depthHandle = tex->getCpuHandle();
+        cl->ClearDepthStencilView(depthHandle, D3D12_CLEAR_FLAG_DEPTH,
             renderPassInfo.depthTarget.clearValue.depth, renderPassInfo.depthTarget.clearValue.stencil, 0, nullptr);
 
         hasDepth = true;
@@ -161,6 +171,10 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
         width = depthTarget->getWidth();
         height = depthTarget->getHeight();
     }
+
+    cl->OMSetRenderTargets(renderPassInfo.renderTargetCount, renderTargetHandle, 
+        FALSE, hasDepth?&depthHandle:NULL);
+
     D3D12_VIEWPORT viewport;
     D3D12_RECT scissorRect;
 
@@ -280,7 +294,7 @@ Handle<HwBufferObject> Dx12RenderSystemBase::createBufferObject(
     Handle<HwBufferObject> boh = mResourceAllocator.allocHandle<DX12BufferObject>();
 
     DX12BufferObject* bufferObject = mResourceAllocator.construct<DX12BufferObject>(
-        boh, bindingType, memoryUsage, bufferCreationFlags, byteCount);
+        boh, mMemoryAllocator, bindingType, memoryUsage, bufferCreationFlags, byteCount);
 
     return boh;
 }
@@ -319,14 +333,68 @@ Handle<HwProgram> Dx12RenderSystemBase::createShaderProgram(
 
     DX12Program* program = mResourceAllocator.construct<DX12Program>(programHandle,
         shaderInfo);
-    program->load();
+
     program->updateInputDesc(decl);
 
-    const std::vector <ShaderResource>& shaderResourceList = program->getShaderResourceList();
+    auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
+        std::vector <ShaderResource>& resourceList, ShaderStageFlags stageFlags)
+        {
+             for (auto& current : resourceList)
+            {
+                bool have = false;
+                for (auto& shaderResource : programResourceList)
+                {
+                    if (current.name == shaderResource.name)
+                    {
+                        shaderResource.used_stages |= (uint8_t)stageFlags;
+                        have = true;
+                        break;
+                    }
+                }
+
+                if (!have)
+                {
+                    programResourceList.push_back(current);
+                }
+            }
+        };
+    
+    std::vector <ShaderResource> programResourceList;
+   
+    {
+        ID3DBlob* blob = program->getVsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::VERTEX,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(programResourceList, resourceList, ShaderStageFlags::VERTEX);
+        }
+    }
+
+    {
+        ID3DBlob* blob = program->getGsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::GEOMETRY,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(programResourceList, resourceList, ShaderStageFlags::GEOMETRY);
+        }
+    }
+    
+    {
+        ID3DBlob* blob = program->getPsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::FRAGMENT,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(programResourceList, resourceList, ShaderStageFlags::FRAGMENT);
+        }
+    }
+
     D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
     UINT rootParamCount = 0;
     D3D12_DESCRIPTOR_RANGE1 range[32];
-    for (auto& shaderResource : shaderResourceList)
+    for (auto& shaderResource : programResourceList)
     {
         if (shaderResource.type == D3D_SIT_SAMPLER)
         {
@@ -458,10 +526,13 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
         dx12Program->getPsBlob());
     mDX12PipelineCache.bindRasterState(dx12RasterState);
     mDX12PipelineCache.bindPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-    //mDX12PipelineCache.bindLayout(pipelineLayout);
+
+    auto* rootSignature = dx12Program->getRootSignature();
+    mDX12PipelineCache.bindLayout(rootSignature);
 
     const auto& inputList = dx12Program->getInputDesc();
-    mDX12PipelineCache.bindVertexArray(inputList.data(), inputList.size());
+    auto inputListSize = dx12Program->getInputDescSize();
+    mDX12PipelineCache.bindVertexArray(inputList.data(), inputListSize);
 
     ID3D12PipelineState* pipeline = mDX12PipelineCache.getPipeline();
     dx12Pipeline->updatePipeline(pipeline);
@@ -668,7 +739,6 @@ void Dx12RenderSystemBase::beginCmd()
 void Dx12RenderSystemBase::flushCmd(bool waitCmd)
 {
 }
-
 
 
 

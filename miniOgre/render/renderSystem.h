@@ -163,16 +163,18 @@ public:
         Handle<HwBufferObject> boh, 
         const char* data, 
         uint32_t size);
-    virtual Handle<HwDescriptorSetLayout> createDescriptorSetLayout(DescriptorSetLayout& info);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(Handle<HwProgram> programHandle, uint32_t set);
-    virtual Handle<HwDescriptorSet> createDescriptorSet(Handle<HwDescriptorSetLayout> dslh);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwProgram> programHandle, 
+        uint32_t set);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwComputeProgram> programHandle,
+        uint32_t set);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwRaytracingProgram> programHandle,
+        uint32_t set);
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts);
     virtual Handle<HwProgram> createShaderProgram(const ShaderInfo& mShaderInfo, VertexDeclaration* decl);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwComputeProgram> programHandle, uint32_t set);
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(const ShaderInfo& mShaderInfo);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwRaytracingProgram> programHandle, uint32_t set);
     virtual void updatePushConstants(
         Handle<HwProgram> program,
         uint32_t offset, 

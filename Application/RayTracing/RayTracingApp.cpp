@@ -180,10 +180,6 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 	shaderInfo.shaderName = "RayQuery";
 	auto programHandle = rs->createComputeProgram(shaderInfo);
 
-	auto zeroLayout = rs->getDescriptorSetLayout(programHandle, 0);
-	auto firstLayout = rs->getDescriptorSetLayout(programHandle, 1);
-
-
 	std::string meshname = "SanMiguel.bin";
 	std::shared_ptr<Mesh> mesh = loadSanMiguel(meshname);
 
@@ -293,6 +289,7 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 	indexOffsetsBuffer =
 		rs->createBufferObject(
 			BufferObjectBinding::BufferObjectBinding_Storge,
+			RESOURCE_MEMORY_USAGE_GPU_ONLY,
 			0,
 			subMeshCount * sizeof(uint32_t));
 
@@ -305,12 +302,13 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 		auto genConfigBuffer =
 			rs->createBufferObject(
 				BufferObjectBinding::BufferObjectBinding_Uniform,
+				RESOURCE_MEMORY_USAGE_GPU_ONLY,
 				BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT,
 				sizeof(ShadersConfigBlock));
 		frameInfo.genConfigBuffer = genConfigBuffer;
 
-		auto zeroSet = rs->createDescriptorSet(zeroLayout);
-		auto firstSet = rs->createDescriptorSet(firstLayout);
+		auto zeroSet = rs->createDescriptorSet(programHandle, 0);
+		auto firstSet = rs->createDescriptorSet(programHandle, 1);
 		frameInfo.zeroDescriptorSet = zeroSet;
 		frameInfo.firstDescriptorSet = firstSet;
 		rs->updateDescriptorSetAccelerationStructure(zeroSet, 0, pSanMiguelAS);
@@ -398,11 +396,10 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 		ShaderInfo shaderInfo;
 		shaderInfo.shaderName = "presentShade";
 		auto presentHandle = rs->createShaderProgram(shaderInfo, nullptr);
-		auto zeroLayout = rs->getDescriptorSetLayout(presentHandle, 0);
 		for (auto i = 0; i < numFrame; i++)
 		{
 			auto& frameData = mFrameInfoList[i];
-			auto zeroSet = rs->createDescriptorSet(zeroLayout);
+			auto zeroSet = rs->createDescriptorSet(presentHandle, 0);
 			frameData.zeroDescriptorSetOfPresent = zeroSet;
 			auto* tex = outPutTarget->getTarget();
 			rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Image);
@@ -502,6 +499,7 @@ void RayTracingApp::RayTracing(
 
 	Handle< HwBufferObject> transformBufferHandle =rs->createBufferObject(
 		BufferObjectBinding::BufferObjectBinding_Storge,
+		RESOURCE_MEMORY_USAGE_GPU_ONLY,
 		BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
 		transformSize
 	);
@@ -595,6 +593,7 @@ void RayTracingApp::RayTracing(
 
 	auto uniformBuffer = rs->createBufferObject(
 		BufferObjectBinding::BufferObjectBinding_Uniform,
+		RESOURCE_MEMORY_USAGE_GPU_ONLY,
 		0,
 		sizeof(UniformData)
 	);
@@ -603,11 +602,11 @@ void RayTracingApp::RayTracing(
 	shaderInfo.shaderName = "raytracing";
 	Handle<HwRaytracingProgram> raytracingHandle =
 		rs->createRaytracingProgram(shaderInfo);
-	auto zeroLayout = rs->getDescriptorSetLayout(raytracingHandle, 0);
 
 	uint32_t geometryNodesSize = sizeof(GeometryNode) * subMeshCount;
 	auto geometryNodesBuffer = rs->createBufferObject(
 		BufferObjectBinding::BufferObjectBinding_Storge,
+		RESOURCE_MEMORY_USAGE_GPU_ONLY,
 		BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS,
 		geometryNodesSize
 	);
@@ -652,7 +651,7 @@ void RayTracingApp::RayTracing(
 
 	for (auto i = 0; i < numFrame; i++)
 	{
-		Handle<HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(zeroLayout);
+		Handle<HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(raytracingHandle, 0);
 		mFrameInfoList[i].zeroDescSetOfRaytracing = zeroDescSet;
 		rs->updateDescriptorSetAccelerationStructure(zeroDescSet, 0, pSanMiguelAS);
 		rs->updateDescriptorSetTexture(zeroDescSet,

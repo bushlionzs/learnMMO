@@ -340,7 +340,7 @@ namespace Ogre {
         }
     }
 
-    D3D12_RESOURCE_STATES D3D12Mappings::util_to_dx12_resource_state(BackendResourceState state)
+    D3D12_RESOURCE_STATES D3D12Mappings::util_to_dx12_resource_state(uint32_t state)
     {
         D3D12_RESOURCE_STATES ret = D3D12_RESOURCE_STATE_COMMON;
 

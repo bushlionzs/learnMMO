@@ -12,9 +12,9 @@ class Dx12RenderTarget: public Ogre::RenderTarget
 {
 public:
 	Dx12RenderTarget(
-		const String& name,
+		const std::string& name,
 		DX12Commands* commands,
-		TextureProperty& texProperty,
+		TextureProperty* texProperty,
 		Dx12TextureHandleManager* mgr);
 	Dx12RenderTarget(DX12SwapChain* swapChain, bool depth = false);
 	~Dx12RenderTarget();

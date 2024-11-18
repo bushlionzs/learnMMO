@@ -31,8 +31,9 @@ public:
 
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(
         const ShaderInfo& mShaderInfo);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwRaytracingProgram> programHandle, uint32_t set);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwRaytracingProgram> programHandle,
+        uint32_t set) override;
 
     virtual void bindPipeline(
         Handle<HwRaytracingProgram> programHandle,

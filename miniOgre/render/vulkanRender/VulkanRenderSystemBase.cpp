@@ -549,8 +549,7 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
     
     VkPipelineLayout pipelinelayout = vulkanProgram->getVulkanPipelineLayout();
 
-    auto zeroLayout = getDescriptorSetLayout(programHandle, 0);
-    auto zeroDescSet = createDescriptorSet(zeroLayout);
+    auto zeroDescSet = createDescriptorSet(programHandle, 0);
     updateDescriptorSetTexture(zeroDescSet, 0, 
         &environmentCube, 1, TextureBindType_Combined_Image_Sampler);
     VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(zeroDescSet);
@@ -940,18 +939,28 @@ void VulkanRenderSystemBase::updateBufferObject(
     bo->buffer.loadFromCpu(commands.buffer(), data, 0, size);
 }
 
-
-Handle<HwDescriptorSetLayout> VulkanRenderSystemBase::getDescriptorSetLayout(Handle<HwProgram> programHandle, uint32_t index)
-{
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
-
-    return vulkanProgram->getLayout(index);
-}
-
-Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(Handle<HwDescriptorSetLayout> dslh)
+Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
+    Handle<HwProgram> programHandle,
+    uint32_t set)
 {
     Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
-    VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(dslh);
+    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    Handle<HwDescriptorSetLayout> layoutHandle = vulkanProgram->getLayout(set);
+    VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
+    VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
+    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
+    return dsh;
+}
+
+Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
+    Handle<HwComputeProgram> programHandle,
+    uint32_t set)
+{
+    VulkanComputeProgram* program = mResourceAllocator.handle_cast<VulkanComputeProgram*>(programHandle);
+    auto layoutHandle =  program->getSetLayoutHandle(set);
+
+    Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
+    VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
     VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
     return dsh;
@@ -1200,12 +1209,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
     vulkanProgram->updateVulkanPipelineLayout(vulkanPipelineLayout);
     
     return program;
-}
-
-Handle<HwDescriptorSetLayout> VulkanRenderSystemBase::getDescriptorSetLayout(Handle<HwComputeProgram> programHandle, uint32_t set)
-{
-    VulkanComputeProgram* program = mResourceAllocator.handle_cast<VulkanComputeProgram*>(programHandle);
-    return program->getSetLayoutHandle(set);
 }
 
 void VulkanRenderSystemBase::updatePushConstants(

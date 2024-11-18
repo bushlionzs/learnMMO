@@ -3,12 +3,14 @@
 #include "dx12Helper.h"
 
 DX12BufferObject::DX12BufferObject(
+    DxMemoryAllocator* allocator,
     BufferObjectBinding bufferObjectBinding,
     ResourceMemoryUsage memoryUsage,
     uint32_t bufferCreationFlags,
     uint32_t byteCount
    )
 {
+    mAllocator = allocator;
     mBufferObjectBinding = bufferObjectBinding;
     mMemoryUsage = memoryUsage;
     ID3D12Device* dx12Device = DX12Helper::getSingleton().getDevice();
