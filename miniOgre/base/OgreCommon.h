@@ -25,8 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
-#ifndef __Common_H__
-#define __Common_H__
+#ifndef __Ogre_Common_H__
+#define __Ogre_Common_H__
 // Common stuff
 
 
@@ -1101,6 +1101,40 @@ namespace Ogre {
         BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
     };
 
+    typedef enum DescriptorType
+    {
+        DESCRIPTOR_TYPE_UNDEFINED = 0,
+        DESCRIPTOR_TYPE_SAMPLER = 0x01,
+        // SRV Read only texture
+        DESCRIPTOR_TYPE_TEXTURE = (DESCRIPTOR_TYPE_SAMPLER << 1),
+        /// UAV Texture
+        DESCRIPTOR_TYPE_RW_TEXTURE = (DESCRIPTOR_TYPE_TEXTURE << 1),
+        // SRV Read only buffer
+        DESCRIPTOR_TYPE_BUFFER = (DESCRIPTOR_TYPE_RW_TEXTURE << 1),
+        DESCRIPTOR_TYPE_BUFFER_RAW = (DESCRIPTOR_TYPE_BUFFER | (DESCRIPTOR_TYPE_BUFFER << 1)),
+        /// UAV Buffer
+        DESCRIPTOR_TYPE_RW_BUFFER = (DESCRIPTOR_TYPE_BUFFER << 2),
+        DESCRIPTOR_TYPE_RW_BUFFER_RAW = (DESCRIPTOR_TYPE_RW_BUFFER | (DESCRIPTOR_TYPE_RW_BUFFER << 1)),
+        /// Uniform buffer
+        DESCRIPTOR_TYPE_UNIFORM_BUFFER = (DESCRIPTOR_TYPE_RW_BUFFER << 2),
+        /// Push constant / Root constant
+        DESCRIPTOR_TYPE_ROOT_CONSTANT = (DESCRIPTOR_TYPE_UNIFORM_BUFFER << 1),
+        /// IA
+        DESCRIPTOR_TYPE_VERTEX_BUFFER = (DESCRIPTOR_TYPE_ROOT_CONSTANT << 1),
+        DESCRIPTOR_TYPE_INDEX_BUFFER = (DESCRIPTOR_TYPE_VERTEX_BUFFER << 1),
+        DESCRIPTOR_TYPE_INDIRECT_BUFFER = (DESCRIPTOR_TYPE_INDEX_BUFFER << 1),
+        /// Cubemap SRV
+        DESCRIPTOR_TYPE_TEXTURE_CUBE = (DESCRIPTOR_TYPE_TEXTURE | (DESCRIPTOR_TYPE_INDIRECT_BUFFER << 1)),
+        /// RTV / DSV per mip slice
+        DESCRIPTOR_TYPE_RENDER_TARGET_MIP_SLICES = (DESCRIPTOR_TYPE_INDIRECT_BUFFER << 2),
+        /// RTV / DSV per array slice
+        DESCRIPTOR_TYPE_RENDER_TARGET_ARRAY_SLICES = (DESCRIPTOR_TYPE_RENDER_TARGET_MIP_SLICES << 1),
+        /// RTV / DSV per depth slice
+        DESCRIPTOR_TYPE_RENDER_TARGET_DEPTH_SLICES = (DESCRIPTOR_TYPE_RENDER_TARGET_ARRAY_SLICES << 1),
+        DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER = (DESCRIPTOR_TYPE_RENDER_TARGET_DEPTH_SLICES << 1),
+        /// Raytracing acceleration structure
+        DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE = (DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER << 1),
+    } DescriptorType;
     typedef enum ResourceMemoryUsage
     {
         /// No intended memory usage specified.
@@ -1181,6 +1215,29 @@ namespace Ogre {
         uint8_t       mMipLevel : 7;
         uint16_t      mArrayLayer;
     } RenderTargetBarrier;
+
+
+    typedef struct DescriptorData
+    {
+        const char* pName;
+        uint32_t    mCount;
+        OgreTexture** ppTextures;
+        Handle<HwBufferObject>** ppBuffers;
+    } DescriptorData;
+
+
+    typedef struct DescriptorInfo
+    {
+        const char* pName;
+        uint32_t mType;
+        uint32_t mDim : 4;
+        uint32_t mRootDescriptor : 1;
+        uint32_t mStaticSampler : 1;
+        uint32_t mSet : 3;
+        uint32_t mPad : 28;
+        uint32_t mSize;
+        uint32_t mHandleIndex;
+    } DescriptorInfo;
 
     struct TransformMatrix {
         float    matrix[3][4];

@@ -21,6 +21,7 @@
 #include "dx12Helper.h"
 #include "dx12Frame.h"
 #include "dx12Commands.h"
+#include "memoryAllocator.h"
 
 
 Dx12RenderSystem::Dx12RenderSystem(HWND wnd)
@@ -154,8 +155,9 @@ void Dx12RenderSystem::multiRender(std::vector<Ogre::Renderable*>& objs, bool mu
 
 OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, TextureProperty* texProperty)
 {
+	DxDescriptorID descriptorId = consume_descriptor_handles(mCPUDescriptorHeaps[0], 1);
 	Dx12Texture* tex = new Dx12Texture(
-		name, texProperty, mCommands, mDx12TextureHandleManager);
+		name, texProperty, mCommands, descriptorId);
 
 	if (!tex->load(nullptr))
 	{
@@ -286,7 +288,8 @@ void Dx12RenderSystem::renderImpl(Dx12Pass* pass)
 	int32_t cubeIndex = pass->mDx12RenderableData->getCubeTexStartIndex();
 	if (cubeIndex >= 0)
 	{
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = mDx12TextureHandleManager->getGpuHandleByIndex(cubeIndex);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+
 		commandlist->SetGraphicsRootDescriptorTable(mCubeMapIndex, gpuHandle);
 	}
 
@@ -294,7 +297,8 @@ void Dx12RenderSystem::renderImpl(Dx12Pass* pass)
 	int32_t startIndex = pass->mDx12RenderableData->getTexStartIndex();
 	if (startIndex >= 0)
 	{
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = mDx12TextureHandleManager->getGpuHandleByIndex(startIndex);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+
 		commandlist->SetGraphicsRootDescriptorTable(mTextureArrayIndex, gpuHandle);
 	}
 

@@ -58,5 +58,18 @@ public:
        const  ShaderResource* shaderResource,
         D3D12_ROOT_PARAMETER1* pRootParam);
 
-    
+    static void copy_descriptor_handle(
+        DescriptorHeap* pSrcHeap,
+        DxDescriptorID srcId,
+        DescriptorHeap* pDstHeap,
+        DxDescriptorID dstId
+    );
+
+    static inline constexpr uint32_t round_up(uint32_t value, uint32_t multiple) 
+              { return ((value + multiple - 1) / multiple) * multiple; }
+
+    static void add_descriptor_heap(
+        ID3D12Device* pDevice,
+        const D3D12_DESCRIPTOR_HEAP_DESC* pDesc,
+        DescriptorHeap** ppDescHeap);
 };

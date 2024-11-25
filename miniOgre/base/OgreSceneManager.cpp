@@ -5,13 +5,13 @@
 #include "renderSystem.h"
 #include "OgremeshManager.h"
 #include "OgreEntity.h"
-#include "WaterEntity.h"
 #include "OgreMaterialManager.h"
 #include "OgreParticleSystemManager.h"
 #include "OgreParticleSystem.h"
 #include "OgreRoot.h"
 #include "OgreMoveObject.h"
 #include "OgreSky.h"
+#include "OgreRenderable.h"
 #include "myutils.h"
 #include "OgreViewport.h"
 #include "OgreLight.h"
@@ -166,14 +166,6 @@ namespace Ogre {
         }
         
         return newObj;
-    }
-
-
-    Entity* SceneManager::createWaterEntity(const std::string& name,
-        int m, int n, float dx, float dt, float speed, float damping)
-    {
-        Entity* entity = new WaterEntity(name);
-        return entity;
     }
 
     SceneNode* SceneManager::getRoot()

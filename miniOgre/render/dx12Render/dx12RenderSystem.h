@@ -30,10 +30,6 @@ public:
     void clearFrameBuffer(uint32 buffers,
         const Ogre::ColourValue& colour,
         float depth, uint16 stencil);
-    Dx12TextureHandleManager* getTextureHandleManager()
-    {
-        return mDx12TextureHandleManager;
-    }
 
     Dx12Frame* getCurrentFrame()
     {

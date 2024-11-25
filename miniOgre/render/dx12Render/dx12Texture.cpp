@@ -16,11 +16,11 @@ Dx12Texture::Dx12Texture(
     const std::string& name, 
     Ogre::TextureProperty* texProperty, 
     DX12Commands* commands,
-    Dx12TextureHandleManager* mgr)
+    DxDescriptorID descriptorId)
     :
     mCommands(commands),
-    mDx12TextureHandleManager(mgr),
-    OgreTexture(name, texProperty)
+    OgreTexture(name, texProperty),
+    mDescriptors(descriptorId)
 {
     
 }
@@ -30,14 +30,14 @@ Dx12Texture::Dx12Texture(
     Ogre::TextureProperty* texProperty,
     DX12Commands* commands,
     ID3D12Resource* resource,
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle):
+    DxDescriptorID descriptorId):
     OgreTexture(name, texProperty)
 {
     mName = name;
     mCommands = commands;
     mDx12TextureHandleManager = nullptr;
     mTex = resource;
-    mCpuHandle = cpuHandle;
+    mDescriptors = descriptorId;
     createInternalResourcesImpl();
 }
 
@@ -255,48 +255,5 @@ void Dx12Texture::updateTextureData()
 
 void Dx12Texture::buildDescriptorHeaps(int32_t handleIndex)
 {
-    auto device = DX12Helper::getSingleton().getDevice();
-    if (!mCreate)
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-        srvHeapDesc.NumDescriptors = mTex->GetDesc().MipLevels;
-        srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        if (this->isCubeTexture())
-        {
-            srvDesc.Format = mTex->GetDesc().Format;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-            srvDesc.TextureCube.MostDetailedMip = 0;
-            srvDesc.TextureCube.MipLevels = mTex->GetDesc().MipLevels;
-            srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
-        }
-        else
-        {
-            srvDesc.Format = mTex->GetDesc().Format;
-            if (mTextureProperty.isRenderTarget())
-            {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-            }
-            else
-            {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            }
-            
-            srvDesc.Texture2D.MostDetailedMip = 0;
-            srvDesc.Texture2D.MipLevels = mTex->GetDesc().MipLevels;
-        }
-
-        mCpuHandle = mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-        device->CreateShaderResourceView(mTex.Get(), &srvDesc, mCpuHandle);
-
-        mCreate = true;
-    }
-
-    auto dstHandle = mDx12TextureHandleManager->getCpuHandleByIndex(handleIndex);
-    device->CopyDescriptorsSimple(1, dstHandle, mCpuHandle,
-        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    assert(false);
 }

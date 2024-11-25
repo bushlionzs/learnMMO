@@ -94,11 +94,20 @@ struct ShaderResource
     TextureDimension dim;
 };
 
+typedef int32_t DxDescriptorID;
+
 typedef struct RootParameter
 {
 	ShaderResource  mShaderResource;
 	//DescriptorInfo* pDescriptorInfo;
 } RootParameter;
+
+typedef struct DescriptorHeapProperties
+{
+    uint32_t                    mMaxDescriptors;
+    D3D12_DESCRIPTOR_HEAP_FLAGS mFlags;
+} DescriptorHeapProperties;
+
 
 std::wstring AnsiToWString(const std::string& str);
 std::wstring AnsiToWString(const char* str);

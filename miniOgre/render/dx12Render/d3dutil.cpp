@@ -3,6 +3,7 @@
 #include <DriverEnums.h>
 #include "dx12Common.h"
 #include "D3D12Mappings.h"
+#include "memoryAllocator.h"
 #include <comdef.h>
 #include <fstream>
 #include <array>
@@ -254,5 +255,55 @@ void d3dUtil::create_root_constant(
     pRootParam->Constants.Num32BitValues = shaderResource->size;
     pRootParam->Constants.ShaderRegister = shaderResource->reg;
     pRootParam->Constants.RegisterSpace = shaderResource->set;
+}
+
+
+
+void d3dUtil::copy_descriptor_handle(
+    DescriptorHeap* pSrcHeap,
+    DxDescriptorID srcId,
+    DescriptorHeap* pDstHeap,
+    DxDescriptorID dstId
+)
+{
+    ASSERT(pSrcHeap->mType == pDstHeap->mType);
+    D3D12_CPU_DESCRIPTOR_HANDLE srcHandle = descriptor_id_to_cpu_handle(pSrcHeap, srcId);
+    D3D12_CPU_DESCRIPTOR_HANDLE dstHandle = descriptor_id_to_cpu_handle(pDstHeap, dstId);
+    pSrcHeap->pDevice->CopyDescriptorsSimple(1, dstHandle, srcHandle, pSrcHeap->mType);
+}
+
+void d3dUtil::add_descriptor_heap(
+    ID3D12Device* pDevice, 
+    const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, 
+    DescriptorHeap** ppDescHeap)
+{
+    uint32_t numDescriptors = pDesc->NumDescriptors;
+
+    // Keep 32 aligned for easy remove
+    numDescriptors = round_up(numDescriptors, 32);
+
+    const size_t sizeInBytes = (numDescriptors / 32) * sizeof(uint32_t);
+
+    DescriptorHeap* pHeap = (DescriptorHeap*)malloc(sizeof(*pHeap) + sizeInBytes);
+    pHeap->pFlags = (uint32_t*)(pHeap + 1);
+    pHeap->pDevice = pDevice;
+
+    initMutex(&pHeap->mMutex);
+
+    D3D12_DESCRIPTOR_HEAP_DESC desc = *pDesc;
+    desc.NumDescriptors = numDescriptors;
+
+    CHECK_HRESULT(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pHeap->pHeap)));
+
+    pHeap->mStartCpuHandle = pHeap->pHeap->GetCPUDescriptorHandleForHeapStart();
+    if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+    {
+        pHeap->mStartGpuHandle = pHeap->pHeap->GetGPUDescriptorHandleForHeapStart();
+    }
+    pHeap->mNumDescriptors = desc.NumDescriptors;
+    pHeap->mType = desc.Type;
+    pHeap->mDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(pHeap->mType);
+
+    *ppDescHeap = pHeap;
 }
 

@@ -34,6 +34,12 @@ struct DX12BufferObject : public HwBufferObject {
     {
         return BufferGPU.Get();
     }
+
+    DxDescriptorID getDescriptorID()
+    {
+        assert(false);
+        return mDescriptorID;
+    }
 private:
     DxMemoryAllocator* mAllocator;
     BufferObjectBinding mBufferObjectBinding;
@@ -44,6 +50,8 @@ private:
     ComPtr<ID3D12Resource> BufferUploader = nullptr;
 
     D3D12_CPU_DESCRIPTOR_HANDLE mGpuHandle;
+
+    DxDescriptorID mDescriptorID;
 };
 
 struct DX12Pipeline : public HwPipeline
@@ -64,10 +72,25 @@ private:
     ID3D12PipelineState* mPipeline;
 };
 
+class DX12ProgramImpl;
+class VertexDeclaration;
+struct DX12Program : public HwProgram
+{
+public:
+    DX12Program(const ShaderInfo& info, VertexDeclaration* decl);
+
+    DX12ProgramImpl* getProgramImpl()
+    {
+        return mProgramImpl;
+    }
+private:
+    DX12ProgramImpl* mProgramImpl;
+};
+
 struct DX12DescriptorSetLayout : public HwDescriptorSetLayout
 {
 public:
-    DX12DescriptorSetLayout() {}
+    DX12DescriptorSetLayout():mRootSignature(nullptr){}
     ~DX12DescriptorSetLayout() {}
 
     void updateRootSignature(ID3D12RootSignature* rootSignature)
@@ -81,4 +104,43 @@ public:
     }
 private:
     ID3D12RootSignature* mRootSignature;
+};
+
+
+struct DX12DescriptorSet : public HwDescriptorSet
+{
+public:
+    DX12DescriptorSet();
+    ~DX12DescriptorSet();
+
+    void updateInfo(Handle<HwProgram> programHandle,
+        uint32_t set)
+    {
+        mProgramHandle = programHandle;
+        mSet = set;
+    }
+
+
+    Handle<HwProgram> getProgramHandle()
+    {
+        return mProgramHandle;
+    }
+
+    DxDescriptorID getCbvSrvUavHandle()
+    {
+        return mCbvSrvUavHandle;
+    }
+
+    void updateCbvSrvUavHandle(DxDescriptorID cbvSrvUavHandle, uint32_t cbvSrvUavDescCount)
+    {
+        mCbvSrvUavHandle = cbvSrvUavHandle;
+
+        mCbvSrvUavDescCount = cbvSrvUavDescCount;
+    }
+private:
+    Handle<HwProgram> mProgramHandle;
+    uint32_t mSet;
+
+    DxDescriptorID       mCbvSrvUavHandle;
+    uint32_t mCbvSrvUavDescCount;
 };

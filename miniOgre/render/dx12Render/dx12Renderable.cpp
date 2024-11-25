@@ -190,7 +190,7 @@ void Dx12RenderableData::buildPbrMaterial(Ogre::Material* mat)
 
 	if (mCubeTexCount > 0)
 	{
-		Dx12TextureHandleManager* mgr = mEngine->getTextureHandleManager();
+		Dx12TextureHandleManager* mgr;
 		mCubeTexStartIndex = mgr->allocStartIndex(mCubeTexCount);
 		if (mCubeTexStartIndex < 0)
 		{
@@ -212,7 +212,7 @@ void Dx12RenderableData::buildPbrMaterial(Ogre::Material* mat)
 	}
 	if (mTexCount > 0)
 	{
-		Dx12TextureHandleManager* mgr = mEngine->getTextureHandleManager();
+		Dx12TextureHandleManager* mgr;
 		mTexStartIndex = mgr->allocStartIndex(mTexCount);
 		if (mTexStartIndex < 0)
 		{
@@ -253,7 +253,7 @@ void Dx12RenderableData::buildCommonMaterial(Ogre::Material* mat)
 
 	if (mCubeTexCount > 0)
 	{
-		Dx12TextureHandleManager* mgr = mEngine->getTextureHandleManager();
+		Dx12TextureHandleManager* mgr;
 
 		if (mCubeTexStartIndex < 0)
 		{
@@ -274,7 +274,7 @@ void Dx12RenderableData::buildCommonMaterial(Ogre::Material* mat)
 	}
 	if (mTexCount > 0)
 	{
-		Dx12TextureHandleManager* mgr = mEngine->getTextureHandleManager();
+		Dx12TextureHandleManager* mgr;
 		if (mTexStartIndex < 0)
 		{
 			mTexStartIndex = mgr->allocStartIndex(mTexCount);

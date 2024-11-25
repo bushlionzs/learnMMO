@@ -15,7 +15,7 @@ public:
 		const std::string& name,
 		DX12Commands* commands,
 		TextureProperty* texProperty,
-		Dx12TextureHandleManager* mgr);
+		DxDescriptorID descriptorId);
 	Dx12RenderTarget(DX12SwapChain* swapChain, bool depth = false);
 	~Dx12RenderTarget();
 

@@ -14,17 +14,20 @@
 #include "dx12Helper.h"
 
 
-DX12Program::DX12Program(const ShaderInfo& info)
+DX12ProgramImpl::DX12ProgramImpl(
+    const ShaderInfo& info,
+    VertexDeclaration* decl)
 {
     load(info);
+    updateInputDesc(decl);
 }
 
-DX12Program::~DX12Program()
+DX12ProgramImpl::~DX12ProgramImpl()
 {
 
 }
 
-bool DX12Program::load(const ShaderInfo& shaderInfo)
+bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 {
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
@@ -71,18 +74,134 @@ bool DX12Program::load(const ShaderInfo& shaderInfo)
     return true;
 }
 
-int32_t DX12Program::getRootParamIndex(const std::string& name)
-{
-    auto itor = mRootParamMap->find(name);
-    if (itor != mRootParamMap->end())
+auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
+    std::vector <ShaderResource>& resourceList, ShaderStageFlags stageFlags)
     {
-        return itor->second;
+        for (auto& current : resourceList)
+        {
+            bool have = false;
+            for (auto& shaderResource : programResourceList)
+            {
+                if (current.name == shaderResource.name)
+                {
+                    shaderResource.used_stages |= (uint8_t)stageFlags;
+                    have = true;
+                    break;
+                }
+            }
+
+            if (!have)
+            {
+                programResourceList.push_back(current);
+            }
+        }
+    };
+
+void DX12ProgramImpl::parseShaderInfo()
+{
+    {
+        ID3DBlob* blob = getVsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::VERTEX,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::VERTEX);
+        }
     }
-    assert(false);
-    return -1;
+
+    {
+        ID3DBlob* blob = getGsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::GEOMETRY,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::GEOMETRY);
+        }
+    }
+
+    {
+        ID3DBlob* blob = getPsBlob();
+        if (blob)
+        {
+            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::FRAGMENT,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::FRAGMENT);
+        }
+    }
+
+    /*std::sort(mProgramResourceList.begin(), mProgramResourceList.end(),
+        [](const ShaderResource& a, const ShaderResource& b) {
+            return a.set > b.set;
+        });*/
+    D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
+    UINT rootParamCount = 0;
+    D3D12_DESCRIPTOR_RANGE1 range[32];
+    for (auto& shaderResource : mProgramResourceList)
+    {
+        if (shaderResource.type == D3D_SIT_SAMPLER)
+        {
+            continue;
+        }
+
+        if (shaderResource.type == D3D_SIT_TEXTURE)
+        {
+            d3dUtil::create_descriptor_table(shaderResource.size,
+                &shaderResource, range, &rootParams[rootParamCount]);
+            
+        }
+        else if (shaderResource.type == D3D_SIT_CBUFFER)
+        {
+            d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
+        }
+        else
+        {
+            assert(false);
+        }
+
+        auto& DescriptorInfo = mDescriptorInfoMap[shaderResource.name];
+
+        DescriptorInfo.mHandleIndex = rootParamCount;
+        DescriptorInfo.mType = shaderResource.type;
+        DescriptorInfo.mSet = shaderResource.set;
+        rootParamCount++;
+    }
+
+    auto staticSamplers = GetStaticSamplers();
+
+    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+    D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc{};
+    rootSigDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    rootSigDesc.Desc_1_1.NumParameters = rootParamCount;
+    rootSigDesc.Desc_1_1.pParameters = rootParams;
+    rootSigDesc.Desc_1_1.NumStaticSamplers = staticSamplers.size();
+    rootSigDesc.Desc_1_1.pStaticSamplers = staticSamplers.data();
+    rootSigDesc.Desc_1_1.Flags = rootSignatureFlags;
+
+
+    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+    Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSigDesc,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (errorBlob != nullptr)
+    {
+        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+    }
+    ThrowIfFailed(hr);
+    auto device = DX12Helper::getSingleton().getDevice();
+    ThrowIfFailed(device->CreateRootSignature(
+        0,
+        serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(),
+        IID_PPV_ARGS(&mRootSignature)));
 }
 
-void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
+
+void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
 {
     if (!mInputDesc.empty())
     {
@@ -142,7 +261,7 @@ void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
         elem.SemanticIndex = it.SemanticIndex;
         elem.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         elem.InstanceDataStepRate = 0;
-        mInputDesc[index] = elem;
+        mInputDesc.push_back(elem);
         index++;
     }
     mInputSize = index;
@@ -150,7 +269,7 @@ void DX12Program::updateInputDesc(VertexDeclaration* vDeclaration)
     ReleaseCOM(shaderReflection);
 }
 
-std::vector<ShaderResource> DX12Program::parseShaderResource(
+std::vector<ShaderResource> DX12ProgramImpl::parseShaderResource(
     ShaderStageFlags stageFlags,
     void* byteCode, 
     uint32_t byteCodeSize)
@@ -184,24 +303,37 @@ std::vector<ShaderResource> DX12Program::parseShaderResource(
         back.used_stages = (uint8_t)stageFlags;
     }
 
-   
-
     ReleaseCOM(shaderReflection);
 
     return shaderResourceList;
 }
 
-void DX12Program::updateRootSignature(ID3D12RootSignature* rootSignature)
+void DX12ProgramImpl::updateRootSignature(ID3D12RootSignature* rootSignature)
 {
     mRootSignature = rootSignature;
 }
 
-void DX12Program::updateNameMapping(const std::map<std::string, uint32_t>& rootParamMap)
+const DescriptorInfo* DX12ProgramImpl::getDescriptor(const char* descriptorName)
 {
-    if (mRootParamMap == nullptr)
+    auto itor = mDescriptorInfoMap.find(descriptorName);
+    if (itor != mDescriptorInfoMap.end())
     {
-        mRootParamMap = new std::map<std::string, uint32_t>;
+        return &itor->second;
     }
 
-    *mRootParamMap = rootParamMap;
+    return nullptr;
+}
+
+uint32_t DX12ProgramImpl::getCbvSrvUavDescCount(uint32_t set)
+{
+    uint32_t count = 0;
+    for (auto& shaderSource : mProgramResourceList)
+    {
+        if (shaderSource.set == set)
+        {
+            count += shaderSource.size;
+        }
+    }
+
+    return count;
 }

@@ -216,6 +216,13 @@ public:
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
         AccelerationStructure* accStructure) {}
+
+    virtual void updateDescriptorSet(
+        Handle<HwDescriptorSet> dsh, 
+        uint32_t index,
+        uint32_t count, 
+        const DescriptorData* pParams
+        ) {}
     virtual void resourceBarrier(
         uint32_t numBufferBarriers, 
         BufferBarrier* pBufferBarriers,

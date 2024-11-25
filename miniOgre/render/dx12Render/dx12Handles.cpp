@@ -1,6 +1,7 @@
 #include <OgreHeader.h>
 #include "dx12Handles.h"
 #include "dx12Helper.h"
+#include "dx12Shader.h"
 
 DX12BufferObject::DX12BufferObject(
     DxMemoryAllocator* allocator,
@@ -73,4 +74,18 @@ void DX12BufferObject::unlock(ID3D12GraphicsCommandList* cmdList)
     cmdList->CopyBufferRegion(
         BufferGPU.Get(), 0, BufferUploader.Get(), mRange.Begin, mRange.End - mRange.End);
  
+}
+
+DX12Program::DX12Program(const ShaderInfo& info, VertexDeclaration* decl)
+{
+    mProgramImpl = new DX12ProgramImpl(info, decl);
+}
+DX12DescriptorSet::DX12DescriptorSet()
+{
+
+}
+
+DX12DescriptorSet::~DX12DescriptorSet()
+{
+
 }

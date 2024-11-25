@@ -10,15 +10,13 @@ class VertexDeclaration;
 
 
 
-class DX12Program: public HwProgram
+class DX12ProgramImpl
 {
 public:
     typedef std::vector<D3D12_SIGNATURE_PARAMETER_DESC> D3d12ShaderParameters;
 public:
-    DX12Program(const ShaderInfo& info);
-    // activate the shader
-
-    ~DX12Program();
+    DX12ProgramImpl(const ShaderInfo& info, VertexDeclaration* decl);
+    ~DX12ProgramImpl();
 
     
 
@@ -41,7 +39,7 @@ public:
         return mRootSignature;
     }   
 
-    const std::array<D3D12_INPUT_ELEMENT_DESC, 10>& getInputDesc()
+    const std::vector<D3D12_INPUT_ELEMENT_DESC>& getInputDesc()
     {
         return mInputDesc;
     }
@@ -51,27 +49,29 @@ public:
         return mInputSize;
     }
 
-    int32_t getRootParamIndex(const std::string& name);
-
     static std::vector<ShaderResource> parseShaderResource(
         ShaderStageFlags stageFlags,
         void* byteCode, 
         uint32_t byteCodeSize);
-    void updateInputDesc(VertexDeclaration* vDeclaration);
+    
 
     void updateRootSignature(ID3D12RootSignature* rootSignature);
-    void updateNameMapping(const std::map<std::string, uint32_t>& rootParamMap);
+    
+    const DescriptorInfo* getDescriptor(const char* descriptorName);
+
+    uint32_t getCbvSrvUavDescCount(uint32_t set);
 private:
     bool load(const ShaderInfo& info);
+    void parseShaderInfo();
+    void updateInputDesc(VertexDeclaration* vDeclaration);
 private:
-    std::array<D3D12_INPUT_ELEMENT_DESC, 10> mInputDesc;
+    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputDesc;
+    std::vector <ShaderResource> mProgramResourceList;
     uint32_t mInputSize = 0;
     
     ID3DBlob* mvsByteCode = nullptr;
     ID3DBlob* mgsByteCode = nullptr;
     ID3DBlob* mpsByteCode = nullptr;
     ID3D12RootSignature* mRootSignature;
-
-    uint32_t mObjectCBSize = 0;
-    std::map<std::string, uint32_t>* mRootParamMap = nullptr;
+    std::map<std::string, DescriptorInfo> mDescriptorInfoMap;
 };

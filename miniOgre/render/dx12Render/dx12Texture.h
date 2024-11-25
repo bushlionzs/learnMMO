@@ -13,22 +13,22 @@ public:
         const std::string& name, 
         Ogre::TextureProperty* texProperty, 
         DX12Commands* commands,
-        Dx12TextureHandleManager* mgr);
+        DxDescriptorID descriptorId);
 
     Dx12Texture(
         const std::string& name,
         Ogre::TextureProperty* texProperty,
         DX12Commands* commands,
         ID3D12Resource* resource,
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle);
+        DxDescriptorID descriptorId);
 
     ~Dx12Texture();
 
     
     void buildDescriptorHeaps(int32_t handleIndex);
-    D3D12_CPU_DESCRIPTOR_HANDLE getCpuHandle()
+    DxDescriptorID getDescriptorId()
     {
-        return mCpuHandle;
+        return mDescriptors;
     }
 
     ID3D12Resource* getResource()
@@ -57,9 +57,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> mTex;
     Microsoft::WRL::ComPtr<ID3D12Resource> mTexUpload;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
-    D3D12_CPU_DESCRIPTOR_HANDLE mCpuHandle;
+    DxDescriptorID mDescriptors;
 
     bool mCreate = false;
     DXGI_FORMAT mD3DFormat;

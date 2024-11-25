@@ -30,7 +30,12 @@
 #include "dx12SwapChain.h"
 #include "memoryAllocator.h"
 
-
+DescriptorHeapProperties gCpuDescriptorHeapProperties[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {
+    { 1024 * 256, D3D12_DESCRIPTOR_HEAP_FLAG_NONE }, // CBV SRV UAV
+    { 2048, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },       // Sampler
+    { 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // RTV
+    { 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // DSV
+};
 #define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) \
     ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
 
@@ -48,6 +53,8 @@ Dx12RenderSystemBase::~Dx12RenderSystemBase()
 
 }
 
+
+
 bool Dx12RenderSystemBase::engineInit()
 {
 	RenderSystem::engineInit();
@@ -56,11 +63,34 @@ bool Dx12RenderSystemBase::engineInit()
 	helper->createBaseInfo();
     mDevice = helper->getDevice();
     mCommands = new DX12Commands(mDevice);
-    mDx12TextureHandleManager = new Dx12TextureHandleManager(mDevice);
 
     mMemoryAllocator = new DxMemoryAllocator(mDevice);
 
-	
+
+    mCPUDescriptorHeaps = (DescriptorHeap**)malloc(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES * sizeof(DescriptorHeap*));
+    mCbvSrvUavHeaps = (DescriptorHeap**)malloc(1 * sizeof(DescriptorHeap*));
+
+    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.Flags = gCpuDescriptorHeapProperties[i].mFlags;
+        desc.NodeMask = 0; 
+        desc.NumDescriptors = gCpuDescriptorHeapProperties[i].mMaxDescriptors;
+        desc.Type = (D3D12_DESCRIPTOR_HEAP_TYPE)i;
+        d3dUtil::add_descriptor_heap(mDevice, &desc, &mCPUDescriptorHeaps[i]);
+    }
+
+    for (uint32_t i = 0; i < 1; ++i)
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        desc.NodeMask = 0;
+
+        desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        d3dUtil::add_descriptor_heap(mDevice, &desc, &mCbvSrvUavHeaps[i]);
+    }
+
 	return true;
 }
 
@@ -106,8 +136,10 @@ Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
         texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
     }
+
+    DxDescriptorID descriptorId = consume_descriptor_handles(mCPUDescriptorHeaps[0], 1);
     Dx12RenderTarget* renderTarget = new Dx12RenderTarget(
-        name, mCommands, &texProperty, mDx12TextureHandleManager);
+        name, mCommands, &texProperty, descriptorId);
     return renderTarget;
 }
 
@@ -141,7 +173,8 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     {
         Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
         auto* tex = colorTarget->getTarget();
-        auto cpuHandle = tex->getCpuHandle();
+        DxDescriptorID srcid = tex->getDescriptorId();
+        auto cpuHandle = descriptor_id_to_cpu_handle(mCPUDescriptorHeaps[0], srcid);
         renderTargetHandle[i] = cpuHandle;
         cl->ClearRenderTargetView(cpuHandle, ptr, 0, nullptr);
         hasColor = true;
@@ -152,7 +185,8 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     {
         Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
         auto* tex = depthTarget->getTarget();
-        depthHandle = tex->getCpuHandle();
+        DxDescriptorID srcid = tex->getDescriptorId();
+        depthHandle = descriptor_id_to_cpu_handle(mCPUDescriptorHeaps[0], srcid);
         cl->ClearDepthStencilView(depthHandle, D3D12_CLEAR_FLAG_DEPTH,
             renderPassInfo.depthTarget.clearValue.depth, renderPassInfo.depthTarget.clearValue.stencil, 0, nullptr);
 
@@ -315,11 +349,7 @@ Handle<HwDescriptorSetLayout> Dx12RenderSystemBase::getDescriptorSetLayout(
     return Handle<HwDescriptorSetLayout>();
 }
 
-Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
-    Handle<HwDescriptorSetLayout> dslh)
-{
-    return Handle <HwDescriptorSet>();
-}
+
 Handle<HwPipelineLayout> Dx12RenderSystemBase::createPipelineLayout(
     std::array<Handle<HwDescriptorSetLayout>, 4>& layouts)
 {
@@ -332,126 +362,7 @@ Handle<HwProgram> Dx12RenderSystemBase::createShaderProgram(
     Handle<HwProgram> programHandle = mResourceAllocator.allocHandle<DX12Program>();
 
     DX12Program* program = mResourceAllocator.construct<DX12Program>(programHandle,
-        shaderInfo);
-
-    program->updateInputDesc(decl);
-
-    auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
-        std::vector <ShaderResource>& resourceList, ShaderStageFlags stageFlags)
-        {
-             for (auto& current : resourceList)
-            {
-                bool have = false;
-                for (auto& shaderResource : programResourceList)
-                {
-                    if (current.name == shaderResource.name)
-                    {
-                        shaderResource.used_stages |= (uint8_t)stageFlags;
-                        have = true;
-                        break;
-                    }
-                }
-
-                if (!have)
-                {
-                    programResourceList.push_back(current);
-                }
-            }
-        };
-    
-    std::vector <ShaderResource> programResourceList;
-   
-    {
-        ID3DBlob* blob = program->getVsBlob();
-        if (blob)
-        {
-            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::VERTEX,
-                blob->GetBufferPointer(), blob->GetBufferSize());
-            updateResourceList(programResourceList, resourceList, ShaderStageFlags::VERTEX);
-        }
-    }
-
-    {
-        ID3DBlob* blob = program->getGsBlob();
-        if (blob)
-        {
-            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::GEOMETRY,
-                blob->GetBufferPointer(), blob->GetBufferSize());
-            updateResourceList(programResourceList, resourceList, ShaderStageFlags::GEOMETRY);
-        }
-    }
-    
-    {
-        ID3DBlob* blob = program->getPsBlob();
-        if (blob)
-        {
-            auto resourceList = DX12Program::parseShaderResource(ShaderStageFlags::FRAGMENT,
-                blob->GetBufferPointer(), blob->GetBufferSize());
-            updateResourceList(programResourceList, resourceList, ShaderStageFlags::FRAGMENT);
-        }
-    }
-
-    D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
-    UINT rootParamCount = 0;
-    D3D12_DESCRIPTOR_RANGE1 range[32];
-    for (auto& shaderResource : programResourceList)
-    {
-        if (shaderResource.type == D3D_SIT_SAMPLER)
-        {
-            continue;
-        }
-
-        if (shaderResource.type == D3D_SIT_TEXTURE)
-        {
-            d3dUtil::create_descriptor_table(shaderResource.size,
-                &shaderResource, range, &rootParams[rootParamCount]);
-        }
-        else if (shaderResource.type == D3D_SIT_CBUFFER)
-        {
-            d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
-        }
-        else
-        {
-            assert(false);
-        }
-
-        rootParamCount++;
-    }
-
-    auto staticSamplers = GetStaticSamplers();
-
-    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-    D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc{};
-    rootSigDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    rootSigDesc.Desc_1_1.NumParameters = rootParamCount;
-    rootSigDesc.Desc_1_1.pParameters = rootParams;
-    rootSigDesc.Desc_1_1.NumStaticSamplers = staticSamplers.size();
-    rootSigDesc.Desc_1_1.pStaticSamplers = staticSamplers.data();
-    rootSigDesc.Desc_1_1.Flags = rootSignatureFlags;
-
-
-    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
-    Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-    HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSigDesc,
-        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
-
-    if (errorBlob != nullptr)
-    {
-        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-    }
-    ThrowIfFailed(hr);
-    ID3D12RootSignature* rootSignature;
-    ThrowIfFailed(mDevice->CreateRootSignature(
-        0,
-        serializedRootSig->GetBufferPointer(),
-        serializedRootSig->GetBufferSize(),
-        IID_PPV_ARGS(&rootSignature)));
-
-    program->updateRootSignature(rootSignature);
+        shaderInfo, decl);
 
     return programHandle;
 }
@@ -489,6 +400,7 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
 
     DX12Pipeline* dx12Pipeline = mResourceAllocator.construct<DX12Pipeline>(pipelineHandle);
     DX12Program* dx12Program = mResourceAllocator.handle_cast<DX12Program*>(program);
+    DX12ProgramImpl* dx12ProgramImpl = dx12Program->getProgramImpl();
     DX12PipelineCache::RasterState dx12RasterState;
 
     dx12RasterState.cullMode = D3D12Mappings::getCullMode(rasterState.culling);
@@ -521,17 +433,17 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
     }
     mDX12PipelineCache.bindFormat(D3D12Mappings::_getPF(format), DXGI_FORMAT_D32_FLOAT);
     mDX12PipelineCache.bindProgram(
-        dx12Program->getVsBlob(),
-        dx12Program->getGsBlob(),
-        dx12Program->getPsBlob());
+        dx12ProgramImpl->getVsBlob(),
+        dx12ProgramImpl->getGsBlob(),
+        dx12ProgramImpl->getPsBlob());
     mDX12PipelineCache.bindRasterState(dx12RasterState);
     mDX12PipelineCache.bindPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
-    auto* rootSignature = dx12Program->getRootSignature();
+    auto* rootSignature = dx12ProgramImpl->getRootSignature();
     mDX12PipelineCache.bindLayout(rootSignature);
 
-    const auto& inputList = dx12Program->getInputDesc();
-    auto inputListSize = dx12Program->getInputDescSize();
+    const auto& inputList = dx12ProgramImpl->getInputDesc();
+    auto inputListSize = inputList.size();
     mDX12PipelineCache.bindVertexArray(inputList.data(), inputListSize);
 
     ID3D12PipelineState* pipeline = mDX12PipelineCache.getPipeline();
@@ -578,6 +490,87 @@ void Dx12RenderSystemBase::updateDescriptorSetSampler(
     backend::descriptor_binding_t binding,
     OgreTexture* tex) 
 {
+}
+
+Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
+    Handle<HwProgram> programHandle,
+    uint32_t set)
+{
+    Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<DX12DescriptorSet>();
+    DX12DescriptorSet* dx12DescSet = mResourceAllocator.construct<DX12DescriptorSet>(dsh);
+
+    DX12Program* dx12Program = mResourceAllocator.handle_cast<DX12Program*>(programHandle);
+    DX12ProgramImpl* dx12ProgramImpl = dx12Program->getProgramImpl();
+
+    uint32_t cbvSrvUavDescCount = dx12ProgramImpl->getCbvSrvUavDescCount(set);
+
+    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
+    dx12DescSet->updateCbvSrvUavHandle(cbvSrvUavHandle, cbvSrvUavDescCount);
+    return dsh;
+}
+
+void Dx12RenderSystemBase::updateDescriptorSet(
+    Handle<HwDescriptorSet> dsh,
+    uint32_t index,
+    uint32_t count,
+    const DescriptorData* pParams
+)
+{
+    DX12DescriptorSet* dx12DescSet = mResourceAllocator.handle_cast<DX12DescriptorSet*>(dsh);
+
+    Handle<HwProgram> programHandle = dx12DescSet->getProgramHandle();
+    DX12Program* dx12Program = mResourceAllocator.handle_cast<DX12Program*>(programHandle);
+    DX12ProgramImpl* dx12ProgramImpl = dx12Program->getProgramImpl();
+
+    DxDescriptorID cbvSrvUavHandle = dx12DescSet->getCbvSrvUavHandle();
+    for (auto i = 0; i < count; i++)
+    {
+        const DescriptorData* pParam = pParams + i;
+        const DescriptorInfo* descriptroInfo = dx12ProgramImpl->getDescriptor(pParam->pName);
+
+        assert(descriptroInfo);
+        const uint32_t       arrayCount = std::max(1U, pParam->mCount);
+
+        switch (descriptroInfo->mType)
+        {
+        case DESCRIPTOR_TYPE_TEXTURE:
+        {
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                Dx12Texture* dx12Texture = (Dx12Texture*)pParam->ppTextures[arr];
+                auto srcid = dx12Texture->getDescriptorId();
+                d3dUtil::copy_descriptor_handle(
+                    mCPUDescriptorHeaps[0],
+                    srcid,
+                    mCbvSrvUavHeaps[0],
+                    cbvSrvUavHandle + descriptroInfo->mHandleIndex + arr
+                    );
+            }
+        }
+            
+            break;
+        case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+        {
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                auto& boh = *pParam->ppBuffers[arr];
+                DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(boh);
+                DxDescriptorID srcId = bo->getDescriptorID();
+                d3dUtil::copy_descriptor_handle(
+                    mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
+                    srcId,
+                    mCbvSrvUavHeaps[0],
+                    cbvSrvUavHandle + descriptroInfo->mHandleIndex + arr
+                );
+            }
+        }
+            break;
+        default:
+            assert(false);
+            break;
+        }
+        
+    }
 }
 
 void Dx12RenderSystemBase::resourceBarrier(

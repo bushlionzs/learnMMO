@@ -22,9 +22,9 @@ public:
     Dx12RenderSystemBase();
     ~Dx12RenderSystemBase();
 
-    Dx12TextureHandleManager* getTextureHandleManager()
+    struct DescriptorHeap** getCPUDescriptorHeaps()
     {
-        return nullptr;
+        return mCPUDescriptorHeaps;
     }
 
     virtual bool engineInit();
@@ -97,7 +97,9 @@ public:
         const char* data,
         uint32_t size);
     virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(Handle<HwProgram> programHandle, uint32_t set);
-    virtual Handle<HwDescriptorSet> createDescriptorSet(Handle<HwDescriptorSetLayout> dslh);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwProgram> programHandle,
+        uint32_t set);
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts);
     virtual Handle<HwProgram> createShaderProgram(const ShaderInfo& mShaderInfo, VertexDeclaration* decl);
     virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
@@ -142,6 +144,12 @@ public:
         backend::descriptor_binding_t binding,
         OgreTexture* tex);
 
+    virtual void updateDescriptorSet(
+        Handle<HwDescriptorSet> dsh,
+        uint32_t index,
+        uint32_t count,
+        const DescriptorData* pParams
+    );
     virtual void resourceBarrier(
         uint32_t numBufferBarriers,
         BufferBarrier* pBufferBarriers,
@@ -160,11 +168,12 @@ protected:
 
     DX12PipelineCache mDX12PipelineCache;
 
-    Dx12TextureHandleManager* mDx12TextureHandleManager = nullptr;
-
     Dx12RenderWindow* mRenderWindow;
     DX12SwapChain* mSwapChain;
     ID3D12Device* mDevice;
 
     DxMemoryAllocator* mMemoryAllocator;
+
+    struct DescriptorHeap** mCPUDescriptorHeaps;
+    struct DescriptorHeap** mCbvSrvUavHeaps;
 };
