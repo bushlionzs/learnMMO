@@ -24,8 +24,6 @@ public:
 
     ~Dx12Texture();
 
-    
-    void buildDescriptorHeaps(int32_t handleIndex);
     DxDescriptorID getDescriptorId()
     {
         return mDescriptors;
@@ -53,6 +51,7 @@ private:
     void _create2DTex();
     void _createSurfaceList(void);
     virtual void postLoad();
+    void buildDescriptorHeaps();
 private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> mTex;
@@ -66,6 +65,4 @@ private:
     int32_t mTexStartIndex = -1;
 
     DX12Commands* mCommands;
-    Dx12TextureHandleManager* mDx12TextureHandleManager;
-
 };

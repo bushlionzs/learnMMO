@@ -137,8 +137,8 @@ namespace Ogre {
 
 				if (enginetype == EngineType_Dx12)
 				{
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.vertexShaderName = aa[0];
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.vertexShaderEntryPoint = aa[1];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.vertexShaderName = aa[0];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.vertexShaderEntryPoint = aa[1];
 				}
 			}
 			else if (pair.first == "frag_shader")
@@ -147,8 +147,8 @@ namespace Ogre {
 				shaderFormat->shaderInfo[enginetype].privateInfo.fragShaderEntryPoint = aa[1];
 				if (enginetype == EngineType_Dx12)
 				{
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.fragShaderName = aa[0];
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.fragShaderEntryPoint = aa[1];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.fragShaderName = aa[0];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.fragShaderEntryPoint = aa[1];
 				}
 			}
 			else if (pair.first == "compute_shader")
@@ -157,8 +157,8 @@ namespace Ogre {
 				shaderFormat->shaderInfo[enginetype].privateInfo.computeShaderEntryPoint = aa[1];
 				if (enginetype == EngineType_Dx12)
 				{
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.computeShaderName = aa[0];
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.computeShaderEntryPoint = aa[1];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.computeShaderName = aa[0];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.computeShaderEntryPoint = aa[1];
 				}
 			}
 			else if (pair.first == "geometry_shader")
@@ -167,8 +167,8 @@ namespace Ogre {
 				shaderFormat->shaderInfo[enginetype].privateInfo.geometryShaderEntryPoint = aa[1];
 				if (enginetype == EngineType_Dx12)
 				{
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.geometryShaderName = aa[0];
-					shaderFormat->shaderInfo[EngineType_Dx11].privateInfo.geometryShaderEntryPoint = aa[1];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.geometryShaderName = aa[0];
+					shaderFormat->shaderInfo[EngineType_Dx12].privateInfo.geometryShaderEntryPoint = aa[1];
 				}
 			}
 			

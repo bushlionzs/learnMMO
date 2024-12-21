@@ -28,7 +28,7 @@
 #include "FVulkanBuffer.h"
 #include <SamplerGroup.h>
 #include <Program.h>
-
+#include "VulkanTools.h"
 #include <utils/bitset.h>
 #include <utils/FixedCapacityVector.h>
 #include <utils/Mutex.h>
@@ -159,16 +159,17 @@ private:
     VkDescriptorSetLayout mVkLayout = VK_NULL_HANDLE;
     VulkanDescriptorSetLayoutInfo mVulkanDescriptorSetLayoutInfo;
 };
-
+class VulkanProgram;
 struct VulkanDescriptorSet : public VulkanResource, HwDescriptorSet {
 public:
     // Because we need to recycle descriptor sets not used, we allow for a callback that the "Pool"
     // can use to repackage the vk handle.
     using OnRecycle = std::function<void(VulkanDescriptorSet*)>;
 
-    VulkanDescriptorSet(VulkanResourceAllocator* allocator, VkDescriptorSet rawSet)
+    VulkanDescriptorSet(VulkanResourceAllocator* allocator, VkDescriptorSet rawSet, uint32_t set)
         : VulkanResource(VulkanResourceType::DESCRIPTOR_SET),
           vkSet(rawSet),
+          mSet(set),
           mResources(allocator) {}
 
     ~VulkanDescriptorSet() {
@@ -181,12 +182,22 @@ public:
 
     void acquire(VulkanBufferObject* texture);
 
+    void updateVulkanProgram(VulkanProgram* vulkanProgram)
+    {
+        mVulkanProgram = vulkanProgram;
+    }
+
+    VulkanProgram* getVulkanProgram()
+    {
+        return mVulkanProgram;
+    }
     // TODO: maybe change to fixed size for performance.
     VkDescriptorSet const vkSet;
-
+    uint32_t mSet;
 private:
     VulkanAcquireOnlyResourceManager mResources;
     OnRecycle mOnRecycleFn;
+    VulkanProgram* mVulkanProgram;
 };
 
 struct VulkanPipelineLayout : public VulkanResource, HwPipelineLayout {
@@ -295,8 +306,30 @@ struct VulkanProgram : public HwProgram, VulkanResource {
     {
         mPushConstantsSize = size;
     }
+
+    const VKDescriptorInfo* getDescriptor(const char* descriptorName)
+    {
+        auto itor = mDescriptorInfoMap.find(descriptorName);
+        if (itor != mDescriptorInfoMap.end())
+        {
+            return &itor->second;
+        }
+
+        return nullptr;
+    }
     static constexpr uint8_t const MAX_SHADER_MODULES = 3;
 
+    void updateDescriptorInfo(vks::tools::BingdingInfo& bindingMap)
+    {
+        for (auto& obj : bindingMap)
+        {
+            for (auto& descriptorInfo : obj.second)
+            {
+                VKDescriptorInfo& current = mDescriptorInfoMap[descriptorInfo.name];
+                current = descriptorInfo;
+            }
+        }
+    }
 private:
     VkShaderModule mShaders[MAX_SHADER_MODULES];
     VkPipelineLayout mPipelineLayout;
@@ -304,6 +337,7 @@ private:
     std::vector<VkVertexInputBindingDescription> mVertexInputBindings;
     std::vector<VkVertexInputAttributeDescription> mAttributeDescriptions;
     uint32_t mPushConstantsSize;
+    std::map<std::string, VKDescriptorInfo> mDescriptorInfoMap;
 };
 
 struct VulkanTextureSampler : public HwSampler, VulkanResource {

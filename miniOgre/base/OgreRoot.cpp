@@ -14,7 +14,6 @@
 #include "renderSystem.h"
 #include "ResourceParserManager.h"
 #include "OgreFrameListener.h"
-#include "dx11RenderSystem.h"
 #include "dx12RenderSystem.h"
 #include "VulkanRenderSystem.h"
 #include "shaderManager.h"
@@ -80,14 +79,6 @@ namespace Ogre {
         else if (et == EngineType_Vulkan)
         {
             VulkanRenderSystem* engine = new VulkanRenderSystem(wnd);
-            std::shared_ptr<RenderSystem> ans(engine);
-
-            mRenderSystem = ans;
-
-        }
-        else if (et == EngineType_Dx11)
-        {
-            Dx11RenderSystem* engine = new Dx11RenderSystem(wnd);
             std::shared_ptr<RenderSystem> ans(engine);
 
             mRenderSystem = ans;

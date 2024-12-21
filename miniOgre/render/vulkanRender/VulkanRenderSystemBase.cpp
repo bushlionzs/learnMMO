@@ -883,7 +883,10 @@ void VulkanRenderSystemBase::unlockBuffer(Handle<HwBufferObject> bufHandle)
     vulkanBufferObject->buffer.unlock(mCommands->get().buffer());
 }
 
-void VulkanRenderSystemBase::bindVertexBuffer(Handle<HwBufferObject> bufferHandle, uint32_t binding)
+void VulkanRenderSystemBase::bindVertexBuffer(
+    Handle<HwBufferObject> bufferHandle, 
+    uint32_t binding,
+    uint32_t vertexSize)
 {
     VulkanBufferObject* vulkanBufferObject = mResourceAllocator.handle_cast<VulkanBufferObject*>(bufferHandle);
 
@@ -948,7 +951,8 @@ Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
     Handle<HwDescriptorSetLayout> layoutHandle = vulkanProgram->getLayout(set);
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
-    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
+    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet, set);
+    vulkanDescSet->updateVulkanProgram(vulkanProgram);
     return dsh;
 }
 
@@ -962,7 +966,7 @@ Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
     Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
-    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
+    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet, set);
     return dsh;
 }
 
@@ -1004,12 +1008,12 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         )
         {
             auto findLayout = [](
-                std::vector<VkDescriptorSetLayoutBinding>& bindingList,
-                VkDescriptorSetLayoutBinding binding)
+                std::vector<VKDescriptorInfo>& bindingList,
+                VKDescriptorInfo binding)
                 {
                     for (auto i = 0; i < bindingList.size(); i++)
                     {
-                        if (bindingList.at(i).binding == binding.binding)
+                        if (bindingList.at(i).layoutBinding.binding == binding.layoutBinding.binding)
                         {
                             return i;
                         }
@@ -1024,7 +1028,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
                     auto i = findLayout(bingdingList, layoutBingding);
                     if (i >= 0)
                     {
-                        bingdingList[i].stageFlags |= flagBits;
+                        bingdingList[i].layoutBinding.stageFlags |= flagBits;
                     }
                     else
                     {
@@ -1129,6 +1133,8 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         constantsUpdate(pushConstantsList, constantsList);
         bingingUpdate(bindingMap, results, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
+    
+    vulkanProgram->updateDescriptorInfo(bindingMap);
 
     VkDescriptorSetLayoutBinding toBind[VulkanDescriptorSetLayout::MAX_BINDINGS];
     uint32_t bindIndex = 0;
@@ -1143,7 +1149,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         {
             for (auto& obj : itor->second)
             {
-                toBind[bindIndex] = obj;
+                toBind[bindIndex] = obj.layoutBinding;
                 bindIndex++;
             }
         }
@@ -1273,11 +1279,18 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
             layoutlist[set] = pEmptyDescriptorSetLayout;
             continue;
         }
+
+        VkDescriptorSetLayoutBinding binding[VulkanDescriptorSetLayout::MAX_BINDINGS];
+        uint32_t size = itor->second.size();
+        for (uint32_t i = 0; i < size; i++)
+        {
+            binding[i] = itor->second[i].layoutBinding;
+        }
         VkDescriptorSetLayoutCreateInfo dlinfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
             .bindingCount = (uint32_t)itor->second.size(),
-            .pBindings = itor->second.data(),
+            .pBindings = binding,
         };
 
         //todo: use layout cache
@@ -1290,7 +1303,7 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
         VulkanDescriptorSetLayout::VulkanDescriptorSetLayoutInfo info;
         for (auto& binding : itor->second)
         {
-            switch (binding.descriptorType)
+            switch (binding.layoutBinding.descriptorType)
             {
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                 info.combinedImage++;
@@ -1515,6 +1528,96 @@ void VulkanRenderSystemBase::updateDescriptorSetTexture(
         &descriptorWrite, 0, nullptr);
 }
 
+void VulkanRenderSystemBase::updateDescriptorSet(
+    Handle<HwDescriptorSet> dsh,
+    uint32_t count,
+    const DescriptorData* pParams
+)
+{
+    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
+    VulkanProgram* vulkanProgram = set->getVulkanProgram();
+    VkDescriptorImageInfo infos[MAX_HANDLE_COUNT];
+    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkDescriptorBufferInfo bufferInfos[MAX_HANDLE_COUNT];
+    uint32_t imageCount = 0;
+    uint32_t bufferCount = 0;
+    VkWriteDescriptorSet  descriptorWrite[256];
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        const DescriptorData* pParam = pParams + i;
+        const VKDescriptorInfo* descriptroInfo = vulkanProgram->getDescriptor(pParam->pName);
+        assert(descriptroInfo);
+        const uint32_t       arrayCount = std::max(1U, pParam->mCount);
+
+        
+        switch (descriptroInfo->layoutBinding.descriptorType)
+        {
+        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        {
+            VkDescriptorType type = descriptroInfo->layoutBinding.descriptorType;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                uint32_t index = arr + imageCount;
+                VulkanTexture* vulkanTexture = (VulkanTexture*)&pParam->ppTextures[arr];
+                infos[index].imageLayout = layout;
+                infos[index].imageView = vulkanTexture->getVkImageView();
+                if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                {
+                    infos[index].sampler = vulkanTexture->getSampler();
+                }
+            }
+            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[i].pNext = nullptr;
+            descriptorWrite[i].dstSet = set->vkSet;
+            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[i].descriptorCount = arrayCount;
+            descriptorWrite[i].descriptorType = type;
+            descriptorWrite[i].dstArrayElement = 0;
+            descriptorWrite[i].pImageInfo = &infos[imageCount];
+            imageCount += arrayCount;
+        }
+
+        break;
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+        {
+            VkDescriptorType type = descriptroInfo->layoutBinding.descriptorType;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                uint32_t index = arr + bufferCount;
+                VulkanBufferObject* vbo = mResourceAllocator.handle_cast<VulkanBufferObject*>(pParam->ppBuffers[arr]);
+                bufferInfos[index].offset = 0;
+                bufferInfos[index].range = VK_WHOLE_SIZE;
+                bufferInfos[index].buffer = vbo->buffer.getGpuBuffer();
+            }
+
+            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[i].pNext = nullptr;
+            descriptorWrite[i].dstSet = set->vkSet;
+            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[i].descriptorCount = arrayCount;
+            descriptorWrite[i].descriptorType = type;
+            descriptorWrite[i].dstArrayElement = 0;
+            descriptorWrite[i].pBufferInfo = &bufferInfos[bufferCount];
+            bufferCount += arrayCount;
+        }
+        break;
+        default:
+            assert(false);
+            break;
+        }
+    }
+
+    bluevk::vkUpdateDescriptorSets(
+        mVulkanPlatform->getDevice(),
+        count,
+        descriptorWrite, 0, nullptr);
+    
+}
+
 void VulkanRenderSystemBase::updateDescriptorSetSampler(
     Handle<HwDescriptorSet> dsh,
     backend::descriptor_binding_t binding,
@@ -1538,7 +1641,7 @@ void VulkanRenderSystemBase::updateDescriptorSetSampler(
             .pImageInfo = &info,
     };
 
-    vkUpdateDescriptorSets(
+    bluevk::vkUpdateDescriptorSets(
         mVulkanPlatform->getDevice(),
         1,
         &descriptorWrite, 0, nullptr);

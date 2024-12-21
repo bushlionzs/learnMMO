@@ -104,8 +104,8 @@ DxDescriptorID consume_descriptor_handles(DescriptorHeap* pHeap, uint32_t descri
     DxDescriptorID result = D3D12_DESCRIPTOR_ID_NONE;
     DxDescriptorID firstResult = D3D12_DESCRIPTOR_ID_NONE;
     uint32_t       foundCount = 0;
-
-    for (uint32_t i = 0; i < pHeap->mNumDescriptors / 32; ++i)
+    uint32 flagCount = pHeap->mNumDescriptors / 32;
+    for (uint32_t i = 0; i < flagCount; ++i)
     {
         const uint32_t flag = pHeap->pFlags[i];
         if (UINT32_MAX == flag)

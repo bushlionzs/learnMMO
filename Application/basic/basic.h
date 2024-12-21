@@ -20,8 +20,6 @@ public:
 		GameCamera* gameCamera);
 	void update(float delta);
 
-	EngineType getEngineType();
-
 	void addCustomDirectory();
 private:
 	void base1();

@@ -18,11 +18,25 @@
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
 
-TextureCube gCubeMap[2] : register(t0);
-Texture2D gShadowMap : register(t2);
-// An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
-// in this array can be different sizes and formats, making it more flexible than texture arrays.
-Texture2D gTextureArray[9] : register(t3);
+
+#ifdef PBR
+Texture2D albedo_pbr: register(t0,space1);
+Texture2D ao_pbr: register(t1,space1);
+Texture2D normal_pbr: register(t2,space1);
+Texture2D emissive_pbr: register(t3,space1);
+Texture2D metal_roughness_pbr: register(t4,space1);
+Texture2D roughness_pbr: register(t5,space1);
+Texture2D brdflut: register(t6,space1);
+TextureCube irradianceCube: register(t7,space1);
+TextureCube prefilteredCube: register(t8,space1);
+#else
+Texture2D first: register(t0,space1);
+Texture2D second: register(t1,space1);
+Texture2D third: register(t2,space1);
+Texture2D gShadowMap: register(t3,space1);
+TextureCube gCubeMap: register(t4,space1);
+
+#endif //PBR
 
 
 

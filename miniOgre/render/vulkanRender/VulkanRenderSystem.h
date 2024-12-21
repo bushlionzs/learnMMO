@@ -26,7 +26,7 @@ public:
     virtual void updateDescriptorSetAccelerationStructure(
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
-        AccelerationStructure* accStructure) override;
+        AccelerationStructure* accStructure);
     /// 
 
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(

@@ -83,7 +83,10 @@ protected:
     virtual void popGroupMarker();
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle);
-    virtual void bindVertexBuffer(Handle<HwBufferObject> bufHandle, uint32_t binding);
+    virtual void bindVertexBuffer(
+        Handle<HwBufferObject> bufHandle, 
+        uint32_t binding,
+        uint32_t vertexSize);
     virtual void bindIndexBuffer(Handle<HwBufferObject>, uint32_t indexSize);
     virtual Handle<HwBufferObject> createBufferObject(
         BufferObjectBinding bufferObjectBinding,
@@ -121,22 +124,26 @@ protected:
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
         backend::BufferObjectHandle* boh,
-        uint32_t handleCount) override;
+        uint32_t handleCount) ;
     virtual void updateDescriptorSetTexture(
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
         OgreTexture** tex,
         uint32_t count,
-        TextureBindType type) override;
+        TextureBindType type) ;
     virtual void updateDescriptorSetSampler(
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
-        Handle<HwSampler> samplerHandle) override;
+        Handle<HwSampler> samplerHandle) ;
     virtual void updateDescriptorSetSampler(
         Handle<HwDescriptorSet> dsh,
         backend::descriptor_binding_t binding,
-        OgreTexture* tex) override;
-    
+        OgreTexture* tex) ;
+    virtual void updateDescriptorSet(
+        Handle<HwDescriptorSet> dsh,
+        uint32_t count,
+        const DescriptorData* pParams
+    );
     virtual void resourceBarrier(
         uint32_t numBufferBarriers,
         BufferBarrier* pBufferBarriers,

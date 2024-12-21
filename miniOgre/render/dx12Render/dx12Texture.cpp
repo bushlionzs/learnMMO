@@ -10,6 +10,7 @@
 #include "D3D12Mappings.h"
 #include "dx12HardwareBuffer.h"
 #include "dx12Commands.h"
+#include "memoryAllocator.h"
 
 
 Dx12Texture::Dx12Texture(
@@ -35,7 +36,6 @@ Dx12Texture::Dx12Texture(
 {
     mName = name;
     mCommands = commands;
-    mDx12TextureHandleManager = nullptr;
     mTex = resource;
     mDescriptors = descriptorId;
     createInternalResourcesImpl();
@@ -208,10 +208,52 @@ void Dx12Texture::postLoad()
         return;
     }
 
-
     updateTextureData();
 
    // generateMipmaps();
+
+    buildDescriptorHeaps();
+}
+
+void Dx12Texture::buildDescriptorHeaps()
+{
+    auto device = DX12Helper::getSingleton().getDevice();
+    if (!mCreate)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        if (this->isCubeTexture())
+        {
+            srvDesc.Format = mTex->GetDesc().Format;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+            srvDesc.TextureCube.MostDetailedMip = 0;
+            srvDesc.TextureCube.MipLevels = mTex->GetDesc().MipLevels;
+            srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+        }
+        else
+        {
+            srvDesc.Format = mTex->GetDesc().Format;
+            if (mUsage & Ogre::TextureUsage::COLOR_ATTACHMENT)
+            {
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+            }
+            else
+            {
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            }
+
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            srvDesc.Texture2D.MipLevels = mTex->GetDesc().MipLevels;
+        }
+        Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
+        struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
+        auto cpuHandle = descriptor_id_to_cpu_handle(heaps[0], mDescriptors);
+
+        device->CreateShaderResourceView(mTex.Get(), &srvDesc, cpuHandle);
+
+        mCreate = true;
+    }
 }
 
 void Dx12Texture::generateMipmaps()
@@ -251,9 +293,4 @@ void Dx12Texture::updateTextureData()
         0,
         mSurfaceList.size(),
         subResourceData.data());
-}
-
-void Dx12Texture::buildDescriptorHeaps(int32_t handleIndex)
-{
-    assert(false);
 }

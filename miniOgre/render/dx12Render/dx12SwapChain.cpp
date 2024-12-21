@@ -99,7 +99,8 @@ void DX12SwapChain::createSwapChain()
 	texProperty._height = ogreConfig.height;
 	texProperty._tex_format = D3D12Mappings::getPixelFormat(format);
 
-	auto descriptors = consume_descriptor_handles(cpuDescriptorHeaps[0], ogreConfig.swapBufferCount);
+	struct DescriptorHeap* rtvHeap = cpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
+	auto descriptors = consume_descriptor_handles(rtvHeap, ogreConfig.swapBufferCount);
 
 	for (UINT i = 0; i < ogreConfig.swapBufferCount; i++)
 	{
@@ -107,8 +108,8 @@ void DX12SwapChain::createSwapChain()
 		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&res)));
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =
-			descriptor_id_to_cpu_handle(cpuDescriptorHeaps[0], descriptors + i);
-		DX12Helper::getSingleton().getDevice()->CreateRenderTargetView(res, nullptr, cpuHandle);
+			descriptor_id_to_cpu_handle(rtvHeap, descriptors + i);
+		device->CreateRenderTargetView(res, nullptr, cpuHandle);
 		
 		mColors[i] = new Dx12Texture("colorTarget", &texProperty, mCommands, res, descriptors + i);
 	}
@@ -144,9 +145,10 @@ void DX12SwapChain::createSwapChain()
 		D3D12_RESOURCE_STATE_DEPTH_WRITE,
 		&optClear,
 		IID_PPV_ARGS(&depth)));
-	auto descriptorId = consume_descriptor_handles(cpuDescriptorHeaps[0], 1);
+	struct DescriptorHeap* dsvHeap = cpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV];
+	auto descriptorId = consume_descriptor_handles(dsvHeap, 1);
 	D3D12_CPU_DESCRIPTOR_HANDLE depthHandle = 
-		descriptor_id_to_cpu_handle(cpuDescriptorHeaps[0], descriptorId);
+		descriptor_id_to_cpu_handle(dsvHeap, descriptorId);
 	// Create descriptor to mip level 0 of entire resource using the format of the resource.
 	device->CreateDepthStencilView(depth, nullptr, depthHandle);
 

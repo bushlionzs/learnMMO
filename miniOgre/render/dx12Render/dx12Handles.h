@@ -5,11 +5,12 @@ class DxMemoryAllocator;
 
 struct DX12BufferObject : public HwBufferObject {
     DX12BufferObject(
-        DxMemoryAllocator* allocator,
+        DescriptorHeapContext* context,
         BufferObjectBinding bufferObjectBinding,
         ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
-        uint32_t byteCount
+        uint32_t byteCount,
+        DxDescriptorID id
         );
     void copyData(ID3D12GraphicsCommandList* cmdList, const char* data, uint32_t size);
     D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress();
@@ -37,8 +38,12 @@ struct DX12BufferObject : public HwBufferObject {
 
     DxDescriptorID getDescriptorID()
     {
-        assert(false);
         return mDescriptorID;
+    }
+
+    uint32_t getByteCount()
+    {
+        return mByteCount;
     }
 private:
     DxMemoryAllocator* mAllocator;
@@ -52,6 +57,9 @@ private:
     D3D12_CPU_DESCRIPTOR_HANDLE mGpuHandle;
 
     DxDescriptorID mDescriptorID;
+    DescriptorHeapContext* mDescriptorHeapContext;
+
+    uint32_t mByteCount;
 };
 
 struct DX12Pipeline : public HwPipeline
@@ -120,7 +128,6 @@ public:
         mSet = set;
     }
 
-
     Handle<HwProgram> getProgramHandle()
     {
         return mProgramHandle;
@@ -137,10 +144,22 @@ public:
 
         mCbvSrvUavDescCount = cbvSrvUavDescCount;
     }
+
+    void addDescriptroInfo(const DescriptorInfo* descriptroInfo)
+    {
+        mDescriptorInfos.push_back(descriptroInfo);
+    }
+
+    std::vector<const DescriptorInfo*> getDescriptorInfos()
+    {
+        return mDescriptorInfos;
+    }
 private:
     Handle<HwProgram> mProgramHandle;
     uint32_t mSet;
 
     DxDescriptorID       mCbvSrvUavHandle;
     uint32_t mCbvSrvUavDescCount;
+
+    std::vector<const DescriptorInfo*> mDescriptorInfos;
 };

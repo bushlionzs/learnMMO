@@ -412,12 +412,12 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         )
         {
             auto findLayout = [](
-                std::vector<VkDescriptorSetLayoutBinding>& bindingList,
-                VkDescriptorSetLayoutBinding binding)
+                std::vector<VKDescriptorInfo>& bindingList,
+                VKDescriptorInfo binding)
                 {
                     for (auto i = 0; i < bindingList.size(); i++)
                     {
-                        if (bindingList.at(i).binding == binding.binding)
+                        if (bindingList.at(i).layoutBinding.binding == binding.layoutBinding.binding)
                         {
                             return i;
                         }
@@ -432,7 +432,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                     auto i = findLayout(bingdingList, layoutBingding);
                     if (i >= 0)
                     {
-                        bingdingList[i].stageFlags |= flagBits;
+                        bingdingList[i].layoutBinding.stageFlags |= flagBits;
                     }
                     else
                     {
@@ -566,10 +566,10 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         {
             for (auto& layoutBingding : itor->second)
             {
-                toBind[bindIndex].binding = layoutBingding.binding;
-                toBind[bindIndex].descriptorType = layoutBingding.descriptorType;
-                toBind[bindIndex].descriptorCount = layoutBingding.descriptorCount;
-                toBind[bindIndex].stageFlags = layoutBingding.stageFlags;
+                toBind[bindIndex].binding = layoutBingding.layoutBinding.binding;
+                toBind[bindIndex].descriptorType = layoutBingding.layoutBinding.descriptorType;
+                toBind[bindIndex].descriptorCount = layoutBingding.layoutBinding.descriptorCount;
+                toBind[bindIndex].stageFlags = layoutBingding.layoutBinding.stageFlags;
                 toBind[bindIndex].pImmutableSamplers = nullptr;
                 bindIndex++;
             }
@@ -689,7 +689,7 @@ Handle<HwDescriptorSet> VulkanRenderSystem::createDescriptorSet(
     Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
-    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet);
+    VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet, set);
     return dsh;
 }
 

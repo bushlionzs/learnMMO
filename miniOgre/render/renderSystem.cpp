@@ -10,7 +10,6 @@
 #include <math/vec4.h>
 
 RenderSystem::RenderSystem()
-    :mPerRenderPassArena("", 1024 * 10)
 {
     
 }
@@ -25,13 +24,6 @@ bool RenderSystem::engineInit(bool raytracing)
     return false;
 }
 
-void RenderSystem::render(FrameGraphPassCallback cb)
-{
-    filament::ArenaScope rootArena(mPerRenderPassArena);
-    auto* rootJob = mJobSystem.setRootJob(mJobSystem.createJob());
-    renderJob(rootArena, cb);
-    mJobSystem.runAndWait(rootJob);
-}
 
 class DummyDriver : public Driver
 {
@@ -66,54 +58,6 @@ public:
 
 
 };
-
-void RenderSystem::renderJob(filament::ArenaScope& arena, FrameGraphPassCallback cb)
-{
-    static CircularBuffer buf(1000);
-    backend::Driver* driver = (backend::Driver*)&buf;
-    Engine::Config config;
-    DriverApi* driverApi = nullptr;
-    static ResourceAllocator* resourceAllocator = new ResourceAllocator(config, *driverApi);
-    
-    FrameGraph fg(*resourceAllocator);
-
-    auto colorPassOutput = cb(fg);
-
-    FrameGraphId<FrameGraphTexture> input = colorPassOutput;
-    auto& blackboard = fg.getBlackboard();
-    Handle<HwRenderTarget> viewRenderTarget;
-    
-    filament::Viewport vp;
-    auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-    vp.width = ogreConfig.width;
-    vp.height = ogreConfig.height;
-    
-    const filament::math::float4 clearColor = {};
-    TargetBufferFlags attachmentMask = TargetBufferFlags::COLOR0;
-    TargetBufferFlags keepOverrideStartFlags = TargetBufferFlags::NONE;
-    TargetBufferFlags keepOverrideEndFlags = TargetBufferFlags::NONE;
-    TargetBufferFlags clearFlags = TargetBufferFlags::NONE;
-    FrameGraphId<FrameGraphTexture> const fgViewRenderTarget = fg.import("viewRenderTarget", {
-            .attachments = attachmentMask,
-            .viewport = vp,
-            .clearColor = clearColor,
-            .samples = 0,
-            .clearFlags = clearFlags,
-            .keepOverrideStart = keepOverrideStartFlags,
-            .keepOverrideEnd = keepOverrideEndFlags
-        }, viewRenderTarget);
-
-    fg.forwardResource(fgViewRenderTarget, input);
-
-    fg.present(fgViewRenderTarget);
-
-    fg.compile();
-
-    
-    
-    filament::backend::DriverApi api(*driver, buf);
-    fg.execute(api);
-}
 
 OgreTexture* RenderSystem::createTextureFromFile(
     const std::string& name,
@@ -252,21 +196,5 @@ Handle<HwPipeline> RenderSystem::createPipeline(
     return Handle<HwPipeline>();
 }
 
-void RenderSystem::bindDescriptorSet(
-    Handle<HwDescriptorSet> dsh,
-    uint8_t setIndex,
-    backend::DescriptorSetOffsetArray&& offsets)
-{
-    assert(false);
-}
-
-void RenderSystem::updateDescriptorSetBuffer(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    backend::BufferObjectHandle* boh,
-    uint32_t handleCount)
-{
-    
-}
 
 

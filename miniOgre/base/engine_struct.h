@@ -285,7 +285,6 @@ public:
 
 enum EngineType
 {
-    EngineType_Dx11 = 0,
     EngineType_Dx12,
     EngineType_Vulkan,
     EngineType_Count

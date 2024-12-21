@@ -203,7 +203,6 @@ void Dx12RenderableData::buildPbrMaterial(Ogre::Material* mat)
 
 			if (current->isCubeTexture())
 			{
-				current->buildDescriptorHeaps(mCubeTexStartIndex + offset);
 				TextureProperty* texProperty = current->getTextureProperty();
 				updatePbrTextureIndex(texProperty, offset);
 				offset++;
@@ -225,7 +224,6 @@ void Dx12RenderableData::buildPbrMaterial(Ogre::Material* mat)
 			TextureProperty* texProperty = current->getTextureProperty();
 			if (current->isCubeTexture())
 			{
-				current->buildDescriptorHeaps(mTexStartIndex + offset);
 				updatePbrTextureIndex(texProperty, offset);
 				offset++;
 			}
@@ -267,7 +265,6 @@ void Dx12RenderableData::buildCommonMaterial(Ogre::Material* mat)
 
 			if (current->isCubeTexture())
 			{
-				current->buildDescriptorHeaps(mCubeTexStartIndex + offset);
 				offset++;
 			}
 		}
@@ -287,7 +284,6 @@ void Dx12RenderableData::buildCommonMaterial(Ogre::Material* mat)
 			bool has = false;
 			if (!current->isCubeTexture())
 			{
-				current->buildDescriptorHeaps(mTexStartIndex + offset);
 				offset++;
 				has = true;
 			}

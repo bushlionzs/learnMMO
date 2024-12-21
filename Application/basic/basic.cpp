@@ -59,13 +59,6 @@ void BasicApplication::update(float delta)
 	}
 }
 
-
-
-EngineType BasicApplication::getEngineType()
-{
-	return EngineType_Vulkan;
-}
-
 void BasicApplication::addCustomDirectory()
 {
 	//ResourceManager::getSingletonPtr()->addDirectory(std::string("D:\\wow3.3.5\\Data"), "wow", true);
@@ -81,7 +74,7 @@ void BasicApplication::base1()
 	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, -aa, 0.0f);
 	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
 
-	std::string meshName = "box.gltf";
+	std::string meshName = "rect";
 	
 	auto mesh = MeshManager::getSingletonPtr()->createRect(
 		nullptr,

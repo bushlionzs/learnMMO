@@ -2,21 +2,25 @@
 #include "dx12Handles.h"
 #include "dx12Helper.h"
 #include "dx12Shader.h"
+#include "memoryAllocator.h"
 
 DX12BufferObject::DX12BufferObject(
-    DxMemoryAllocator* allocator,
+    DescriptorHeapContext* context,
     BufferObjectBinding bufferObjectBinding,
     ResourceMemoryUsage memoryUsage,
     uint32_t bufferCreationFlags,
-    uint32_t byteCount
+    uint32_t byteCount,
+    DxDescriptorID id
    )
 {
-    mAllocator = allocator;
+    mDescriptorHeapContext = context;
     mBufferObjectBinding = bufferObjectBinding;
     mMemoryUsage = memoryUsage;
+    mDescriptorID = id;
+    mByteCount = d3dUtil::CalcConstantBufferByteSize(byteCount);
     ID3D12Device* dx12Device = DX12Helper::getSingleton().getDevice();
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteCount);
+    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(mByteCount);
     ThrowIfFailed(dx12Device->CreateCommittedResource(
         &heapProperties,
         D3D12_HEAP_FLAG_NONE,
@@ -24,6 +28,11 @@ DX12BufferObject::DX12BufferObject(
         D3D12_RESOURCE_STATE_COMMON,
         nullptr,
         IID_PPV_ARGS(BufferGPU.GetAddressOf())));
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+    cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
+    cbvDesc.SizeInBytes = (UINT)mByteCount;
+    auto cpuHandle = descriptor_id_to_cpu_handle(context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], id);
+    dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteCount);
     ThrowIfFailed(dx12Device->CreateCommittedResource(

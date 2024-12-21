@@ -233,7 +233,6 @@ enum class DescriptorType : uint8_t {
     COMBINED_IMAGE,
     INPUT_ATTACHMENT,
 };
-
 enum class DescriptorFlags : uint8_t {
     NONE = 0x00,
     DYNAMIC_OFFSET = 0x01

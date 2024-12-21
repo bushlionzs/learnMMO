@@ -24,7 +24,7 @@ public:
 
     struct DescriptorHeap** getCPUDescriptorHeaps()
     {
-        return mCPUDescriptorHeaps;
+        return mDescriptorHeapContext.mCPUDescriptorHeaps;
     }
 
     virtual bool engineInit();
@@ -82,7 +82,10 @@ public:
         int32_t dim,
         CubeType type);
     virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name);
-    virtual void bindVertexBuffer(Handle<HwBufferObject> bufHandle, uint32_t binding);
+    virtual void bindVertexBuffer(
+        Handle<HwBufferObject> bufHandle, 
+        uint32_t binding,
+        uint32_t vertexSize);
     virtual void bindIndexBuffer(Handle<HwBufferObject> bufHandle, uint32_t indexSize);
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle);
@@ -118,35 +121,8 @@ public:
         Handle<HwProgram>& program
     );
 
-    virtual void bindDescriptorSet(
-        Handle<HwDescriptorSet> dsh,
-        uint8_t setIndex,
-        backend::DescriptorSetOffsetArray&& offsets);
-    virtual void updateDescriptorSetBuffer(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        backend::BufferObjectHandle* boh,
-        uint32_t handleCount);
-    virtual void updateDescriptorSetTexture(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture** tex,
-        uint32_t count,
-        TextureBindType type = TextureBindType_Image);
-
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        Handle<HwSampler> samplerHandle);
-
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture* tex);
-
     virtual void updateDescriptorSet(
         Handle<HwDescriptorSet> dsh,
-        uint32_t index,
         uint32_t count,
         const DescriptorData* pParams
     );
@@ -174,6 +150,5 @@ protected:
 
     DxMemoryAllocator* mMemoryAllocator;
 
-    struct DescriptorHeap** mCPUDescriptorHeaps;
-    struct DescriptorHeap** mCbvSrvUavHeaps;
+    DescriptorHeapContext mDescriptorHeapContext;
 };

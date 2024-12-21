@@ -310,7 +310,7 @@ namespace Ogre {
         case D3D_SIT_CBUFFER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
         case D3D_SIT_TEXTURE:
-            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         case D3D_SIT_SAMPLER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         default:

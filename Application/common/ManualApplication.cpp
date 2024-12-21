@@ -268,7 +268,7 @@ void ManualApplication::addUIPass()
 	Ogre::SceneManager* sceneManager = ceguiManager->getSceneManager();
 	FrameConstantBuffer frameConstantBuffer;
 	auto* rs = mRenderSystem;
-	auto frameHandle =
+	Handle<HwBufferObject> frameHandle =
 		rs->createBufferObject(
 			BufferObjectBinding::BufferObjectBinding_Uniform,
 			RESOURCE_MEMORY_USAGE_GPU_ONLY,
@@ -295,11 +295,16 @@ void ManualApplication::addUIPass()
 			}
 			if (r->createFrameResource())
 			{
+				DescriptorData descriptorData;
 				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
 				{
 					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
-					rs->updateDescriptorSetBuffer(resourceInfo->zeroSet,
-						1, (backend::BufferObjectHandle*) & frameHandle, 1);
+
+					descriptorData.pName = "cbPass";
+					descriptorData.mCount = 1;
+					descriptorData.ppBuffers = &frameHandle;
+					
+					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
 				}
 			}
 

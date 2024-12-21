@@ -283,8 +283,10 @@ void d3dUtil::add_descriptor_heap(
     numDescriptors = round_up(numDescriptors, 32);
 
     const size_t sizeInBytes = (numDescriptors / 32) * sizeof(uint32_t);
-
-    DescriptorHeap* pHeap = (DescriptorHeap*)malloc(sizeof(*pHeap) + sizeInBytes);
+    DescriptorHeap* pHeap;
+    uint32_t allocSize = sizeof(*pHeap) + sizeInBytes;
+    pHeap = (DescriptorHeap*)malloc(allocSize);
+    memset(pHeap, 0, allocSize);
     pHeap->pFlags = (uint32_t*)(pHeap + 1);
     pHeap->pDevice = pDevice;
 

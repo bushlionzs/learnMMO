@@ -104,15 +104,24 @@ namespace Ogre {
             resourceInfo->matObjectHandle = matBufferHandle;
 
             Handle<HwProgram> programHandle = mat->getProgram();
-            resourceInfo->zeroShadowSet = rs->createDescriptorSet(programHandle, 0);
             resourceInfo->zeroSet = rs->createDescriptorSet(programHandle, 0);
             resourceInfo->firstSet = rs->createDescriptorSet(programHandle, 1);
+            resourceInfo->zeroShadowSet = rs->createDescriptorSet(programHandle, 0);
 
-            rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 0, &objectBufferHandle, 1);
-            rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 2, &matBufferHandle, 1);
+            DescriptorData descriptorData[256];
+            uint32_t descriptorCount = 0;
+            descriptorData[descriptorCount].pName = "cbPerObject";
+            descriptorData[descriptorCount].mCount = 1;
+            descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[descriptorCount].ppBuffers = &objectBufferHandle;
+            descriptorCount++;
+            descriptorData[descriptorCount].pName = "cbMaterial";
+            descriptorData[descriptorCount].mCount = 1;
+            descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[descriptorCount].ppBuffers = &matBufferHandle;
+            descriptorCount++;
 
-            rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 0, &objectBufferHandle, 1);
-
+            
             RawData* rawData = getSkinnedData();
             if (rawData)
             {
@@ -122,98 +131,131 @@ namespace Ogre {
                         RESOURCE_MEMORY_USAGE_GPU_ONLY,
                         0,
                         sizeof(SkinnedConstantBuffer));
-
-                rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 3,
-                    &resourceInfo->skinObjectHandle, 1);
-
-                rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 3,
-                    &resourceInfo->skinObjectHandle, 1);
+                descriptorData[descriptorCount].pName = "cbSkinned";
+                descriptorData[descriptorCount].mCount = 1;
+                descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+                descriptorData[descriptorCount].ppBuffers = &resourceInfo->skinObjectHandle;
+                descriptorCount++;
             }
+
+            rs->updateDescriptorSet(resourceInfo->zeroSet, descriptorCount, descriptorData);
+            rs->updateDescriptorSet(resourceInfo->zeroShadowSet, descriptorCount, descriptorData);
             //update texture
             uint32_t index = 0;
+            descriptorCount = 0;
+            
             auto& texs = mat->getAllTexureUnit();
             if (mat->isPbr())
             {
-                std::array<OgreTexture*, 9> texArray{};
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
+                    const char* pName = "";
                     int32_t texIndex = -1;
                     switch (texs[i]->getTextureProperty()->_pbrType)
                     {
                     case TextureTypePbr_Albedo:
                         texIndex = 0;
+                        pName = "albedo_pbr";
                         break;
                     case TextureTypePbr_MetalRoughness:
                         texIndex = 4;
+                        pName = "metal_roughness_pbr";
                         break;
                     case TextureTypePbr_NormalMap:
                         texIndex = 2;
+                        pName = "normal_pbr";
                         break;
                     case TextureTypePbr_Emissive:
                         texIndex = 3;
+                        pName = "emissive_pbr";
                         break;
                     case TextureTypePbr_AmbientOcclusion:
                         texIndex = 1;
+                        pName = "ao_pbr";
                         break;
                     case TextureTypePbr_Roughness:
                         texIndex = 5;
+                        pName = "roughness_pbr";
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
+                        pName = "brdflut";
                         break;
                     case TextureTypePbr_IBL_Diffuse:
                         texIndex = 7;
+                        pName = "irradianceCube";
                         break;
                     case TextureTypePbr_IBL_Specular:
                         texIndex = 8;
+                        pName = "prefilteredCube";
                         break;
                     }
                     assert(texIndex >= 0);
                     OgreTexture* tex = texs[i]->getRaw();
-                    texArray[texIndex] = tex;
-                }
-                std::shared_ptr<OgreTexture> defaultTex =
-                    TextureManager::getSingleton().getByName("white1x1.dds");
-                for (auto i = 0; i < 9; i++)
-                {
-                    OgreTexture* tex = texArray[i];
-                    if (tex == nullptr)
-                    {
-                        tex = defaultTex.get();
-                    }
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, i, &tex, 1, TextureBindType_Combined_Image_Sampler);
-                }
 
+                    descriptorData[descriptorCount].pName = "cbSkinned";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = tex;
+                    descriptorCount++;
+                }
+                rs->updateDescriptorSet(resourceInfo->firstSet, descriptorCount, descriptorData);
             }
             else
             {
+                std::array<OgreTexture*, 3> texArray{};
+                int32_t texIndex = -1;
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
                     if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
                         continue;
-                    OgreTexture* tex = texs[i]->getRaw();
-
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
-                    index++;
+                    texArray[++texIndex] = texs[i]->getRaw();
                 }
 
-                index = 4;
+                if (texIndex >= 0)
+                {
+                    descriptorData[descriptorCount].pName = "first";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[0];
+                    descriptorCount++;
+                }
+
+                if (texIndex >= 1)
+                {
+                    descriptorData[descriptorCount].pName = "second";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[1];
+                    descriptorCount++;
+                }
+
+                if (texIndex >= 2)
+                {
+                    descriptorData[descriptorCount].pName = "third";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[2];
+                    descriptorCount++;
+                }
+
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
-                    if (texs[i]->getTextureProperty()->_texType != TEX_TYPE_CUBE_MAP)
-                        continue;
-                    OgreTexture* tex = texs[i]->getRaw();
-
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo->firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
-                    index++;
+                    if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
+                    {
+                        OgreTexture* tex = texs[i]->getRaw();
+                        descriptorData[descriptorCount].pName = "gCubeMap";
+                        descriptorData[descriptorCount].mCount = 1;
+                        descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                        descriptorData[descriptorCount].ppTextures = tex;
+                        descriptorCount++;
+                        break;
+                    }
                 }
+
+                rs->updateDescriptorSet(resourceInfo->firstSet, descriptorCount, descriptorData);
             }
         }
-        
-       
         return true;
     }
 
@@ -227,7 +269,7 @@ namespace Ogre {
         }
         else
         {
-            resourceInfo.update = true;
+            //resourceInfo.update = true;
         }
         
         auto* rs = Ogre::Root::getSingleton().getRenderSystem();
@@ -266,7 +308,8 @@ namespace Ogre {
         
         if (!updateTexture)
             return;
-
+        DescriptorData descriptorData[256];
+        uint32_t descriptorCount = 0;
         uint32_t index = 0;
         mat->load(nullptr);
         auto& texs = mat->getAllTexureUnit();
@@ -275,81 +318,114 @@ namespace Ogre {
             auto& resourceInfo = mFrameResourceInfoList[i];
             if (mat->isPbr())
             {
-                std::array<OgreTexture*, 9> texArray{};
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
+                    const char* pName = "";
                     int32_t texIndex = -1;
                     switch (texs[i]->getTextureProperty()->_pbrType)
                     {
                     case TextureTypePbr_Albedo:
                         texIndex = 0;
+                        pName = "albedo_pbr";
                         break;
                     case TextureTypePbr_MetalRoughness:
                         texIndex = 4;
+                        pName = "metal_roughness_pbr";
                         break;
                     case TextureTypePbr_NormalMap:
                         texIndex = 2;
+                        pName = "normal_pbr";
                         break;
                     case TextureTypePbr_Emissive:
                         texIndex = 3;
+                        pName = "emissive_pbr";
                         break;
                     case TextureTypePbr_AmbientOcclusion:
                         texIndex = 1;
+                        pName = "ao_pbr";
                         break;
                     case TextureTypePbr_Roughness:
                         texIndex = 5;
+                        pName = "roughness_pbr";
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
+                        pName = "brdflut";
                         break;
                     case TextureTypePbr_IBL_Diffuse:
                         texIndex = 7;
+                        pName = "irradianceCube";
                         break;
                     case TextureTypePbr_IBL_Specular:
                         texIndex = 8;
+                        pName = "prefilteredCube";
                         break;
                     }
                     assert(texIndex >= 0);
                     OgreTexture* tex = texs[i]->getRaw();
-                    texArray[texIndex] = tex;
+
+                    descriptorData[descriptorCount].pName = "cbSkinned";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = tex;
+                    descriptorCount++;
                 }
-                std::shared_ptr<OgreTexture> defaultTex =
-                    TextureManager::getSingleton().getByName("white1x1.dds");
-                for (auto i = 0; i < 9; i++)
-                {
-                    OgreTexture* tex = texArray[i];
-                    if (tex == nullptr)
-                    {
-                        tex = defaultTex.get();
-                    }
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo.firstSet, i, &tex, 1, TextureBindType_Combined_Image_Sampler);
-                }
+                rs->updateDescriptorSet(resourceInfo.firstSet, descriptorCount, descriptorData);
 
             }
             else
             {
+                std::array<OgreTexture*, 3> texArray{};
+                int32_t texIndex = -1;
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
                     if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
                         continue;
-                    OgreTexture* tex = texs[i]->getRaw();
-
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo.firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
-                    index++;
+                    texArray[++texIndex] = texs[i]->getRaw();
                 }
 
-                index = 4;
+                if (texIndex >= 0)
+                {
+                    descriptorData[descriptorCount].pName = "first";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[0];
+                    descriptorCount++;
+                }
+
+                if (texIndex >= 1)
+                {
+                    descriptorData[descriptorCount].pName = "second";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[1];
+                    descriptorCount++;
+                }
+
+                if (texIndex >= 2)
+                {
+                    descriptorData[descriptorCount].pName = "third";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = texArray[2];
+                    descriptorCount++;
+                }
+
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
-                    if (texs[i]->getTextureProperty()->_texType != TEX_TYPE_CUBE_MAP)
-                        continue;
-                    OgreTexture* tex = texs[i]->getRaw();
-
-                    rs->updateDescriptorSetTexture(
-                        resourceInfo.firstSet, index, &tex, 1, TextureBindType_Combined_Image_Sampler);
+                    if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
+                    {
+                        OgreTexture* tex = texs[i]->getRaw();
+                        descriptorData[descriptorCount].pName = "gCubeMap";
+                        descriptorData[descriptorCount].mCount = 1;
+                        descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                        descriptorData[descriptorCount].ppTextures = tex;
+                        descriptorCount++;
+                        break;
+                    }
                 }
+
+                rs->updateDescriptorSet(resourceInfo.firstSet, descriptorCount, descriptorData);
             }
         }
         

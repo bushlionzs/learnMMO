@@ -85,6 +85,7 @@ struct ShaderResource
     // The size of the resource. This will be the DescriptorInfo array size for textures
     uint32_t size;
 
+    uint32_t set_index;
     // what stages use this resource
     uint8_t used_stages;
 
@@ -108,6 +109,12 @@ typedef struct DescriptorHeapProperties
     D3D12_DESCRIPTOR_HEAP_FLAGS mFlags;
 } DescriptorHeapProperties;
 
+
+struct DescriptorHeapContext
+{
+    struct DescriptorHeap** mCPUDescriptorHeaps;
+    struct DescriptorHeap** mCbvSrvUavHeaps;
+};
 
 std::wstring AnsiToWString(const std::string& str);
 std::wstring AnsiToWString(const char* str);

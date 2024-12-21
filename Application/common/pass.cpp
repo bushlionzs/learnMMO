@@ -1,5 +1,6 @@
 #include "OgreHeader.h"
 #include "OgreRoot.h"
+#include "OgreCommon.h"
 #include "pass.h"
 #include "engine_struct.h"
 #include "renderSystem.h"
@@ -70,12 +71,16 @@ public:
 			}
 			if (r->createFrameResource())
 			{
+				DescriptorData descriptorData;
 				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
 				{
 					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
 					auto frameHandle = mFrameBufferObjectList[i];
-					rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 1, &frameHandle, 1);
-					rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 1, &frameHandle, 1);
+					descriptorData.pName = "cbPass";
+					descriptorData.mCount = 1;
+					descriptorData.ppBuffers = &frameHandle;
+					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
+					rs->updateDescriptorSet(resourceInfo->zeroShadowSet, 1, &descriptorData);
 				}
 			}
 			
@@ -143,7 +148,7 @@ public:
 	}
 	virtual void update(float delta)
 	{
-		//updateFrameData(mPassInput.cam, nullptr);
+		updateFrameData(mPassInput.cam, nullptr);
 	}
 private:
 	void updateFrameData(ICamera* camera, ICamera* light)

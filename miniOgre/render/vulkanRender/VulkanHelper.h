@@ -146,7 +146,7 @@ private:
     };
     tsl::robin_map<ComputePipelineKey, VkPipeline, ComputePipelineKey::Hasher, ComputePipelineKey::EqualTo> mComputePipelineCache;
 
-    std::array<DescriptorSetLayout, 2> mLayouts;
+
     VulkanSettings mSettings;
 
     VkPhysicalDeviceFeatures deviceFeatures{};

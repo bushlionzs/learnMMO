@@ -24,7 +24,6 @@ using UpdateCallback = std::function<void(float)>;
 struct AppInfo
 {
     SetupCallback setup;
-	FrameGraphPassCallback  fgpass;
     CleanupCallback cleanup;
     UpdateCallback update;
 

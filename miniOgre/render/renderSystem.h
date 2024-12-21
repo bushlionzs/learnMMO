@@ -9,10 +9,6 @@
 #include <filament/Handle.h>
 #include <filament/DriverBase.h>
 #include <filament/DescriptorSetOffsetArray.h>
-#include <fg/FrameGraphId.h>
-#include <fg/FrameGraphTexture.h>
-#include <fg/Allocators.h>
-#include <fg/ResourceAllocator.h>
 #include "rayTracing.h"
 
 class GraphicsCommandList;
@@ -26,8 +22,6 @@ namespace Ogre
     class RenderWindow;
 }
 
-using FrameGraphPassCallback = std::function< FrameGraphId<FrameGraphTexture>(FrameGraph& fg)>;
-
 class RenderSystem
 {
 public:
@@ -36,7 +30,6 @@ public:
     virtual bool engineInit(bool raytracing = false);
     virtual void frameStart() = 0;
     virtual void frameEnd() = 0;
-    virtual void render(FrameGraphPassCallback cb);
     virtual Ogre::OgreTexture* createTextureFromFile(
         const std::string& name,
         Ogre::TextureProperty* texProperty);
@@ -149,7 +142,10 @@ public:
     {
         return nullptr;
     }
-    virtual void bindVertexBuffer(Handle<HwBufferObject> bufHandle, uint32_t binding) {}
+    virtual void bindVertexBuffer(
+        Handle<HwBufferObject> bufHandle, 
+        uint32_t binding,
+        uint32_t vertexSize) {}
     virtual void bindIndexBuffer(Handle<HwBufferObject> bufHandle, uint32_t indexSize) {}
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes) { return nullptr; }
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle) {}
@@ -187,39 +183,8 @@ public:
         Handle<HwProgram>& program
         );
 
-    virtual void bindDescriptorSet(
-        Handle<HwDescriptorSet> dsh,
-        uint8_t setIndex,
-        backend::DescriptorSetOffsetArray&& offsets);
-    virtual void updateDescriptorSetBuffer(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        backend::BufferObjectHandle* boh,
-        uint32_t handleCount);
-    virtual void updateDescriptorSetTexture(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture** tex,
-        uint32_t count,
-        TextureBindType type = TextureBindType_Image) {}
-
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        Handle<HwSampler> samplerHandle) {}
-
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture* tex) {}
-    virtual void updateDescriptorSetAccelerationStructure(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        AccelerationStructure* accStructure) {}
-
     virtual void updateDescriptorSet(
-        Handle<HwDescriptorSet> dsh, 
-        uint32_t index,
+        Handle<HwDescriptorSet> dsh,
         uint32_t count, 
         const DescriptorData* pParams
         ) {}
@@ -252,9 +217,6 @@ public:
     }
     //destroy
     virtual void destroyBufferObject(Handle<HwBufferObject> bufHandle) {}
-private:
-    void renderJob(filament::ArenaScope& arena, FrameGraphPassCallback cb);
-
 protected:
 	
     uint32_t mBatchCount = 0;
@@ -266,5 +228,4 @@ protected:
     uint32_t mRenderType;
     
     utils::JobSystem mJobSystem;
-    filament::LinearAllocatorArena mPerRenderPassArena;
 };

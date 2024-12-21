@@ -157,7 +157,7 @@ namespace vks
 		);
 		void generateMipmaps(VkCommandBuffer commandBuffer, VulkanTexture* tex);
 
-		using BingdingInfo = std::map<uint8_t, std::vector<VkDescriptorSetLayoutBinding>>;
+		using BingdingInfo = std::map<uint8_t, std::vector<VKDescriptorInfo>>;
 		struct PushConstants
 		{
 			std::string name;

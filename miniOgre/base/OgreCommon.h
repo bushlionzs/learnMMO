@@ -25,10 +25,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
-#ifndef __Ogre_Common_H__
-#define __Ogre_Common_H__
+#pragma once
 // Common stuff
 
+#include <map>
+#include <DriverBase.h>
 
 #if OGRE_CPU == OGRE_CPU_X86
     #include <xmmintrin.h>
@@ -46,7 +47,7 @@ THE SOFTWARE.
 #endif
 
 
-#include <DriverBase.h>
+
 
 namespace Ogre {
     
@@ -1107,8 +1108,9 @@ namespace Ogre {
         DESCRIPTOR_TYPE_SAMPLER = 0x01,
         // SRV Read only texture
         DESCRIPTOR_TYPE_TEXTURE = (DESCRIPTOR_TYPE_SAMPLER << 1),
+        DESCRIPTOR_TYPE_TEXTURE_SAMPLER = (DESCRIPTOR_TYPE_TEXTURE << 1),
         /// UAV Texture
-        DESCRIPTOR_TYPE_RW_TEXTURE = (DESCRIPTOR_TYPE_TEXTURE << 1),
+        DESCRIPTOR_TYPE_RW_TEXTURE = (DESCRIPTOR_TYPE_TEXTURE_SAMPLER << 1),
         // SRV Read only buffer
         DESCRIPTOR_TYPE_BUFFER = (DESCRIPTOR_TYPE_RW_TEXTURE << 1),
         DESCRIPTOR_TYPE_BUFFER_RAW = (DESCRIPTOR_TYPE_BUFFER | (DESCRIPTOR_TYPE_BUFFER << 1)),
@@ -1135,6 +1137,7 @@ namespace Ogre {
         /// Raytracing acceleration structure
         DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE = (DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER << 1),
     } DescriptorType;
+
     typedef enum ResourceMemoryUsage
     {
         /// No intended memory usage specified.
@@ -1221,8 +1224,13 @@ namespace Ogre {
     {
         const char* pName;
         uint32_t    mCount;
-        OgreTexture** ppTextures;
-        Handle<HwBufferObject>** ppBuffers;
+        Ogre::DescriptorType descriptorType;
+        union
+        {
+            const OgreTexture* ppTextures;
+            const Handle<HwBufferObject>* ppBuffers;
+        };
+       
     } DescriptorData;
 
 
@@ -1234,9 +1242,9 @@ namespace Ogre {
         uint32_t mRootDescriptor : 1;
         uint32_t mStaticSampler : 1;
         uint32_t mSet : 3;
-        uint32_t mPad : 28;
+        uint32_t mSetIndex : 23;
         uint32_t mSize;
-        uint32_t mHandleIndex;
+        uint32_t mRootIndex;
     } DescriptorInfo;
 
     struct TransformMatrix {
@@ -1249,9 +1257,6 @@ namespace Ogre {
     };
     /// Render window creation parameters container.
     typedef std::vector<RenderWindowDescription> RenderWindowDescriptionList;
-
-    /// Render window container.
-    typedef std::vector<RenderWindow*> RenderWindowList;
 
     /** @} */
     /** @} */
@@ -1342,4 +1347,3 @@ namespace Ogre {
 #endif
 }
 
-#endif

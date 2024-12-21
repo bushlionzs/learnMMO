@@ -44,7 +44,7 @@ public:
 
     struct Descriptor {
         utils::CString name;
-        backend::DescriptorType type;
+        //Ogre::DescriptorType type;
         backend::descriptor_binding_t binding;
     };
 

@@ -20,6 +20,7 @@ DX12ProgramImpl::DX12ProgramImpl(
 {
     load(info);
     updateInputDesc(decl);
+    parseShaderInfo();
 }
 
 DX12ProgramImpl::~DX12ProgramImpl()
@@ -129,13 +130,29 @@ void DX12ProgramImpl::parseShaderInfo()
         }
     }
 
-    /*std::sort(mProgramResourceList.begin(), mProgramResourceList.end(),
+    std::sort(mProgramResourceList.begin(), mProgramResourceList.end(),
         [](const ShaderResource& a, const ShaderResource& b) {
             return a.set > b.set;
-        });*/
+        });
+
+    for (uint32_t i = 0; i < 4; i++)
+    {
+        uint32_t index = 0;
+        for (auto& shaderSource : mProgramResourceList)
+        {
+            if (shaderSource.set == i)
+            {
+                shaderSource.set_index = index;
+                index += shaderSource.size;
+            }
+        }
+    }
     D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
     UINT rootParamCount = 0;
-    D3D12_DESCRIPTOR_RANGE1 range[32];
+    constexpr uint32_t         kMaxResourceTableSize = 32;
+    static constexpr uint32_t kMaxLayoutCount = 4;
+    D3D12_DESCRIPTOR_RANGE1    cbvSrvUavRange[kMaxLayoutCount][kMaxResourceTableSize] = {};
+    uint32_t index = 0;
     for (auto& shaderResource : mProgramResourceList)
     {
         if (shaderResource.type == D3D_SIT_SAMPLER)
@@ -143,35 +160,40 @@ void DX12ProgramImpl::parseShaderInfo()
             continue;
         }
 
+
         if (shaderResource.type == D3D_SIT_TEXTURE)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,
-                &shaderResource, range, &rootParams[rootParamCount]);
+                &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
             
         }
         else if (shaderResource.type == D3D_SIT_CBUFFER)
         {
-            d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
+            d3dUtil::create_descriptor_table(shaderResource.size,
+                &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
+            //d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
         }
         else
         {
             assert(false);
         }
 
+        index++;
         auto& DescriptorInfo = mDescriptorInfoMap[shaderResource.name];
-
-        DescriptorInfo.mHandleIndex = rootParamCount;
+        DescriptorInfo.pName = shaderResource.name.c_str();
+        DescriptorInfo.mRootIndex = rootParamCount;
         DescriptorInfo.mType = shaderResource.type;
         DescriptorInfo.mSet = shaderResource.set;
+        DescriptorInfo.mSetIndex = shaderResource.set_index;
         rootParamCount++;
     }
 
     auto staticSamplers = GetStaticSamplers();
 
     D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
-    rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+    rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    //rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+    //rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc{};
     rootSigDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
     rootSigDesc.Desc_1_1.NumParameters = rootParamCount;
