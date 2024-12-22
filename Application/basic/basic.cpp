@@ -40,7 +40,7 @@ void BasicApplication::setup(
 	mGameCamera = gameCamera;
 	mRenderWindow = renderWindow;
 	mRenderSystem = renderSystem;
-	base1();
+	base4();
 
 	RenderPassInput input;
 	input.color = renderWindow->getColorTarget();
@@ -112,8 +112,7 @@ void BasicApplication::base1()
 
 void BasicApplication::base2()
 {
-	std::string name = "Êé_·ðÉ½_·¿ÎÝ_13.mesh";
-	name = "Â¥À¼ÕÊÅñ04.mesh";
+	std::string name = "Â¥À¼ÕÊÅñ04.mesh";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
@@ -123,19 +122,28 @@ void BasicApplication::base2()
 
 	spherenode->attachObject(sphere);
 
-	mSceneManager->setSkyBox(true, "SkyLan", 5000);
-	
 	mGameCamera->lookAt(
-		Ogre::Vector3(2000, 0.0, 0.0f), 
+		Ogre::Vector3(1000, 0.0, 0.0f), 
 		Ogre::Vector3(0.0f, 0.0f, 0.0f));
 	mGameCamera->setMoveSpeed(200);
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 
-	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLHReverseZ(
-		Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
+	Ogre::Matrix4 m;
 
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 10000.f);
+	}
 	mGameCamera->getCamera()->updateProjectMatrix(m);
 }
 
@@ -198,9 +206,33 @@ void BasicApplication::base4()
 		mAnimationState->setLoop(true);
 	}
 
-	mGameCamera->setHeight(300.0f);
+	/*mGameCamera->setHeight(300.0f);
 	mGameCamera->setDistance(500);
-	mGameCamera->setMoveSpeed(25.0f);
+	mGameCamera->setMoveSpeed(25.0f);*/
+
+	mGameCamera->lookAt(
+		Ogre::Vector3(0.0f, 0.0f, 500.0f),
+		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+	mGameCamera->setMoveSpeed(25);
+
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+
+	Ogre::Matrix4 m;
+
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 10000.f);
+	}
+	mGameCamera->getCamera()->updateProjectMatrix(m);
 }
 
 void BasicApplication::base5()

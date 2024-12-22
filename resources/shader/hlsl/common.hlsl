@@ -3,8 +3,8 @@
 //***************************************************************************************
 
 // Defaults for number of lights.
-#ifndef NUM_DIR_LIGHTS
-    #define NUM_DIR_LIGHTS 1
+#ifndef MAX_NUM_DIR_LIGHTS
+    #define MAX_NUM_DIR_LIGHTS 1
 #endif
 
 #ifndef NUM_POINT_LIGHTS
@@ -53,7 +53,6 @@ cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
 	float4x4 gProjector;
-	float4x4 gWorldViewProj;
 };
 
 // Constant data that varies per material.
@@ -74,13 +73,8 @@ cbuffer cbPass : register(b1)
     float gFarZ;
     float gTotalTime;
     float gDeltaTime;
-    float4 gAmbientLight;
-
-
-    Light gDirectionLights[MaxLightsEach];
-	Light gPointLights[MaxLightsEach];
-	Light gSpotLights[MaxLightsEach];
-	
+    Light gDirLights[MAX_NUM_DIR_LIGHTS];
+	uint numDirLights;
 };
 
 #ifdef PBR

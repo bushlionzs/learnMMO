@@ -150,7 +150,7 @@ void DX12ProgramImpl::parseShaderInfo()
     D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
     UINT rootParamCount = 0;
     constexpr uint32_t         kMaxResourceTableSize = 32;
-    static constexpr uint32_t kMaxLayoutCount = 4;
+    static constexpr uint32_t kMaxLayoutCount = 16;
     D3D12_DESCRIPTOR_RANGE1    cbvSrvUavRange[kMaxLayoutCount][kMaxResourceTableSize] = {};
     uint32_t index = 0;
     for (auto& shaderResource : mProgramResourceList)

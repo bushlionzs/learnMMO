@@ -281,6 +281,12 @@ namespace Ogre {
         rs->updateBufferObject(resourceInfo.modelObjectHandle,
             (const char*)&objectBuffer, sizeof(objectBuffer));
 
+        RawData* rawData = getSkinnedData();
+        if (rawData)
+        {
+            rs->updateBufferObject(resourceInfo.skinObjectHandle, rawData->mData, rawData->mDataSize);
+        }
+
         if (mat->isPbr())
         {
             auto& matBuffer = mat->getPbrMatInfo();

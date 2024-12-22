@@ -34,7 +34,7 @@ DX12BufferObject::DX12BufferObject(
     auto cpuHandle = descriptor_id_to_cpu_handle(context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], id);
     dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-    bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteCount);
+    bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(mByteCount);
     ThrowIfFailed(dx12Device->CreateCommittedResource(
         &heapProperties,
         D3D12_HEAP_FLAG_NONE,
@@ -52,11 +52,7 @@ void DX12BufferObject::copyData(
     void* mapData = lock(0, size);
     memcpy(mapData, data, size);
     unlock(cmdList);
-    /*auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
-        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-    cmdList->ResourceBarrier(1, &dstBarrier);*/
-    
-    cmdList->CopyBufferRegion(BufferGPU.Get(), 0, BufferUploader.Get(), 0, size);
+
     auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
         D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
     cmdList->ResourceBarrier(1, &dstBarrier);
@@ -72,6 +68,9 @@ void* DX12BufferObject::lock(uint32_t offset, uint32_t numBytes)
     BYTE* mappedData = nullptr;
     mRange.Begin = offset;
     mRange.End = offset + numBytes;
+
+    if (mRange.End > mByteCount)
+        mRange.End = mByteCount;
     BufferUploader->Map(0, &mRange, reinterpret_cast<void**>(&mappedData));
     return mappedData;
 }
@@ -79,9 +78,9 @@ void* DX12BufferObject::lock(uint32_t offset, uint32_t numBytes)
 void DX12BufferObject::unlock(ID3D12GraphicsCommandList* cmdList)
 {
     BufferUploader->Unmap(0, &mRange);
-
+    uint32_t size = mRange.End - mRange.Begin;
     cmdList->CopyBufferRegion(
-        BufferGPU.Get(), 0, BufferUploader.Get(), mRange.Begin, mRange.End - mRange.End);
+        BufferGPU.Get(), 0, BufferUploader.Get(), mRange.Begin, size);
  
 }
 
