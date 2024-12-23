@@ -21,9 +21,9 @@
 #include "VulkanLayoutCache.h"
 #include "shaderManager.h"
 #include "glslUtil.h"
-#include "VulkanMappings.h"
+#include "hlslUtil.h"
 #include <vk_mem_alloc.h>
-
+#define MAX_HANDLE_COUNT 256
 static VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevice,
     VkDevice device) {
     VmaAllocator allocator;
@@ -370,7 +370,7 @@ void VulkanRenderSystemBase::bindPipeline(
     Handle<HwDescriptorSet>* descSets,
     uint32_t setCount)
 {
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
     VkCommandBuffer commandBuffer = mCommands->get().buffer();
     VulkanPipeline* vulkanPipeline = mResourceAllocator.handle_cast<VulkanPipeline*>(pipelineHandle);
 
@@ -534,7 +534,7 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
     VertexDeclaration* decl = vertexData->getVertexDeclaration();
     Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, decl);
 
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
     backend::RasterState rasterState{};
     rasterState.colorWrite = true;
     rasterState.renderTargetCount = 1;
@@ -774,7 +774,7 @@ Ogre::OgreTexture* VulkanRenderSystemBase::generateBRDFLUT(const std::string& na
     shaderInfo.shaderName = "generateBRDFLUT";
     Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, nullptr);
 
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
     backend::RasterState rasterState;
     rasterState.colorWrite = true;
     rasterState.renderTargetCount = 1;
@@ -947,7 +947,7 @@ Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
     uint32_t set)
 {
     Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<VulkanDescriptorSet>();
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
     Handle<HwDescriptorSetLayout> layoutHandle = vulkanProgram->getLayout(set);
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
@@ -967,6 +967,7 @@ Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
     VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet, set);
+    vulkanDescSet->updateVulkanProgram(program);
     return dsh;
 }
 
@@ -990,8 +991,8 @@ Handle<HwPipelineLayout> VulkanRenderSystemBase::createPipelineLayout(std::array
 
 Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& shaderInfo, VertexDeclaration* decl)
 {
-    Handle<HwProgram> program = mResourceAllocator.allocHandle<VulkanProgram>();
-    VulkanProgram* vulkanProgram = mResourceAllocator.construct<VulkanProgram>(program, shaderInfo.shaderName);
+    Handle<HwProgram> program = mResourceAllocator.allocHandle<VulkanShaderProgram>();
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.construct<VulkanShaderProgram>(program, shaderInfo.shaderName);
 
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Vulkan);
@@ -1061,7 +1062,19 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
                 }
             }
         };
-
+    /*{
+        Ogre::ShaderPrivateInfo* privateInfo =
+            ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
+        String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
+        VkShaderModuleInfo moduleInfo;
+        moduleInfo.shaderType = Ogre::VertexShader;
+        hlslCompileShader(
+            res->_fullname,
+            *vertexContent,
+            privateInfo->vertexShaderEntryPoint,
+            shaderInfo.shaderMacros,
+            moduleInfo);
+    }*/
     String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
     VkShaderModuleInfo moduleInfo;
     moduleInfo.shaderType = Ogre::VertexShader;
@@ -1223,8 +1236,8 @@ void VulkanRenderSystemBase::updatePushConstants(
     const char* data,
     uint32_t size)
 {
-    VulkanProgram* program = 
-        mResourceAllocator.handle_cast<VulkanProgram*>(programHandle);
+    VulkanShaderProgram* program =
+        mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
     auto pipelineLayout = program->getVulkanPipelineLayout();
     vkCmdPushConstants(
         mCommandBuffer,
@@ -1265,7 +1278,7 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
     vulkanProgram->updateComputeShader(moduleInfo.shaderModule);
 
     auto results = vks::tools::getProgramBindings(moduleInfo.spv, VK_SHADER_STAGE_COMPUTE_BIT);
-
+    vulkanProgram->updateDescriptorInfo(results);
    
     assert_invariant(!results.empty() && "Need at least one binding for descriptor set layout.");
 
@@ -1373,7 +1386,7 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
 {
     Handle<HwPipeline> pipelineHandle = mResourceAllocator.allocHandle<VulkanPipeline>();
     
-    VulkanProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanProgram*>(program);
+    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(program);
     VkPipelineLayout pipelineLayout = vulkanProgram->getVulkanPipelineLayout();
     VulkanPipelineCache::RasterState vulkanRasterState;
     vulkanRasterState.cullMode = getCullMode(rasterState.culling);
@@ -1445,7 +1458,7 @@ void VulkanRenderSystemBase::updateDescriptorSetBuffer(
     uint32_t handleCount)
 {
     VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
-#define MAX_HANDLE_COUNT 256
+
     assert(handleCount < MAX_HANDLE_COUNT);
     VulkanBufferObject* bufferObjects[MAX_HANDLE_COUNT];
     VkDescriptorBufferInfo bufferInfos[MAX_HANDLE_COUNT];
@@ -1536,12 +1549,13 @@ void VulkanRenderSystemBase::updateDescriptorSet(
 {
     VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
     VulkanProgram* vulkanProgram = set->getVulkanProgram();
-    VkDescriptorImageInfo infos[MAX_HANDLE_COUNT];
-    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkDescriptorImageInfo imageInfos[MAX_HANDLE_COUNT * 4];
+    VkDescriptorImageInfo samplerInfos[MAX_HANDLE_COUNT];
     VkDescriptorBufferInfo bufferInfos[MAX_HANDLE_COUNT];
     uint32_t imageCount = 0;
     uint32_t bufferCount = 0;
-    VkWriteDescriptorSet  descriptorWrite[256];
+    uint32_t samplerCount = 0;
+    VkWriteDescriptorSet  descriptorWrite[32];
 
     for (uint32_t i = 0; i < count; i++)
     {
@@ -1558,15 +1572,20 @@ void VulkanRenderSystemBase::updateDescriptorSet(
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
         {
             VkDescriptorType type = descriptroInfo->layoutBinding.descriptorType;
+            VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            if (type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+            {
+                layout = VK_IMAGE_LAYOUT_GENERAL;
+            }
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
                 uint32_t index = arr + imageCount;
-                VulkanTexture* vulkanTexture = (VulkanTexture*)&pParam->ppTextures[arr];
-                infos[index].imageLayout = layout;
-                infos[index].imageView = vulkanTexture->getVkImageView();
+                VulkanTexture* vulkanTexture = (VulkanTexture*)pParam->ppTextures[arr];
+                imageInfos[index].imageLayout = layout;
+                imageInfos[index].imageView = vulkanTexture->getVkImageView();
                 if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                 {
-                    infos[index].sampler = vulkanTexture->getSampler();
+                    imageInfos[index].sampler = vulkanTexture->getSampler();
                 }
             }
             descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1576,7 +1595,7 @@ void VulkanRenderSystemBase::updateDescriptorSet(
             descriptorWrite[i].descriptorCount = arrayCount;
             descriptorWrite[i].descriptorType = type;
             descriptorWrite[i].dstArrayElement = 0;
-            descriptorWrite[i].pImageInfo = &infos[imageCount];
+            descriptorWrite[i].pImageInfo = &imageInfos[imageCount];
             imageCount += arrayCount;
         }
 
@@ -1585,6 +1604,7 @@ void VulkanRenderSystemBase::updateDescriptorSet(
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         {
             VkDescriptorType type = descriptroInfo->layoutBinding.descriptorType;
+
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
                 uint32_t index = arr + bufferCount;
@@ -1605,9 +1625,33 @@ void VulkanRenderSystemBase::updateDescriptorSet(
             bufferCount += arrayCount;
         }
         break;
+        case VK_DESCRIPTOR_TYPE_SAMPLER:
+        {
+            VkDescriptorType type = descriptroInfo->layoutBinding.descriptorType;
+            for (uint32_t arr = 0; arr < arrayCount; ++arr)
+            {
+                uint32_t index = arr + samplerCount;
+                VulkanTextureSampler* vulkanSampler = 
+                    mResourceAllocator.handle_cast<VulkanTextureSampler*>(pParam->ppSamplers[arr]);
+
+                samplerInfos[index].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                samplerInfos[index].imageView = VK_NULL_HANDLE;
+                samplerInfos[index].sampler = vulkanSampler->getSampler();
+            }
+            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[i].pNext = nullptr;
+            descriptorWrite[i].dstSet = set->vkSet;
+            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[i].descriptorCount = arrayCount;
+            descriptorWrite[i].descriptorType = type;
+            descriptorWrite[i].dstArrayElement = 0;
+            descriptorWrite[i].pImageInfo = &samplerInfos[samplerCount];
+            samplerCount += arrayCount;
+        }
+        break;
         default:
             assert(false);
-            break;
+         break;
         }
     }
 

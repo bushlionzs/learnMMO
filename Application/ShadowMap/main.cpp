@@ -1,7 +1,6 @@
 #include "OgreHeader.h"
 #include "ShadowMap.h"
 #include "platform_log.h"
-#include "SimpleApp.h"
 #include "ManualApplication.h"
 
 int main()
@@ -10,6 +9,7 @@ int main()
 	ShadowMap instance;
 	
     AppInfo info;
+	info.useSRGB = true;
 	ManualApplication app;
 	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {
 		instance.setup(&app, rs, win, sceneManager, gameCamera);
@@ -20,20 +20,8 @@ int main()
 	};
 	info.cleanup = [&instance]() {
 		};
-	bool manual = true;
-	if (manual)
-	{
-		
-		app.run(info);
-	}
-	else
-	{
-		info.fgpass = [&instance](FrameGraph& fg) {
-			return instance.fgPass(fg);
-			};
-		SimpleApp app;
-		app.run(info);
-	}
+	
+	app.run(info);
 	
 	return 0;
 }

@@ -23,7 +23,7 @@ struct FrameData
 	Handle<HwBufferObject> esmUniformBlockHandle;
 
 	Handle<HwBufferObject> cameraUniformHandle;
-	Handle<HwBufferObject> ligthUniformHandle;
+	Handle<HwBufferObject> lightUniformHandle;
 
 	//clear buffer pass
 	Handle<HwDescriptorSet> clearBufferDescrSet;
@@ -70,9 +70,6 @@ public:
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
 	void update(float delta);
-
-	FrameGraphId<FrameGraphTexture> fgPass(FrameGraph& fg);
-
 	FrameData* getFrameData(uint32_t frameIndex)
 	{
 		return &mFrameData[frameIndex];

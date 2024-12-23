@@ -1227,8 +1227,9 @@ namespace Ogre {
         Ogre::DescriptorType descriptorType;
         union
         {
-            const OgreTexture* ppTextures;
+            const OgreTexture** ppTextures;
             const Handle<HwBufferObject>* ppBuffers;
+            const Handle<HwSampler>* ppSamplers;
         };
        
     } DescriptorData;

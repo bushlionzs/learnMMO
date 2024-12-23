@@ -3,6 +3,11 @@
 //***************************************************************************************
 
 // Defaults for number of lights.
+#ifdef DIRECT3D12
+#include "base.hlsl"
+#else
+#include "base.glsl"
+#endif
 #ifndef MAX_NUM_DIR_LIGHTS
     #define MAX_NUM_DIR_LIGHTS 1
 #endif
@@ -15,9 +20,15 @@
     #define NUM_SPOT_LIGHTS 0
 #endif
 
-// Include structures and functions for lighting.
-#include "LightingUtil.hlsl"
-
+struct Light {
+    float3 Strength;
+    float FalloffStart; // point/spot light only
+    float3 Direction;   // directional/spot light only
+    float FalloffEnd;   // point/spot light only
+    float3 Position;    // point light only
+    float SpotPower;    // spot light only
+	f4x4 viewProj;
+};
 
 #ifdef PBR
 Texture2D albedo_pbr: register(t0,space1);
@@ -112,70 +123,3 @@ cbuffer cbSkinned : register(b3)
     float4x4 gBoneTransforms[200];
 };
 #endif
-
-float4 ComputeLighting(Material mat,
-                       float3 pos, float3 normal, float3 toEye,
-                       float3 shadowFactor)
-{
-    float3 result = 0.0f;
-
-    int i = 0;
-
-#if (NUM_DIR_LIGHTS > 0)
-    for(i = 0; i < NUM_DIR_LIGHTS; ++i)
-    {
-        result += shadowFactor[i] * ComputeDirectionalLight(gDirectionLights[i], mat, normal, toEye);
-    }
-#endif
-
-#if (NUM_POINT_LIGHTS > 0)
-    for(i = 0; i < NUM_POINT_LIGHTS; ++i)
-    {
-        result += ComputePointLight(gPointLights[i], mat, pos, normal, toEye);
-    }
-#endif
-
-#if (NUM_SPOT_LIGHTS > 0)
-    for(i = 0; i < 0NUM_SPOT_LIGHTS; ++i)
-    {
-        result += ComputeSpotLight(gSpotLights[i], mat, pos, normal, toEye);
-    }
-#endif 
-
-    return float4(result, 0.0f);
-}
-
-float CalcShadowFactor(float4 shadowPosH)
-{
-    // Complete projection by doing division by w.
-    shadowPosH.xyz /= shadowPosH.w;
-
-    // Depth in NDC space.
-    float depth = shadowPosH.z;
-	
-
-    uint width, height, numMips;
-    gShadowMap.GetDimensions(0, width, height, numMips);
-
-    // Texel size.
-    float dx = 1.0f / (float)width;
-	
-
-    float percentLit = 0.0f;
-    const float2 offsets[9] =
-    {
-        float2(-dx,  -dx), float2(0.0f,  -dx), float2(dx,  -dx),
-        float2(-dx, 0.0f), float2(0.0f, 0.0f), float2(dx, 0.0f),
-        float2(-dx,  +dx), float2(0.0f,  +dx), float2(dx,  +dx)
-    };
-	
-
-    [unroll]
-    for(int i = 0; i < 9; ++i)
-    {
-        percentLit += gShadowMap.SampleCmpLevelZero(gsamShadow,
-            shadowPosH.xy + offsets[i], depth).r;
-    }
-    
-    return percentLit / 9.0f;
-}

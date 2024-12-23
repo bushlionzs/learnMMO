@@ -36,7 +36,7 @@ namespace filament::backend {
             allocator->destruct<VulkanIndexBuffer>(Handle<HwIndexBuffer>(id));
             break;
         case VulkanResourceType::PROGRAM:
-            allocator->destruct<VulkanProgram>(Handle<HwProgram>(id));
+            allocator->destruct<VulkanShaderProgram>(Handle<HwProgram>(id));
             break;
         case VulkanResourceType::RENDER_TARGET:
             allocator->destruct<VulkanRenderTarget>(Handle<HwRenderTarget>(id));

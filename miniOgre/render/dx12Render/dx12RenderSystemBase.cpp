@@ -549,7 +549,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
         {
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
-                Dx12Texture* dx12Texture = (Dx12Texture*)&pParam->ppTextures[arr];
+                Dx12Texture* dx12Texture = (Dx12Texture*)pParam->ppTextures[arr];
                 auto srcid = dx12Texture->getDescriptorId();
                 d3dUtil::copy_descriptor_handle(
                     mDescriptorHeapContext.mCPUDescriptorHeaps[0],

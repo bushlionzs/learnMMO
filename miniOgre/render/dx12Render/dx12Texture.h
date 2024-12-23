@@ -24,7 +24,7 @@ public:
 
     ~Dx12Texture();
 
-    DxDescriptorID getDescriptorId()
+    DxDescriptorID getDescriptorId() const
     {
         return mDescriptors;
     }

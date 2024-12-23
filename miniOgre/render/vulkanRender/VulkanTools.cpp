@@ -821,7 +821,15 @@ namespace vks
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
+				
 				if (type.array.size())
 					layout.descriptorCount = type.array[0];
 				else
@@ -843,9 +851,16 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
-
+				
 				if (type.array.size())
 					layout.descriptorCount = type.array[0];
 				else
@@ -853,6 +868,10 @@ namespace vks
 
 				layout.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
+				if (glsl.get_decoration(input.id, spv::DecorationNonWritable))
+				{
+					int kk = 0;
+				}
 				layout.binding = binding;
 				layout.stageFlags = stageFlags;
 
@@ -870,7 +889,14 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
@@ -896,7 +922,14 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
@@ -922,7 +955,14 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
@@ -947,7 +987,14 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
@@ -981,7 +1028,14 @@ namespace vks
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
 				auto& layout = descriptorInfo.layoutBinding;
-				strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				if (name.empty())
+				{
+					strncpy(descriptorInfo.name, input.name.c_str(), sizeof(descriptorInfo.name));
+				}
+				else
+				{
+					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
+				}
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())

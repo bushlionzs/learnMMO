@@ -170,6 +170,7 @@ public:
         : VulkanResource(VulkanResourceType::DESCRIPTOR_SET),
           vkSet(rawSet),
           mSet(set),
+        mVulkanProgram(nullptr),
           mResources(allocator) {}
 
     ~VulkanDescriptorSet() {
@@ -237,10 +238,59 @@ private:
     uint32_t mRangeCount;
 };
 
-struct VulkanProgram : public HwProgram, VulkanResource {
-    VulkanProgram(const std::string& name) noexcept;
 
-    ~VulkanProgram();
+
+struct VulkanTextureSampler : public HwSampler, VulkanResource {
+    VulkanTextureSampler(backend::SamplerParams& samplerParams);
+    ~VulkanTextureSampler();
+
+    VkSampler getSampler()
+    {
+        return mVkSampler;
+    }
+private:
+    VkSampler mVkSampler;
+};
+
+struct VulkanProgram :public VulkanResource
+{
+    VulkanProgram(VulkanResourceType type):
+        VulkanResource(VulkanResourceType::PROGRAM)
+    {
+
+    }
+
+    const VKDescriptorInfo* getDescriptor(const char* descriptorName)
+    {
+        auto itor = mDescriptorInfoMap.find(descriptorName);
+        if (itor != mDescriptorInfoMap.end())
+        {
+            return &itor->second;
+        }
+
+        return nullptr;
+    }
+
+    void updateDescriptorInfo(vks::tools::BingdingInfo& bindingMap)
+    {
+        for (auto& obj : bindingMap)
+        {
+            for (auto& descriptorInfo : obj.second)
+            {
+                VKDescriptorInfo& current = mDescriptorInfoMap[descriptorInfo.name];
+                current = descriptorInfo;
+            }
+        }
+    }
+
+private:
+    std::map<std::string, VKDescriptorInfo> mDescriptorInfoMap;
+};
+
+struct VulkanShaderProgram : public VulkanProgram, HwProgram {
+    VulkanShaderProgram(const std::string& name) noexcept;
+
+    ~VulkanShaderProgram();
 
     inline VkShaderModule getVertexShader() const {
         return mShaders[0];
@@ -251,12 +301,12 @@ struct VulkanProgram : public HwProgram, VulkanResource {
         return mShaders[1];
     }
 
-    inline VkShaderModule getFragmentShader() const 
-    { 
+    inline VkShaderModule getFragmentShader() const
+    {
         return mShaders[2];
     }
 
-    
+
     void updateVertexShader(VkShaderModule shaderModule)
     {
         mShaders[0] = shaderModule;
@@ -307,29 +357,10 @@ struct VulkanProgram : public HwProgram, VulkanResource {
         mPushConstantsSize = size;
     }
 
-    const VKDescriptorInfo* getDescriptor(const char* descriptorName)
-    {
-        auto itor = mDescriptorInfoMap.find(descriptorName);
-        if (itor != mDescriptorInfoMap.end())
-        {
-            return &itor->second;
-        }
-
-        return nullptr;
-    }
+    
     static constexpr uint8_t const MAX_SHADER_MODULES = 3;
 
-    void updateDescriptorInfo(vks::tools::BingdingInfo& bindingMap)
-    {
-        for (auto& obj : bindingMap)
-        {
-            for (auto& descriptorInfo : obj.second)
-            {
-                VKDescriptorInfo& current = mDescriptorInfoMap[descriptorInfo.name];
-                current = descriptorInfo;
-            }
-        }
-    }
+    
 private:
     VkShaderModule mShaders[MAX_SHADER_MODULES];
     VkPipelineLayout mPipelineLayout;
@@ -337,22 +368,10 @@ private:
     std::vector<VkVertexInputBindingDescription> mVertexInputBindings;
     std::vector<VkVertexInputAttributeDescription> mAttributeDescriptions;
     uint32_t mPushConstantsSize;
-    std::map<std::string, VKDescriptorInfo> mDescriptorInfoMap;
+    
 };
 
-struct VulkanTextureSampler : public HwSampler, VulkanResource {
-    VulkanTextureSampler(backend::SamplerParams& samplerParams);
-    ~VulkanTextureSampler();
-
-    VkSampler getSampler()
-    {
-        return mVkSampler;
-    }
-private:
-    VkSampler mVkSampler;
-};
-
-struct VulkanRaytracingProgram : public HwRaytracingProgram, VulkanResource {
+struct VulkanRaytracingProgram : public VulkanProgram, HwRaytracingProgram {
     VulkanRaytracingProgram(const std::string& name) noexcept;
     ~VulkanRaytracingProgram();
     void updatePipelineLayout(VkPipelineLayout pipelineLayout)
@@ -400,7 +419,7 @@ private:
 
     ShaderBindingTables* mShaderBindingTables;
 };
-struct VulkanComputeProgram : public HwComputeProgram, VulkanResource {
+struct VulkanComputeProgram : public VulkanProgram, HwComputeProgram{
     VulkanComputeProgram(const std::string& name) noexcept;
 
     ~VulkanComputeProgram();
@@ -678,11 +697,13 @@ inline  VkBufferUsageFlags getBufferObjectUsage(
     if (bindingType & BufferObjectBinding::BufferObjectBinding_Vertex)
     {
         flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
 
     if (bindingType & BufferObjectBinding::BufferObjectBinding_Index)
     {
         flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
     if (bindingType & BufferObjectBinding::BufferObjectBinding_Uniform)
     {
@@ -697,6 +718,7 @@ inline  VkBufferUsageFlags getBufferObjectUsage(
     if (bindingType & BufferObjectBinding::BufferObjectBinding_InDirectBuffer)
     {
         flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
 
     if (bindingType & BufferObjectBinding::BufferObjectBinding_AccelerationStructure)

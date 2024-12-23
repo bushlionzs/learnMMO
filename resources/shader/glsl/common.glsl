@@ -1,3 +1,8 @@
+#ifdef DIRECT3D12
+#include "base.hlsl"
+#else
+#include "base.glsl"
+#endif
 #ifndef MAX_NUM_DIR_LIGHTS
     #define MAX_NUM_DIR_LIGHTS 1
 #endif

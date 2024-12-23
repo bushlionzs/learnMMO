@@ -18,7 +18,6 @@
 #include "OgreEntity.h"
 #include "OgreRoot.h"
 #include "OgreVertexData.h"
-#include "PassUtil.h"
 #include "pass.h"
 #include "shaderManager.h"
 #include "forgeCommon.h"
@@ -73,26 +72,6 @@ void ShadowMap::update(float delta)
     
 }
 
-
-FrameGraphId<FrameGraphTexture> ShadowMap::fgPass(FrameGraph& fg)
-{
-    FrameGraphTexture::Descriptor colorBufferDesc = {
-        .width = mRenderWindow->getWidth(),
-        .height = mRenderWindow->getHeight(),
-        .format = backend::TextureFormat::RGB16F
-    };
-
-    PassUtil::PassConfig config;
-
-
-    config.rs = mRenderSystem;
-    config.target = mRenderWindow;
-    config.scene = Ogre::Root::getSingleton().getSceneManager(MAIN_SCENE_MANAGER);
-
-    config.cam = config.scene->getCamera(MAIN_CAMERA);
-    auto color = PassUtil::colorPass(fg, "Color Pass", colorBufferDesc, config);
-    return color;
-}
 void ShadowMap::base1()
 {
 	auto root = mSceneManager->getRoot();
@@ -302,7 +281,7 @@ void ShadowMap::updateFrameData(uint32_t i)
         lightUniformBlock.mLightDir = newLightDir.xyz();
 
         mRenderSystem->updateBufferObject(
-            frameData.ligthUniformHandle,
+            frameData.lightUniformHandle,
             (const char*)&lightUniformBlock,
             sizeof(lightUniformBlock));
 
@@ -343,6 +322,7 @@ void ShadowMap::updateFrameData(uint32_t i)
 void ShadowMap::base2()
 {
     auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+    ogreConfig.reverseDepth = true;
 	auto rootNode = mSceneManager->getRoot();
     auto root = mSceneManager->getRoot();
     std::shared_ptr<OgreTexture> defaultTex = 
@@ -589,7 +569,8 @@ void ShadowMap::base2()
             0,
             sizeof(cameraUniform)
         );
-        frameData.ligthUniformHandle = rs->createBufferObject(
+
+        frameData.lightUniformHandle = rs->createBufferObject(
             BufferObjectBinding::BufferObjectBinding_Uniform,
             RESOURCE_MEMORY_USAGE_GPU_ONLY,
             0,
@@ -599,7 +580,7 @@ void ShadowMap::base2()
     
     //clear buffer pass
     bool visibity = true;
-
+    DescriptorData descriptorData[16];
     if(visibity)
     {
         ShaderInfo shaderInfo;
@@ -609,9 +590,18 @@ void ShadowMap::base2()
         for (auto i = 0; i < numFrame; i++)
         {
             Handle<HwDescriptorSet> descrSet = rs->createDescriptorSet(clearBufferProgramHandle, 0);
-            rs->updateDescriptorSetBuffer(descrSet, 0, &mFrameData[i].indirectDrawArgBuffer, 1);
-            rs->updateDescriptorSetBuffer(descrSet, 2, &vbConstantsBuffer, 1);
 
+            descriptorData[0].pName = "indirectDrawArgs";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &mFrameData[i].indirectDrawArgBuffer;
+
+            descriptorData[1].pName = "VBConstantBuffer";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &vbConstantsBuffer;
+
+            rs->updateDescriptorSet(descrSet, 2, descriptorData);
             mFrameData[i].clearBufferDescrSet = descrSet;
         }
         
@@ -666,25 +656,58 @@ void ShadowMap::base2()
             
             Handle <HwDescriptorSet> zeroDescSet = rs->createDescriptorSet(filterTrianglesProgramHandle, 0);
             frameData.zeroDescSetOfFilter = zeroDescSet;
-            rs->updateDescriptorSetBuffer(zeroDescSet, 0, &frameData.indirectDrawArgBuffer, 1);
 
-            
-            rs->updateDescriptorSetBuffer(zeroDescSet, 1, &vertexDataHandle, 1);
-            rs->updateDescriptorSetBuffer(zeroDescSet, 2, &vbConstantsBuffer, 1);
-            
-            rs->updateDescriptorSetBuffer(zeroDescSet, 4, &indexDataHandle, 1);
-            rs->updateDescriptorSetBuffer(zeroDescSet, 5, &meshConstantsBuffer, 1);
+            descriptorData[0].pName = "indirectDrawArgs";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.indirectDrawArgBuffer;
 
+            descriptorData[1].pName = "vertexDataBuffer";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &vertexDataHandle;
+
+            descriptorData[2].pName = "VBConstantBuffer";
+            descriptorData[2].mCount = 1;
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[2].ppBuffers = &vbConstantsBuffer;
+
+            descriptorData[3].pName = "indexDataBuffer";
+            descriptorData[3].mCount = 1;
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[3].ppBuffers = &indexDataHandle;
+
+            descriptorData[4].pName = "meshConstantsBuffer";
+            descriptorData[4].mCount = 1;
+            descriptorData[4].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[4].ppBuffers = &meshConstantsBuffer;
+
+            rs->updateDescriptorSet(zeroDescSet, 5, descriptorData);
 
             Handle <HwDescriptorSet> firstDescSet = rs->createDescriptorSet(filterTrianglesProgramHandle, 1);
             frameData.firstDescSetOfFilter = firstDescSet;
-            rs->updateDescriptorSetBuffer(firstDescSet, 1, &frameData.perFrameConstantsBuffer, 1);
+            
+            descriptorData[0].pName = "PerFrameVBConstants";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.perFrameConstantsBuffer;
 
-            rs->updateDescriptorSetBuffer(firstDescSet, 3, &filterDispatchGroupDataBuffer, 1);
+            descriptorData[1].pName = "filterDispatchGroupDataBuffer";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &filterDispatchGroupDataBuffer;
 
-            rs->updateDescriptorSetBuffer(firstDescSet, 6, &frameData.indirectDataBuffer, 1);
+            descriptorData[2].pName = "indirectDataBuffer";
+            descriptorData[2].mCount = 1;
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[2].ppBuffers = &frameData.indirectDataBuffer;
 
-            rs->updateDescriptorSetBuffer(firstDescSet, 8, &filteredIndexBuffer[0], NUM_CULLING_VIEWPORTS);
+            descriptorData[3].pName = "filteredIndicesBuffer";
+            descriptorData[3].mCount = NUM_CULLING_VIEWPORTS;
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[3].ppBuffers = &filteredIndexBuffer[0];
+
+            rs->updateDescriptorSet(firstDescSet, 4, descriptorData);
         }
         ComputePassCallback callback = [=, this](ComputePassInfo& info) {
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
@@ -810,11 +833,20 @@ void ShadowMap::base2()
             FrameData& frameData = mFrameData[i];
 
             auto zeroDescrSetOfShadowPass = rs->createDescriptorSet(meshDepthHandle, 0);
-            rs->updateDescriptorSetBuffer(zeroDescrSetOfShadowPass, 4, &vertexDataHandle, 1);
+            descriptorData[0].pName = "vertexDataBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &vertexDataHandle;
+            rs->updateDescriptorSet(zeroDescrSetOfShadowPass, 1, descriptorData);
 
             auto thirdDescrSetOfShadowPass = rs->createDescriptorSet(meshDepthHandle, 3);
-            rs->updateDescriptorSetBuffer(thirdDescrSetOfShadowPass, 0,
-                &frameData.esmUniformBlockHandle, 1);
+
+            descriptorData[0].pName = "objectUniformBlock";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.esmUniformBlockHandle;
+            rs->updateDescriptorSet(thirdDescrSetOfShadowPass, 1, descriptorData);
+
             frameData.zeroDescrSetOfShadowPass = zeroDescrSetOfShadowPass;
             frameData.thirdDescrSetOfShadowPass = thirdDescrSetOfShadowPass;
 
@@ -824,22 +856,42 @@ void ShadowMap::base2()
             {
                 auto zeroDescrSetOfShadowPassAlpha =
                     rs->createDescriptorSet(meshDepthAlphaHandle, 0);
-                rs->updateDescriptorSetBuffer(zeroDescrSetOfShadowPassAlpha, 4, &vertexDataHandle, 1);
+                
+                descriptorData[0].pName = "vertexDataBuffer";
+                descriptorData[0].mCount = 1;
+                descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+                descriptorData[0].ppBuffers = &vertexDataHandle;
+                rs->updateDescriptorSet(zeroDescrSetOfShadowPassAlpha, 1, descriptorData);
 
                 auto firstDescrSetOfShadowPassAlpha =
                     rs->createDescriptorSet(meshDepthAlphaHandle, 1);
 
-                rs->updateDescriptorSetBuffer(firstDescrSetOfShadowPassAlpha, 2,
-                    &frameData.indirectDataBuffer, 1);
+                descriptorData[0].pName = "indirectDataBuffer";
+                descriptorData[0].mCount = 1;
+                descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+                descriptorData[0].ppBuffers = &frameData.indirectDataBuffer;
+                rs->updateDescriptorSet(firstDescrSetOfShadowPassAlpha, 1, descriptorData);
 
                 auto thirdDescrSetOfShadowPassAlpha =
                     rs->createDescriptorSet(meshDepthAlphaHandle, 3);
 
-                rs->updateDescriptorSetBuffer(thirdDescrSetOfShadowPassAlpha, 0,
-                    &frameData.esmUniformBlockHandle, 1);
-                rs->updateDescriptorSetSampler(zeroDescrSetOfShadowPassAlpha, 5, nearSamplerHandle);
-                rs->updateDescriptorSetTexture(zeroDescrSetOfShadowPassAlpha, 6,
-                    diffuseList.data(), diffuseList.size());
+                descriptorData[0].pName = "objectUniformBlock";
+                descriptorData[0].mCount = 1;
+                descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+                descriptorData[0].ppBuffers = &frameData.esmUniformBlockHandle;
+                rs->updateDescriptorSet(thirdDescrSetOfShadowPassAlpha, 1, descriptorData);
+
+                descriptorData[0].pName = "diffuseMaps";
+                descriptorData[0].mCount = diffuseList.size();
+                descriptorData[0].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+                descriptorData[0].ppTextures = (const OgreTexture**)diffuseList.data();
+
+                descriptorData[1].pName = "nearClampSampler";
+                descriptorData[1].mCount = 1;
+                descriptorData[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+                descriptorData[1].ppSamplers = &nearSamplerHandle;
+
+                rs->updateDescriptorSet(zeroDescrSetOfShadowPassAlpha, 2, descriptorData);
 
                 frameData.zeroDescrSetOfShadowPassAlpha = zeroDescrSetOfShadowPassAlpha;
                 frameData.firstDescrSetOfShadowPassAlpha = firstDescrSetOfShadowPassAlpha;
@@ -952,14 +1004,19 @@ void ShadowMap::base2()
         {
             FrameData& frameData = mFrameData[i];
             frameData.zeroDescrSetOfVbPass = rs->createDescriptorSet(vbBufferPassHandle, 0);
-            rs->updateDescriptorSetBuffer(frameData.zeroDescrSetOfVbPass, 3, &vertexDataHandle, 1);
-
+            descriptorData[0].pName = "vertexDataBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &vertexDataHandle;
+            rs->updateDescriptorSet(frameData.zeroDescrSetOfVbPass, 1, descriptorData);
 
             frameData.thirdDescrSetOfVbPass = rs->createDescriptorSet(vbBufferPassHandle, 3);
-            rs->updateDescriptorSetBuffer(
-                frameData.thirdDescrSetOfVbPass,
-                0, 
-                &frameData.objectUniformBlockHandle, 1);
+            
+            descriptorData[0].pName = "objectUniformBlock";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.objectUniformBlockHandle;
+            rs->updateDescriptorSet(frameData.thirdDescrSetOfVbPass, 1, descriptorData);
             ///
             auto zeroDescrSetOfVbPassAlpha  = rs->createDescriptorSet(vbBufferPassAlphaHandle, 0);
             auto firstDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 1);
@@ -968,19 +1025,45 @@ void ShadowMap::base2()
             frameData.firstDescrSetOfVbPassAlpha = firstDescrSetOfVbPassAlpha;
             frameData.thirdDescrSetOfVbPassAlpha = thirdDescrSetOfVbPassAlpha;
 
-            rs->updateDescriptorSetBuffer(zeroDescrSetOfVbPassAlpha, 2, &vbConstantsBuffer, 1);
-            rs->updateDescriptorSetBuffer(zeroDescrSetOfVbPassAlpha, 3, &vertexDataHandle, 1);
-            rs->updateDescriptorSetSampler(zeroDescrSetOfVbPassAlpha, 5, nearSamplerHandle);
-            rs->updateDescriptorSetTexture(zeroDescrSetOfVbPassAlpha, 6,
-                diffuseList.data(), diffuseList.size());
+            descriptorData[0].pName = "VBConstantBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &vbConstantsBuffer;
 
-            rs->updateDescriptorSetBuffer(firstDescrSetOfVbPassAlpha, 2,
-                &frameData.indirectDataBuffer, 1);
-            rs->updateDescriptorSetBuffer(firstDescrSetOfVbPassAlpha, 1,
-                &frameData.perFrameConstantsBuffer, 1);
+            descriptorData[1].pName = "vertexDataBuffer";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &vertexDataHandle;
 
-            rs->updateDescriptorSetBuffer(thirdDescrSetOfVbPassAlpha,
-                0, &frameData.objectUniformBlockHandle, 1);
+            descriptorData[2].pName = "nearClampSampler";
+            descriptorData[2].mCount = 1;
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[2].ppSamplers = &nearSamplerHandle;
+
+            descriptorData[3].pName = "diffuseMaps";
+            descriptorData[3].mCount = diffuseList.size();
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[3].ppTextures = (const OgreTexture**)diffuseList.data();
+
+            rs->updateDescriptorSet(zeroDescrSetOfVbPassAlpha, 4, descriptorData);
+
+            descriptorData[0].pName = "indirectDataBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.indirectDataBuffer;
+
+            descriptorData[1].pName = "PerFrameVBConstants";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &frameData.perFrameConstantsBuffer;
+
+            rs->updateDescriptorSet(firstDescrSetOfVbPassAlpha, 2, descriptorData);
+
+            descriptorData[0].pName = "objectUniformBlock";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &frameData.objectUniformBlockHandle;
+            rs->updateDescriptorSet(thirdDescrSetOfVbPassAlpha, 1, descriptorData);
         }
         
         auto winDepth = mRenderWindow->getDepthTarget();
@@ -1114,15 +1197,45 @@ void ShadowMap::base2()
             auto& zeroSet = frameData.zeroDescrSetOfVbShadePass;
             auto& firstSet = frameData.firstDescrSetOfVbShadePass;
 
-            rs->updateDescriptorSetBuffer(zeroSet, 6, &meshConstantsBuffer, 1);
-            rs->updateDescriptorSetSampler(zeroSet, 7, textureSamplerHandle);
-            rs->updateDescriptorSetSampler(zeroSet, 8, clampMiplessLinearSamplerHandle);
-            rs->updateDescriptorSetSampler(zeroSet, 9, clampMiplessNearSamplerHandle);
-            rs->updateDescriptorSetSampler(zeroSet, 10, clampBorderNearSamplerHandle);
-            rs->updateDescriptorSetSampler(zeroSet, 11, shadowCmpSamplerHandle);
-
             Ogre::OgreTexture* tex = visibilityBufferTarget->getTarget();
-            rs->updateDescriptorSetTexture(zeroSet, 18, &tex, 1);
+
+
+            descriptorData[0].pName = "meshConstantsBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &meshConstantsBuffer;
+
+            descriptorData[1].pName = "textureSampler";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[1].ppSamplers = &textureSamplerHandle;
+
+            descriptorData[2].pName = "clampMiplessLinearSampler";
+            descriptorData[2].mCount = 1;
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[2].ppSamplers = &clampMiplessLinearSamplerHandle;
+
+            descriptorData[3].pName = "clampMiplessNearSampler";
+            descriptorData[3].mCount = 1;
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[3].ppSamplers = &clampMiplessNearSamplerHandle;
+
+            descriptorData[4].pName = "clampBorderNearSampler";
+            descriptorData[4].mCount = 1;
+            descriptorData[4].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[4].ppSamplers = &clampBorderNearSamplerHandle;
+
+            descriptorData[5].pName = "ShadowCmpSampler";
+            descriptorData[5].mCount = 1;
+            descriptorData[5].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[5].ppSamplers = &shadowCmpSamplerHandle;
+
+            descriptorData[6].pName = "vbPassTexture";
+            descriptorData[6].mCount = 1;
+            descriptorData[6].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[6].ppTextures = (const OgreTexture**)&tex;
+
+            rs->updateDescriptorSet(zeroSet, 7, descriptorData);
 
             auto subMeshCount = mesh->getSubMeshCount();
 
@@ -1153,24 +1266,81 @@ void ShadowMap::base2()
                 normalList.push_back(defaultTex.get());
             }
             OgreTexture* esmShadow = esmShadowMap->getTarget();
-            rs->updateDescriptorSetTexture(zeroSet, 24, &esmShadow, 1);
-            rs->updateDescriptorSetTexture(zeroSet, 25, diffuseList.data(), diffuseList.size());
-            rs->updateDescriptorSetTexture(zeroSet, 27, specularList.data(), specularList.size());
-            rs->updateDescriptorSetTexture(zeroSet, 26, normalList.data(), normalList.size());
 
-            rs->updateDescriptorSetBuffer(zeroSet, 35, &vertexDataHandle, 1);
 
-            rs->updateDescriptorSetBuffer(zeroSet, 2, &vbConstantsBuffer, 1);
+            descriptorData[0].pName = "ESMShadowTexture";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[0].ppTextures = (const OgreTexture**)&esmShadow;
 
-            rs->updateDescriptorSetBuffer(firstSet, 4, &filteredIndexBuffer[0], 1);
-            rs->updateDescriptorSetBuffer(firstSet, 5, &frameData.indirectDataBuffer, 1);
-            rs->updateDescriptorSetBuffer(firstSet, 13, &frameData.objectUniformBlockHandle, 1);
-            rs->updateDescriptorSetBuffer(firstSet, 14, &frameData.cameraUniformHandle, 1);
-            rs->updateDescriptorSetBuffer(firstSet, 15, &frameData.ligthUniformHandle, 1);
-            rs->updateDescriptorSetBuffer(firstSet, 16, &renderSettingsUniformHandle, 1);
+            descriptorData[1].pName = "diffuseMaps";
+            descriptorData[1].mCount = diffuseList.size();
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[1].ppTextures = (const OgreTexture**)diffuseList.data();
 
-            rs->updateDescriptorSetBuffer(firstSet, 17, &esmInputConstantsHandle, 1);
-            rs->updateDescriptorSetBuffer(firstSet, 19, &sssEnabledHandle, 1);
+            descriptorData[2].pName = "normalMaps";
+            descriptorData[2].mCount = normalList.size();
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[2].ppTextures = (const OgreTexture**)normalList.data();
+
+            descriptorData[3].pName = "specularMaps";
+            descriptorData[3].mCount = specularList.size();
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[3].ppTextures = (const OgreTexture**)specularList.data();
+
+            descriptorData[4].pName = "vertexDataBuffer";
+            descriptorData[4].mCount = 1;
+            descriptorData[4].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[4].ppBuffers = &vertexDataHandle;
+
+            descriptorData[5].pName = "VBConstantBuffer";
+            descriptorData[5].mCount = 1;
+            descriptorData[5].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[5].ppBuffers = &vbConstantsBuffer;
+
+            rs->updateDescriptorSet(zeroSet, 6, descriptorData);
+
+            descriptorData[0].pName = "filteredIndexBuffer";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[0].ppBuffers = &filteredIndexBuffer[0];
+
+            descriptorData[1].pName = "indirectDataBuffer";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[1].ppBuffers = &frameData.indirectDataBuffer;
+
+            descriptorData[2].pName = "objectUniformBlock";
+            descriptorData[2].mCount = 1;
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[2].ppBuffers = &frameData.objectUniformBlockHandle;
+
+            descriptorData[3].pName = "cameraUniformBlock";
+            descriptorData[3].mCount = 1;
+            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[3].ppBuffers = &frameData.cameraUniformHandle;
+
+            descriptorData[4].pName = "lightUniformBlock";
+            descriptorData[4].mCount = 1;
+            descriptorData[4].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[4].ppBuffers = &frameData.lightUniformHandle;
+
+            descriptorData[5].pName = "renderSettingUniformBlock";
+            descriptorData[5].mCount = 1;
+            descriptorData[5].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[5].ppBuffers = &renderSettingsUniformHandle;
+
+            descriptorData[6].pName = "ESMInputConstants";
+            descriptorData[6].mCount = 1;
+            descriptorData[6].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[6].ppBuffers = &esmInputConstantsHandle;
+
+            descriptorData[7].pName = "SSSEnabled";
+            descriptorData[7].mCount = 1;
+            descriptorData[7].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[7].ppBuffers = &sssEnabledHandle;
+
+            rs->updateDescriptorSet(firstSet, 8, descriptorData);
         }
         shadePassTarget = rs->createRenderTarget("shadePassTarget",
             ogreConfig.width, ogreConfig.height, Ogre::PixelFormat::PF_A8R8G8B8_SRGB,
@@ -1241,9 +1411,19 @@ void ShadowMap::base2()
             FrameData& frameData = mFrameData[i];
             auto zeroSet = rs->createDescriptorSet(presentHandle, 0);
             frameData.zeroDescrSetOfPresentPass = zeroSet;
-            auto* tex = shadePassTarget->getTarget();
-            rs->updateDescriptorSetTexture(zeroSet, 0, &tex, 1, TextureBindType_Combined_Image_Sampler);
-            rs->updateDescriptorSetSampler(zeroSet, 1, repeatBillinearSampler);
+            Ogre::OgreTexture* tex = shadePassTarget->getTarget();
+            
+            descriptorData[0].pName = "SourceTexture";
+            descriptorData[0].mCount = 1;
+            descriptorData[0].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+            descriptorData[0].ppTextures = (const OgreTexture**) & tex;
+
+            descriptorData[1].pName = "repeatBillinearSampler";
+            descriptorData[1].mCount = 1;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[1].ppSamplers = &repeatBillinearSampler;
+
+            rs->updateDescriptorSet(zeroSet, 2, descriptorData);
         }
 
         backend::RasterState rasterState{};
@@ -1320,6 +1500,9 @@ void ShadowMap::execute(RenderSystem* rs)
     sceneManager->getSceneRenderList(cam, engineRenerList, false);
     auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
     auto& frameData = mFrameData[frameIndex];
+
+    DescriptorData descriptorData[2];
+
     for (auto r : engineRenerList.mOpaqueList)
     {
         Ogre::Material* mat = r->getMaterial().get();
@@ -1332,8 +1515,14 @@ void ShadowMap::execute(RenderSystem* rs)
             {
                 FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
                 auto frameHandle = frameData.frameBufferObject;
-                rs->updateDescriptorSetBuffer(resourceInfo->zeroSet, 1, &frameHandle, 1);
-                rs->updateDescriptorSetBuffer(resourceInfo->zeroShadowSet, 1, &frameHandle, 1);
+
+                descriptorData[0].pName = "cbPass";
+                descriptorData[0].mCount = 1;
+                descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+                descriptorData[0].ppBuffers = &frameHandle;
+
+                rs->updateDescriptorSet(resourceInfo->zeroSet, 1, descriptorData);
+                rs->updateDescriptorSet(resourceInfo->zeroShadowSet, 1, descriptorData);
             }
             r->updateModelMatrix(meshInfoStruct.mWorldMat);
         }

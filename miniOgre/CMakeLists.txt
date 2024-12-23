@@ -101,7 +101,7 @@ set( MyFavLib_LIBRARIES
     debug shaderc_sharedd.lib optimized shaderc_shared.lib
 )
 	
-target_link_libraries(${MINIOGRE_LIB_NAME} ${MyFavLib_LIBRARIES} SpirvTools utils bluevk VulkanMemoryAllocator
+target_link_libraries(${MINIOGRE_LIB_NAME} ${MyFavLib_LIBRARIES}  SpirvTools utils bluevk VulkanMemoryAllocator
 dxgi
 dxguid
 d3d12

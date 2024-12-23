@@ -1,4 +1,5 @@
 #include <OgreHeader.h>
+#include <platform_file.h>
 #include "glslUtil.h"
 #include <libshaderc_util/file_finder.h>
 #include <VulkanTools.h>
@@ -6,21 +7,7 @@
 #include <mutex>
 #include "OgreResourceManager.h"
 
-static std::string getContentFromFile(const char* name)
-{
-    FILE* fp = fopen(name, "rb");
-    fseek(fp, 0, SEEK_END);
 
-    int32_t size = ftell(fp);
-
-    fseek(fp, 0, SEEK_SET);
-
-    std::string content;
-    content.resize(size);
-    fread((void*)content.data(), 1, size, fp);
-    fclose(fp);
-    return content;
-}
 
 class MyIncluderInterface : public shaderc::CompileOptions::IncluderInterface
 {
@@ -48,7 +35,7 @@ public:
         result->source_name = name.c_str();
         result->source_name_length = name.size();
 
-        context->content = getContentFromFile(name.c_str());
+        get_file_content(name.c_str(), context->content);
         result->content = context->content.c_str();
         result->content_length = context->content.length();
         return result;

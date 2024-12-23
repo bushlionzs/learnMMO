@@ -2,6 +2,7 @@
 #include "dx12Shader.h"
 #include "dx12RenderSystem.h"
 #include "OgreVertexDeclaration.h"
+#include "OgreResourceManager.h"
 #include "myutils.h"
 #include "d3dutil.h"
 #include <d3dcompiler.h>
@@ -10,8 +11,8 @@
 #include "dx12Common.h"
 #include "D3D12Mappings.h"
 #include "shaderManager.h"
-#include "OgreResourceManager.h"
 #include "dx12Helper.h"
+
 
 
 DX12ProgramImpl::DX12ProgramImpl(
@@ -36,19 +37,22 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
     const D3D_SHADER_MACRO* macro = nullptr;
 
     std::vector<D3D_SHADER_MACRO> macros;
-    if (!shaderInfo.shaderMacros.empty())
+    
+    for (auto& o : shaderInfo.shaderMacros)
     {
-        for (auto& o : shaderInfo.shaderMacros)
-        {
-            macros.emplace_back();
-            macros.back().Name = o.first.c_str();
-            macros.back().Definition = o.second.c_str();
-        }
-
         macros.emplace_back();
-        macros.back().Name = NULL;
-        macros.back().Definition = NULL;
+        macros.back().Name = o.first.c_str();
+        macros.back().Definition = o.second.c_str();
     }
+
+    macros.emplace_back();
+    macros.back().Name = "DIRECT3D12";
+    macros.back().Definition = "1";
+
+    macros.emplace_back();
+    macros.back().Name = NULL;
+    macros.back().Definition = NULL;
+    
 
     macro = macros.data();
 

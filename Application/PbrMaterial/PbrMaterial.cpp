@@ -252,14 +252,13 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	GameCamera* gameCamera)
 {
 	example_type = 2;
-	std::string name = "FlightHelmet.gltf";
-	name = "Sponza.gltf";
+	std::string name = "Sponza.gltf";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
 
-    gltfEntity = sceneManager->createEntity("FlightHelmet", name);
-	SceneNode* gltfNode = root->createChildSceneNode("FlightHelmet");
+    gltfEntity = sceneManager->createEntity("Sponza", name);
+	SceneNode* gltfNode = root->createChildSceneNode("Sponza");
 
 	gltfNode->attachObject(gltfEntity);
 
@@ -327,7 +326,6 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, -1);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 
-	
 	gameCamera->lookAt(camPos, lookAt);
 	gameCamera->setMoveSpeed(50);
 	gameCamera->setRotateSpeed(0.5);
@@ -349,7 +347,6 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 
 	gameCamera->getCamera()->updateProjectMatrix(projectMatrix);
 	gameCamera->setCameraType(CameraMoveType_FirstPerson);
-	gameCamera->setCameraType(CameraMoveType_LookAt);
 	RenderPassInput input;
 	input.color = renderWindow->getColorTarget();
 	input.depth = renderWindow->getDepthTarget();

@@ -2,12 +2,46 @@
 #include "d3dutil.h"
 #include <DriverEnums.h>
 #include "dx12Common.h"
+#include "OgreResourceManager.h"
+#include <platform_file.h>
 #include "D3D12Mappings.h"
 #include "memoryAllocator.h"
 #include <comdef.h>
 #include <fstream>
 #include <array>
 
+class CustomD3DInclude : public ID3DInclude {
+public:
+    // 构造函数和析构函数
+    CustomD3DInclude() {}
+    virtual ~CustomD3DInclude() {}
+
+
+
+    // ID3DInclude methods
+    STDMETHODIMP Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override {
+
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(pFileName);
+
+        std::string content;
+        get_file_content(resInfo->_fullname.c_str(), content);
+
+        // 将内容复制到堆上，并返回指针和大小
+        char* data = new char[content.size() + 1];
+        memcpy(data, content.c_str(), content.size() + 1);
+
+        *ppData = data;
+        *pBytes = static_cast<UINT>(content.size());
+
+        return S_OK;
+    }
+
+    STDMETHODIMP Close(LPCVOID pData) override {
+        char* data = (char*)pData;
+        delete[] data;
+        return S_OK;
+    }
+};
 
 std::wstring AnsiToWString(const std::string& str)
 {
@@ -131,7 +165,8 @@ ID3DBlob* d3dUtil::CompileShader(
 
     ID3DBlob* byteCode = nullptr;
     Microsoft::WRL::ComPtr<ID3DBlob> errors;
-    hr = D3DCompile2(content.c_str(), content.size(), sourceName.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+    CustomD3DInclude includer;
+    hr = D3DCompile2(content.c_str(), content.size(), sourceName.c_str(), defines, &includer,
         entrypoint.c_str(), target.c_str(), compileFlags, 0, 0, nullptr, 0, &byteCode, &errors);
 
     if (errors != nullptr)
