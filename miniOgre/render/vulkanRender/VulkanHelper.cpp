@@ -321,7 +321,7 @@ VkSampler VulkanHelper::getSampler(const filament::backend::SamplerParams& param
 {
     auto iter = mSamplersCache.find(params);
     if (UTILS_LIKELY(iter != mSamplersCache.end())) {
-        //return iter->second;
+        return iter->second;
     }
     VkSamplerCreateInfo samplerInfo{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

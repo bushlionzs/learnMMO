@@ -6,6 +6,8 @@
 #include <VulkanHelper.h>
 #include <mutex>
 #include "OgreResourceManager.h"
+#include <spirv_cross/spirv_cross.hpp>
+#include <spirv_cross/spirv_hlsl.hpp>
 
 
 
@@ -89,7 +91,8 @@ bool glslCompileShader(
     const std::string& shaderContent,
     const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
-    VkShaderModuleInfo& shaderModuleInfo
+    VkShaderModuleInfo& shaderModuleInfo,
+    bool createModule
 )
 {
     std::string key = getGlslKey(shaderName, shaderMacros, shaderModuleInfo.shaderType);
@@ -176,13 +179,17 @@ bool glslCompileShader(
     std::string result;
     result.resize(aa.size() * sizeof(uint32_t));
     memcpy((void*)result.data(), aa.data(), aa.size() * sizeof(uint32_t));
-    auto device = VulkanHelper::getSingleton().getDevcie();
-    VkShaderModule shader = vks::tools::loadShaderMemory(result, device);
-    if (VK_NULL_HANDLE == shader)
+    VkShaderModule shader = VK_NULL_HANDLE;
+    if (createModule)
     {
-        return false;
+        auto device = VulkanHelper::getSingleton().getDevcie();
+        shader = vks::tools::loadShaderMemory(result, device);
+        if (VK_NULL_HANDLE == shader)
+        {
+            return false;
+        }
     }
-
+    
     {
         std::unique_lock<std::mutex> lck(gShaderMutex);
         auto itor = gShaderCacheMap.find(key);
@@ -197,7 +204,7 @@ bool glslCompileShader(
         }
     }
 
-    assert(shaderModuleInfo.shaderModule);
+    
     return true;
 }
 
@@ -234,4 +241,115 @@ void parserGlslInputDesc(
         auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
         int kk = 0;
     }
+}
+
+
+void spvToHlsl(Ogre::ShaderType shaderType, const std::string& code, std::string& hlslSource)
+{
+    std::vector<uint32_t> spirv;
+
+    spirv.resize(code.size() / 4);
+
+    memcpy(spirv.data(), code.c_str(), code.size());
+
+    spirv_cross::CompilerHLSL compiler(spirv);
+
+    // 获取着色器反射信息
+    spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+    std::string original_name;
+    for (auto& ub : resources.uniform_buffers)
+    {
+        original_name = compiler.get_name(ub.base_type_id);
+        original_name.erase(original_name.size()-6, 6);
+        compiler.set_name(ub.base_type_id, original_name); // 确保使用原始名称
+    }
+    // 设置编译选项
+    spirv_cross::CompilerHLSL::Options options;
+    options.shader_model = 51; // 对应 HLSL Shader Model 5.1
+    compiler.set_hlsl_options(options);
+    SPIRV_CROSS_NAMESPACE::HLSLVertexAttributeRemap attr;
+    if (shaderType == ShaderType::VertexShader)
+    {
+        attr.location = 0;
+        attr.semantic = "POSITION";
+        compiler.add_vertex_attribute_remap(attr);
+        attr.location = 1;
+        attr.semantic = "NORMAL";
+        compiler.add_vertex_attribute_remap(attr);
+        attr.location = 3;
+        attr.semantic = "TEXCOORD";
+        compiler.add_vertex_attribute_remap(attr);
+        attr.location = 5;
+        attr.semantic = "BLENDINDICES";
+        compiler.add_vertex_attribute_remap(attr);
+        attr.location = 6;
+        attr.semantic = "BLENDWEIGHT";
+        compiler.add_vertex_attribute_remap(attr);
+
+        attr.location = 0;
+        attr.semantic = "POSITION0";
+        compiler.add_vertex_attribute_remap_output(attr);
+
+        attr.location = 1;
+        attr.semantic = "POSITION1";
+        compiler.add_vertex_attribute_remap_output(attr);
+
+        attr.location = 2;
+        attr.semantic = "POSITION2";
+        compiler.add_vertex_attribute_remap_output(attr);
+
+        attr.location = 3;
+        attr.semantic = "NORMAL";
+        compiler.add_vertex_attribute_remap_output(attr);
+
+        attr.location = 4;
+        attr.semantic = "TEXCOORD";
+        compiler.add_vertex_attribute_remap_output(attr);
+    }
+    else if (shaderType == ShaderType::PixelShader)
+    {
+        attr.location = 0;
+        attr.semantic = "POSITION0";
+        compiler.add_vertex_attribute_remap(attr);
+
+        attr.location = 1;
+        attr.semantic = "POSITION1";
+        compiler.add_vertex_attribute_remap(attr);
+
+        attr.location = 2;
+        attr.semantic = "POSITION2";
+        compiler.add_vertex_attribute_remap(attr);
+
+        attr.location = 3;
+        attr.semantic = "NORMAL";
+        compiler.add_vertex_attribute_remap(attr);
+
+        attr.location = 4;
+        attr.semantic = "TEXCOORD";
+        compiler.add_vertex_attribute_remap(attr);
+    }
+    
+    // 编译 HLSL 代码
+    hlslSource = compiler.compile();
+}
+
+bool translateToHlsl(
+    const std::string& shaderName,
+    const std::string& shaderContent,
+    const std::string& entryPoint,
+    const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+    Ogre::ShaderType shaderType,
+    std::string& hlslSource
+)
+{
+    VkShaderModuleInfo moduleInfo;
+    moduleInfo.shaderType = shaderType;
+    bool compile = glslCompileShader(shaderName, shaderContent, entryPoint, 
+        shaderMacros, moduleInfo, false);
+    if (!compile)
+    {
+        return false;
+    }
+    spvToHlsl(shaderType, moduleInfo.spv, hlslSource);
+    return true;
 }

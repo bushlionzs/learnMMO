@@ -6,6 +6,7 @@
 #include <platform_file.h>
 #include "D3D12Mappings.h"
 #include "memoryAllocator.h"
+#include "glslUtil.h"
 #include <comdef.h>
 #include <fstream>
 #include <array>
@@ -167,6 +168,39 @@ ID3DBlob* d3dUtil::CompileShader(
     Microsoft::WRL::ComPtr<ID3DBlob> errors;
     CustomD3DInclude includer;
     hr = D3DCompile2(content.c_str(), content.size(), sourceName.c_str(), defines, &includer,
+        entrypoint.c_str(), target.c_str(), compileFlags, 0, 0, nullptr, 0, &byteCode, &errors);
+
+    if (errors != nullptr)
+        OutputDebugStringA((char*)errors->GetBufferPointer());
+
+    ThrowIfFailed(hr);
+
+    return byteCode;
+}
+
+ID3DBlob* d3dUtil::CompileGlslShader(
+    const std::string& content,
+    const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+    const std::string& entrypoint,
+    Ogre::ShaderType shaderType,
+    const std::string& target,
+    const std::string& sourceName)
+{
+    UINT compileFlags = 0;
+#if defined(DEBUG) || defined(_DEBUG)  
+    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+    
+    std::string hlslContent;
+    translateToHlsl(sourceName, content, entrypoint, shaderMacros, shaderType, hlslContent);
+    
+    HRESULT hr = S_OK;
+
+    ID3DBlob* byteCode = nullptr;
+    Microsoft::WRL::ComPtr<ID3DBlob> errors;
+    CustomD3DInclude includer;
+    hr = D3DCompile2(hlslContent.c_str(), hlslContent.size(), sourceName.c_str(), nullptr, nullptr,
         entrypoint.c_str(), target.c_str(), compileFlags, 0, 0, nullptr, 0, &byteCode, &errors);
 
     if (errors != nullptr)

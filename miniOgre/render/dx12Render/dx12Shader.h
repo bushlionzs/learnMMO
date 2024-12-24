@@ -60,8 +60,12 @@ public:
     const DescriptorInfo* getDescriptor(const char* descriptorName);
 
     uint32_t getCbvSrvUavDescCount(uint32_t set);
+
+    uint32_t getSamplerCount(uint32_t set);
 private:
-    bool load(const ShaderInfo& info);
+    bool load(const ShaderInfo& shaderInfo);
+    bool loadglsl(const ShaderInfo& shaderInfo);
+    bool loadhlsl(const ShaderInfo& shaderInfo);
     void parseShaderInfo();
     void updateInputDesc(VertexDeclaration* vDeclaration);
 private:

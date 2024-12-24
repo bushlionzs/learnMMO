@@ -188,6 +188,7 @@ public:
 	// Matrices are unrolled to vectors with notation ${SEMANTIC}_#, where # denotes row.
 	// $SEMANTIC is either TEXCOORD# or a semantic name specified here.
 	void add_vertex_attribute_remap(const HLSLVertexAttributeRemap &vertex_attributes);
+	void add_vertex_attribute_remap_output(const HLSLVertexAttributeRemap& vertex_attributes);
 	std::string compile() override;
 
 	// This is a special HLSL workaround for the NumWorkGroups builtin.
@@ -364,7 +365,7 @@ private:
 	bool require_output = false;
 	bool require_input = false;
 	SmallVector<HLSLVertexAttributeRemap> remap_vertex_attributes;
-
+	SmallVector<HLSLVertexAttributeRemap> remap_vertex_attributes_output;
 	uint32_t type_to_consumed_locations(const SPIRType &type) const;
 
 	std::string to_semantic(uint32_t location, spv::ExecutionModel em, spv::StorageClass sc);

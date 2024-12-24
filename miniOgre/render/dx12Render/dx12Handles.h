@@ -95,6 +95,22 @@ private:
     DX12ProgramImpl* mProgramImpl;
 };
 
+struct DX12Sampler : public HwSampler
+{
+public:
+    DX12Sampler(DxDescriptorID id)
+        :mDescriptorID(id)
+    {
+
+    }
+
+    DxDescriptorID getDescriptorID()
+    {
+        return mDescriptorID;
+    }
+private:
+    DxDescriptorID mDescriptorID;
+};
 struct DX12DescriptorSetLayout : public HwDescriptorSetLayout
 {
 public:
@@ -145,6 +161,16 @@ public:
         mCbvSrvUavDescCount = cbvSrvUavDescCount;
     }
 
+    DxDescriptorID getSamplerHandle()
+    {
+        return mSamplerHandle;
+    }
+    void updateSamplerHandle(DxDescriptorID samplerHanlde, uint32_t samplerCount)
+    {
+        mSamplerHandle = samplerHanlde;
+        mSamplerCount = samplerCount;
+    }
+
     void addDescriptroInfo(const DescriptorInfo* descriptroInfo)
     {
         mDescriptorInfos.push_back(descriptroInfo);
@@ -161,5 +187,7 @@ private:
     DxDescriptorID       mCbvSrvUavHandle;
     uint32_t mCbvSrvUavDescCount;
 
+    DxDescriptorID mSamplerHandle;
+    uint32_t mSamplerCount;
     std::vector<const DescriptorInfo*> mDescriptorInfos;
 };

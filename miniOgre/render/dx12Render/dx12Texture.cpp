@@ -213,6 +213,10 @@ void Dx12Texture::postLoad()
    // generateMipmaps();
 
     buildDescriptorHeaps();
+
+    Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
+    struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
+    mSamplerDescriptorID = DX12Helper::getSingleton().getSampler(mTextureProperty._samplerParams, heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]);
 }
 
 void Dx12Texture::buildDescriptorHeaps()
@@ -258,8 +262,6 @@ void Dx12Texture::buildDescriptorHeaps()
 
 void Dx12Texture::generateMipmaps()
 {
-   
-
 }
 
 void Dx12Texture::updateTextureData()

@@ -9,6 +9,7 @@
 #include <d3dx12.h>
 #include <D3Dcompiler.h>
 #include <IThread.h>
+#include <tsl/robin_map.h>
 
 using namespace Microsoft::WRL;
 class Dx12Shader;
@@ -114,6 +115,7 @@ struct DescriptorHeapContext
 {
     struct DescriptorHeap** mCPUDescriptorHeaps;
     struct DescriptorHeap** mCbvSrvUavHeaps;
+    struct DescriptorHeap** pSamplerHeaps;
 };
 
 std::wstring AnsiToWString(const std::string& str);

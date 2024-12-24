@@ -5,6 +5,8 @@ shader basic
 		shader_type directx
 		vertex_shader basic.hlsl VS
 		frag_shader basic.hlsl PS
+		//vertex_shader basic.vert.glsl main
+		//frag_shader basic.frag.glsl main
 	 }
 	 
 	 shader_unit

@@ -6,6 +6,8 @@
 class DX12Commands;
 class Dx12TextureHandleManager;
 class Dx12HardwarePixelBuffer;
+struct DX12Sampler;
+
 class Dx12Texture :public OgreTexture
 {
 public:
@@ -43,6 +45,11 @@ public:
     {
         return mTextureProperty._numMipmaps + 1;
     }
+
+    DxDescriptorID getSampler()
+    {
+        return mSamplerDescriptorID;
+    }
     void updateTextureData();
     void generateMipmaps();
 private:
@@ -65,4 +72,6 @@ private:
     int32_t mTexStartIndex = -1;
 
     DX12Commands* mCommands;
+
+    DxDescriptorID mSamplerDescriptorID;
 };

@@ -3,6 +3,9 @@
 #include "dx12RenderSystem.h"
 #include "Dx12HardwareBuffer.h"
 #include "dx12Shader.h"
+#include "dx12Handles.h"
+#include "D3D12Mappings.h"
+#include "memoryAllocator.h"
 
 template<> DX12Helper* Ogre::Singleton<DX12Helper>::msSingleton = 0;
 
@@ -365,5 +368,35 @@ void DX12Helper::_createMipmapPrepare()
 		Ogre::Vector3(0, 0, 15), Ogre::Quaternion::IDENTITY);
 
 	mMipmapFrameCB->CopyData(0, dummy);
+}
+
+DxDescriptorID DX12Helper::getSampler(
+	const filament::backend::SamplerParams& params, 
+	DescriptorHeap* heap)
+{
+	auto iter = mSamplersCache.find(params);
+	if (UTILS_LIKELY(iter != mSamplersCache.end())) {
+		return iter->second;
+	}
+
+	D3D12_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.AddressU = D3D12Mappings::getWrapMode(params.wrapS);
+	samplerDesc.AddressV = D3D12Mappings::getWrapMode(params.wrapT);
+	samplerDesc.AddressW = D3D12Mappings::getWrapMode(params.wrapR);
+	samplerDesc.Filter = D3D12Mappings::getFilter(params);
+	samplerDesc.MipLODBias = 0.0f;
+	samplerDesc.MaxAnisotropy = params.anisotropyLog2 == 0 ? 0.0f : (float)(1u << params.anisotropyLog2);
+	samplerDesc.MinLOD = 0.0f;
+	samplerDesc.MaxLOD = D3D12Mappings::getMaxLod(params.mipMapMode);
+	samplerDesc.ComparisonFunc = D3D12Mappings::getCompareOp(params.compareFunc);
+
 	
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+	DxDescriptorID id = consume_descriptor_handles(heap, 1);
+	cpuHandle = descriptor_id_to_cpu_handle(heap, id);
+	mDx12Device->CreateSampler(&samplerDesc, cpuHandle);
+
+	mSamplersCache.insert({ params, id });
+	return id;
 }

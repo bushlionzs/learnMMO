@@ -66,12 +66,12 @@ float calcShadowFactor(vec4 shadowPosH, sampler2D shadowMap, float shadowMapSize
 }
 
 
-layout(binding = 0, std140) uniform ObjectUniforms {
+layout(binding = 0, std140) uniform  cbPerObjectStruct{
     mat4 gWorld;
     mat4 gProjector;
 } cbPerObject;
 
-layout(binding = 1, std140) uniform FrameUniforms {
+layout(binding = 1, std140) uniform cbPassStruct {
     mat4 gView;
     mat4 gInvView;
     mat4 gProj;
@@ -91,7 +91,7 @@ layout(binding = 1, std140) uniform FrameUniforms {
 	uint numDirLights;
 } cbPass;
 #ifdef PBR
-layout(binding = 2, std140) uniform MaterialUniforms {
+layout(binding = 2, std140) uniform pbrMaterialStruct {
     //some constance value;
     vec2 u_MetallicRoughnessValues;
 	float u_OcclusionStrength;
@@ -106,7 +106,7 @@ layout(binding = 2, std140) uniform MaterialUniforms {
     uint hasMetalRoughNessMap;
 } pbrMaterial;
 #else
-layout(binding = 2, std140) uniform MaterialUniforms {
+layout(binding = 2, std140) uniform cbMaterialStruct {
     vec4   gDiffuseAlbedo;
     vec3   gFresnelR0;
     float  gRoughness;
@@ -119,7 +119,7 @@ layout(binding = 2, std140) uniform MaterialUniforms {
 } cbMaterial;
 #endif// PBR
 
-layout(binding = 3, std140) uniform SkinnedUniforms {
+layout(binding = 3, std140) uniform cbSkinnedStruct {
     mat4 gBoneTransforms[100];
 } cbSkinned;
 
@@ -135,10 +135,16 @@ layout (set=1, binding = 6) uniform sampler2D brdflut;
 layout (set=1, binding = 7) uniform samplerCube irradianceCube;
 layout (set=1, binding = 8) uniform samplerCube prefilteredCube;
 #else
-layout(set=1, binding = 0) uniform sampler2D first;
-layout (set=1, binding = 1) uniform sampler2D second;
-layout (set=1, binding = 2) uniform sampler2D third;
-layout (set=1, binding = 3) uniform sampler2D gShadowMap;
-layout (set=1, binding = 4) uniform samplerCube gCubeMap;
-layout(set=1, binding = 5) uniform sampler baseSampler;
+layout(set=1, binding = 0) uniform texture2D first;
+layout (set=1, binding = 1) uniform texture2D second;
+layout (set=1, binding = 2) uniform texture2D third;
+layout (set=1, binding = 3) uniform texture2D shadowMap;
+layout (set=1, binding = 4) uniform texture2D cubeMap;
+
+layout(set=1, binding = 5) uniform sampler firstSampler;
+layout(set=1, binding = 6) uniform sampler secondSampler;
+layout(set=1, binding = 7) uniform sampler thirdSampler;
+layout(set=1, binding = 8) uniform sampler shadowSampler;
+layout(set=1, binding = 9) uniform sampler cubeSampler;
+
 #endif //PBR

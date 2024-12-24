@@ -21,7 +21,6 @@
 #include "VulkanLayoutCache.h"
 #include "shaderManager.h"
 #include "glslUtil.h"
-#include "hlslUtil.h"
 #include <vk_mem_alloc.h>
 #define MAX_HANDLE_COUNT 256
 static VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevice,
@@ -1084,6 +1083,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         privateInfo->vertexShaderEntryPoint,
         shaderInfo.shaderMacros,
         moduleInfo);
+    
     vulkanProgram->updateVertexShader(moduleInfo.shaderModule);
     std::vector<VkVertexInputAttributeDescription>& attributeDescriptions =
         vulkanProgram->getAttributeDescriptions();
@@ -1631,12 +1631,26 @@ void VulkanRenderSystemBase::updateDescriptorSet(
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
                 uint32_t index = arr + samplerCount;
-                VulkanTextureSampler* vulkanSampler = 
-                    mResourceAllocator.handle_cast<VulkanTextureSampler*>(pParam->ppSamplers[arr]);
+
+                VkSampler sampler = VK_NULL_HANDLE;
+
+                if (pParam->descriptorType == DESCRIPTOR_TYPE_SAMPLER)
+                {
+                    VulkanTextureSampler* vulkanSampler =
+                        mResourceAllocator.handle_cast<VulkanTextureSampler*>(pParam->ppSamplers[arr]);
+                    sampler = vulkanSampler->getSampler();
+                }
+                else
+                {
+                    VulkanTexture* vulkanTexture = (VulkanTexture*)pParam->ppTextures[arr];
+
+                    sampler = vulkanTexture->getSampler();
+                }
+                
 
                 samplerInfos[index].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 samplerInfos[index].imageView = VK_NULL_HANDLE;
-                samplerInfos[index].sampler = vulkanSampler->getSampler();
+                samplerInfos[index].sampler = sampler;
             }
             descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrite[i].pNext = nullptr;

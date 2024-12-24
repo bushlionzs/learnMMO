@@ -44,6 +44,14 @@ public:
         const std::string& target, 
         const std::string& sourceName);
 
+    static ID3DBlob* CompileGlslShader(
+        const std::string& content,
+        const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+        const std::string& entrypoint,
+        Ogre::ShaderType shaderType,
+        const std::string& target,
+        const std::string& sourceName);
+
     static void create_descriptor_table(
         uint32_t numDescriptors,
         const ShaderResource* shaderResource,

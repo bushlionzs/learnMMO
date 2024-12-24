@@ -9,6 +9,7 @@ class Dx12RenderSystemBase;
 class Dx12TextureHandleManager;
 class Dx12HardwareBuffer;
 class Dx12Shader;
+struct DX12Sampler;
 
 class DX12Helper : public Ogre::Singleton<DX12Helper>
 {
@@ -52,6 +53,10 @@ public:
 	void _incrMipmapCommandList();
 	void _submitCommandList(bool force = false);
 	void _createMipmapPrepare();
+
+	DxDescriptorID getSampler(
+		const filament::backend::SamplerParams& params,
+		DescriptorHeap* heap);
 private:
 	
 private:
@@ -83,4 +88,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mMipmapCommandList;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mMipmapPipelineState;
 	uint32_t mMipmapCommandCount = 0;
+
+
+	tsl::robin_map<SamplerParams, DxDescriptorID, SamplerParams::Hasher, SamplerParams::EqualTo> mSamplersCache;
 };

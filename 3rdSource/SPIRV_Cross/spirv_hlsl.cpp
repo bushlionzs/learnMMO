@@ -964,13 +964,31 @@ string CompilerHLSL::to_interpolation_qualifiers(const Bitset &flags)
 
 std::string CompilerHLSL::to_semantic(uint32_t location, ExecutionModel em, StorageClass sc)
 {
-	if (em == ExecutionModelVertex && sc == StorageClassInput)
+	if (em == ExecutionModelVertex)
 	{
 		// We have a vertex attribute - we should look at remapping it if the user provided
 		// vertex attribute hints.
-		for (auto &attribute : remap_vertex_attributes)
-			if (attribute.location == location)
-				return attribute.semantic;
+		if (sc == StorageClassInput)
+		{
+			for (auto& attribute : remap_vertex_attributes)
+				if (attribute.location == location)
+					return attribute.semantic;
+		}
+		else if (sc == StorageClassOutput)
+		{
+			for (auto& attribute : remap_vertex_attributes_output)
+				if (attribute.location == location)
+					return attribute.semantic;
+		}
+	}
+	else if (em == ExecutionModelFragment)
+	{
+		if (sc == StorageClassInput)
+		{
+			for (auto& attribute : remap_vertex_attributes)
+				if (attribute.location == location)
+					return attribute.semantic;
+		}
 	}
 
 	// Not a vertex attribute, or no remap_vertex_attributes entry.
@@ -6441,6 +6459,11 @@ void CompilerHLSL::set_root_constant_layouts(std::vector<RootConstants> layout)
 void CompilerHLSL::add_vertex_attribute_remap(const HLSLVertexAttributeRemap &vertex_attributes)
 {
 	remap_vertex_attributes.push_back(vertex_attributes);
+}
+
+void CompilerHLSL::add_vertex_attribute_remap_output(const HLSLVertexAttributeRemap& vertex_attributes)
+{
+	remap_vertex_attributes_output.push_back(vertex_attributes);
 }
 
 VariableID CompilerHLSL::remap_num_workgroups_builtin()

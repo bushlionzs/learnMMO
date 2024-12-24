@@ -383,4 +383,58 @@ namespace Ogre {
 
         return ret;
     }
+
+    D3D12_TEXTURE_ADDRESS_MODE D3D12Mappings::getWrapMode(
+        filament::backend::SamplerWrapMode mode)
+    {
+        switch (mode)
+        {
+        case SamplerWrapMode::CLAMP_TO_EDGE:
+            return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        case SamplerWrapMode::REPEAT:
+            return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        case SamplerWrapMode::MIRRORED_REPEAT:
+            return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+        }
+    }
+
+    D3D12_FILTER D3D12Mappings::getFilter(const filament::backend::SamplerParams& params)
+    {
+        if (params.anisotropyLog2 > 0)
+        {
+            return D3D12_FILTER_ANISOTROPIC;
+        }
+        return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    }
+
+    float D3D12Mappings::getMaxLod(filament::backend::SamplerMipMapMode mipMapMode)
+    {
+        switch (mipMapMode) {
+        case filament::backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
+            return 0;
+        case filament::backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
+            return 1000.0f;
+        default:
+            assert(false);
+            return 1000.0f;
+        }
+    }
+    D3D12_COMPARISON_FUNC D3D12Mappings::getCompareOp(
+        filament::backend::SamplerCompareFunc func)
+    {
+        using Compare = filament::backend::SamplerCompareFunc;
+        switch (func) {
+        case Compare::LE: return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        case Compare::GE: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+        case Compare::L:  return D3D12_COMPARISON_FUNC_LESS;
+        case Compare::G:  return D3D12_COMPARISON_FUNC_GREATER;
+        case Compare::E:  return D3D12_COMPARISON_FUNC_EQUAL;
+        case Compare::NE: return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+        case Compare::A:  return D3D12_COMPARISON_FUNC_ALWAYS;
+        case Compare::N:  return D3D12_COMPARISON_FUNC_NEVER;
+        default:
+            assert(false);
+            return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        }
+    }
 }

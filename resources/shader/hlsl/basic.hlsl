@@ -35,7 +35,6 @@ VertexOut VS(VertexIn vIn)
     weights[1] = vIn.BoneWeights.y;
     weights[2] = vIn.BoneWeights.z;
     weights[3] = vIn.BoneWeights.w;
-    //weights[3]  =1.0f - weights[0] - weights[1] - weights[2];
     float3 posL = float3(0.0f, 0.0f, 0.0f);
     float3 normalL = float3(0.0f, 0.0f, 0.0f);
 #ifdef USETANGENT
@@ -75,7 +74,7 @@ VertexOut VS(VertexIn vIn)
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = first.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = first.Sample(firstSampler, pin.TexC) * gDiffuseAlbedo;
 	clip(diffuseAlbedo.a - 0.5f);
 	return diffuseAlbedo;
 }

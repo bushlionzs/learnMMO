@@ -220,11 +220,23 @@ namespace Ogre {
                     descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
                     descriptorData[descriptorCount].ppTextures = (const OgreTexture**) & texArray[0];
                     descriptorCount++;
+
+                    descriptorData[descriptorCount].pName = "firstSampler";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[0];
+                    descriptorCount++;
                 }
 
                 if (texIndex >= 1)
                 {
                     descriptorData[descriptorCount].pName = "second";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[1];
+                    descriptorCount++;
+
+                    descriptorData[descriptorCount].pName = "secondSampler";
                     descriptorData[descriptorCount].mCount = 1;
                     descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
                     descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[1];
@@ -238,6 +250,12 @@ namespace Ogre {
                     descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
                     descriptorData[descriptorCount].ppTextures = (const OgreTexture**)texArray[2];
                     descriptorCount++;
+
+                    descriptorData[descriptorCount].pName = "thirdSampler";
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[2];
+                    descriptorCount++;
                 }
 
                 for (int32_t i = 0; i < texs.size(); i++)
@@ -245,7 +263,13 @@ namespace Ogre {
                     if (texs[i]->getTextureProperty()->_texType == TEX_TYPE_CUBE_MAP)
                     {
                         texArray[3] = texs[i]->getRaw();
-                        descriptorData[descriptorCount].pName = "gCubeMap";
+                        descriptorData[descriptorCount].pName = "cubeMap";
+                        descriptorData[descriptorCount].mCount = 1;
+                        descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                        descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[3];
+                        descriptorCount++;
+
+                        descriptorData[descriptorCount].pName = "cubeSampler";
                         descriptorData[descriptorCount].mCount = 1;
                         descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
                         descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[3];

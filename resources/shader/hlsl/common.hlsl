@@ -51,13 +51,11 @@ TextureCube gCubeMap: register(t4,space1);
 
 
 
-SamplerState gsamPointWrap        : register(s0);
-SamplerState gsamPointClamp       : register(s1);
-SamplerState gsamLinearWrap       : register(s2);
-SamplerState gsamLinearClamp      : register(s3);
-SamplerState gsamAnisotropicWrap  : register(s4);
-SamplerState gsamAnisotropicClamp : register(s5);
-SamplerComparisonState gsamShadow : register(s6);
+SamplerState firstSampler       : register(s0,space1);
+SamplerState secondSampler      : register(s1,space1);
+SamplerState thirdSampler       : register(s2,space1);
+SamplerState shadowSampler      : register(s3,space1);
+SamplerState cubeSampler        : register(s4,space1);
 
 // Constant data that varies per frame.
 cbuffer cbPerObject : register(b0)

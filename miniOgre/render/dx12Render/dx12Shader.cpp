@@ -12,7 +12,7 @@
 #include "D3D12Mappings.h"
 #include "shaderManager.h"
 #include "dx12Helper.h"
-
+#include "myutils.h"
 
 
 DX12ProgramImpl::DX12ProgramImpl(
@@ -34,10 +34,60 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
 
+    const char* suffix = getSuffix(privateInfo->vertexShaderName);
+
+    bool glsl = false;
+    if (strcmp(suffix, ".glsl") == 0)
+    {
+        glsl = true;
+    }
+    
+    if (glsl)
+    {
+        return loadglsl(shaderInfo);
+    }
+
+    return loadhlsl(shaderInfo);
+}
+
+bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
+{
+    Ogre::ShaderPrivateInfo* privateInfo =
+        ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
+
+    auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
+
+    String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
+    mvsByteCode = d3dUtil::CompileGlslShader(
+        *vertexContent,
+        shaderInfo.shaderMacros,
+        privateInfo->vertexShaderEntryPoint,
+        Ogre::ShaderType::VertexShader,
+        "vs_5_1",
+        res->_fullname);
+
+    String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
+
+    res = ResourceManager::getSingleton().getResource(privateInfo->fragShaderName);
+    mpsByteCode = d3dUtil::CompileGlslShader(
+        *fragContent,
+        shaderInfo.shaderMacros,
+        privateInfo->fragShaderEntryPoint,
+        Ogre::ShaderType::PixelShader,
+        "ps_5_1",
+        res->_fullname);
+
+    return true;
+}
+bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
+{
+    Ogre::ShaderPrivateInfo* privateInfo =
+        ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
+
     const D3D_SHADER_MACRO* macro = nullptr;
 
     std::vector<D3D_SHADER_MACRO> macros;
-    
+
     for (auto& o : shaderInfo.shaderMacros)
     {
         macros.emplace_back();
@@ -52,7 +102,7 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
     macros.emplace_back();
     macros.back().Name = NULL;
     macros.back().Definition = NULL;
-    
+
 
     macro = macros.data();
 
@@ -60,9 +110,9 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 
     String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
     mvsByteCode = d3dUtil::CompileShader(
-        *vertexContent, 
-        macro, 
-        privateInfo->vertexShaderEntryPoint.c_str(), 
+        *vertexContent,
+        macro,
+        privateInfo->vertexShaderEntryPoint.c_str(),
         "vs_5_1",
         res->_fullname);
 
@@ -70,9 +120,9 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 
     res = ResourceManager::getSingleton().getResource(privateInfo->fragShaderName);
     mpsByteCode = d3dUtil::CompileShader(
-        *fragContent, 
-        macro, 
-        privateInfo->fragShaderEntryPoint.c_str(), 
+        *fragContent,
+        macro,
+        privateInfo->fragShaderEntryPoint.c_str(),
         "ps_5_1",
         res->_fullname);
 
@@ -142,12 +192,22 @@ void DX12ProgramImpl::parseShaderInfo()
     for (uint32_t i = 0; i < 4; i++)
     {
         uint32_t index = 0;
+        uint32_t samplerIndex = 0;
         for (auto& shaderSource : mProgramResourceList)
         {
             if (shaderSource.set == i)
             {
-                shaderSource.set_index = index;
-                index += shaderSource.size;
+                if (shaderSource.type == D3D_SIT_SAMPLER)
+                {
+                    shaderSource.set_index = samplerIndex;
+                    samplerIndex += shaderSource.size;
+                }
+                else
+                {
+                    shaderSource.set_index = index;
+                    index += shaderSource.size;
+                }
+                
             }
         }
     }
@@ -156,12 +216,14 @@ void DX12ProgramImpl::parseShaderInfo()
     constexpr uint32_t         kMaxResourceTableSize = 32;
     static constexpr uint32_t kMaxLayoutCount = 16;
     D3D12_DESCRIPTOR_RANGE1    cbvSrvUavRange[kMaxLayoutCount][kMaxResourceTableSize] = {};
+    D3D12_DESCRIPTOR_RANGE1    samplerRange[kMaxLayoutCount][kMaxResourceTableSize] = {};
     uint32_t index = 0;
     for (auto& shaderResource : mProgramResourceList)
     {
         if (shaderResource.type == D3D_SIT_SAMPLER)
         {
-            continue;
+            int kk = 0;
+            //continue;
         }
 
 
@@ -176,6 +238,11 @@ void DX12ProgramImpl::parseShaderInfo()
             d3dUtil::create_descriptor_table(shaderResource.size,
                 &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
             //d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
+        }
+        else if (shaderResource.type == D3D_SIT_SAMPLER)
+        {
+            d3dUtil::create_descriptor_table(shaderResource.size,
+                &shaderResource, samplerRange[index], &rootParams[rootParamCount]);
         }
         else
         {
@@ -202,8 +269,10 @@ void DX12ProgramImpl::parseShaderInfo()
     rootSigDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
     rootSigDesc.Desc_1_1.NumParameters = rootParamCount;
     rootSigDesc.Desc_1_1.pParameters = rootParams;
-    rootSigDesc.Desc_1_1.NumStaticSamplers = staticSamplers.size();
+    //rootSigDesc.Desc_1_1.NumStaticSamplers = staticSamplers.size();
+    rootSigDesc.Desc_1_1.NumStaticSamplers = 0;
     rootSigDesc.Desc_1_1.pStaticSamplers = staticSamplers.data();
+    rootSigDesc.Desc_1_1.pStaticSamplers = nullptr;
     rootSigDesc.Desc_1_1.Flags = rootSignatureFlags;
 
 
@@ -272,7 +341,7 @@ void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
 
         if (elem.Format == DXGI_FORMAT_UNKNOWN)
         {
-            std::throw_with_nested("No VertexElement for semantic");
+            assert(false);
         }
 
         uint32_t  semanticSize = strlen(it.SemanticName);
@@ -355,7 +424,21 @@ uint32_t DX12ProgramImpl::getCbvSrvUavDescCount(uint32_t set)
     uint32_t count = 0;
     for (auto& shaderSource : mProgramResourceList)
     {
-        if (shaderSource.set == set)
+        if (shaderSource.set == set && shaderSource.type != D3D_SIT_SAMPLER)
+        {
+            count += shaderSource.size;
+        }
+    }
+
+    return count;
+}
+
+uint32_t DX12ProgramImpl::getSamplerCount(uint32_t set)
+{
+    uint32_t count = 0;
+    for (auto& shaderSource : mProgramResourceList)
+    {
+        if (shaderSource.set == set && shaderSource.type == D3D_SIT_SAMPLER)
         {
             count += shaderSource.size;
         }

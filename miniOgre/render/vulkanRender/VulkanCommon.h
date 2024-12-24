@@ -114,8 +114,6 @@ struct VkShaderModuleInfo
 {
     Ogre::ShaderType shaderType;
     VkShaderModule shaderModule;
-    uint64_t uboMask;
-    uint64_t samplerMask;
     std::string spv;
     std::vector<GlslInputDesc> inputDesc;
 };
