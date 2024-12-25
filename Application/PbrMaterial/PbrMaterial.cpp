@@ -22,9 +22,10 @@
 #include "OgreMaterial.h"
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
+#include "OgreRenderTarget.h"
+#include "pbrUtil.h"
 #include "game_camera.h"
 #include <platform_file.h>
-#include <OgreRoot.h>
 #include <algorithm>
 
 
@@ -175,8 +176,8 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string prefilteredenvName = "prefilteredMap";
-		prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
-		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
+		prefilteredTarget = generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 128, CubeType_Prefiltered);
+		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredTarget->getTarget());
 		tp._pbrType = TextureTypePbr_IBL_Specular;
 
 		std::for_each(matList.begin(), matList.end(),
@@ -188,8 +189,8 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string irradianceName = "IrradianceMap";
-		irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
-		TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
+		irradianceTarget = generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 32, CubeType_Irradiance);
+		TextureManager::getSingleton().addTexture(irradianceName, irradianceTarget->getTarget());
 		tp._pbrType = TextureTypePbr_IBL_Diffuse;
 		std::for_each(matList.begin(), matList.end(),
 			[&irradianceName, &tp](Ogre::MaterialPtr mat)
@@ -200,8 +201,8 @@ void PbrMaterial::example1(RenderPipeline* renderPipeline,
 
 	{
 		std::string brdfLutName = "brdflut";
-		brdf = rs->generateBRDFLUT(brdfLutName);
-		TextureManager::getSingleton().addTexture(brdfLutName, brdf);
+		brdfTarget = generateBRDFLUT(brdfLutName);
+		TextureManager::getSingleton().addTexture(brdfLutName, brdfTarget->getTarget());
 		tp._pbrType = TextureTypePbr_BRDF_LUT;
 
 		std::for_each(matList.begin(), matList.end(),
@@ -287,10 +288,24 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 		ShaderInfo& shaderInfo = mat->getShaderInfo();
 		shaderInfo.shaderMacros.push_back(std::pair<std::string, std::string>("USE_IBL", "1"));
 	}
+
+	{
+		std::string brdfLutName = "brdflut";
+		brdfTarget = generateBRDFLUT(brdfLutName);
+		TextureManager::getSingleton().addTexture(brdfLutName, brdfTarget->getTarget());
+		tp._pbrType = TextureTypePbr_BRDF_LUT;
+
+		std::for_each(matList.begin(), matList.end(),
+			[&brdfLutName, &tp](Ogre::Material* mat)
+			{
+				mat->addTexture(brdfLutName, &tp);
+			});
+	}
+
 	{
 		std::string prefilteredenvName = "prefilteredMap";
-		prefilteredMap = rs->generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 512, CubeType_Prefiltered);
-		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredMap);
+		prefilteredTarget = generateCubeMap(prefilteredenvName, environmentCube, PF_FLOAT32_RGBA, 512, CubeType_Prefiltered);
+		TextureManager::getSingleton().addTexture(prefilteredenvName, prefilteredTarget->getTarget());
 		tp._pbrType = TextureTypePbr_IBL_Specular;
 		std::for_each(matList.begin(), matList.end(),
 			[&prefilteredenvName, &tp](Ogre::Material* mat)
@@ -301,8 +316,8 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 
 	{
 		std::string irradianceName = "IrradianceMap";
-		irradianceMap = rs->generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 64, CubeType_Irradiance);
-		TextureManager::getSingleton().addTexture(irradianceName, irradianceMap);
+		irradianceTarget = generateCubeMap(irradianceName, environmentCube, PF_FLOAT32_RGBA, 64, CubeType_Irradiance);
+		TextureManager::getSingleton().addTexture(irradianceName, irradianceTarget->getTarget());
 		tp._pbrType = TextureTypePbr_IBL_Diffuse;
 		std::for_each(matList.begin(), matList.end(),
 			[&irradianceName, &tp](Ogre::Material* mat)
@@ -311,18 +326,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 			});
 	}
 
-	{
-		std::string brdfLutName = "brdflut";
-		brdf = rs->generateBRDFLUT(brdfLutName);
-		TextureManager::getSingleton().addTexture(brdfLutName, brdf);
-		tp._pbrType = TextureTypePbr_BRDF_LUT;
-
-		std::for_each(matList.begin(), matList.end(),
-			[&brdfLutName, &tp](Ogre::Material* mat)
-			{
-				mat->addTexture(brdfLutName, &tp);
-			});
-	}
+	
 	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, -1);
 	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 

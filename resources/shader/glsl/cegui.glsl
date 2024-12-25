@@ -26,9 +26,7 @@ layout (location = 1) in vec2 inTexC;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-	//return;
-    outColor = texture(first, inTexC)* inColor;
+	outColor = texture(sampler2D(first, firstSampler), inTexC) * inColor;
 	if(outColor.a < 0.5f)
 	{
 	    discard;

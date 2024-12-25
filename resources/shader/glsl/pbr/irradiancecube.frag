@@ -10,12 +10,14 @@
 
 layout (location = 0) in vec3 inPos;
 layout (location = 0) out vec4 outColor;
-layout (binding = 0) uniform samplerCube samplerEnv;
 
-layout(push_constant) uniform PushConsts {
-	layout (offset = 64) float deltaPhi;
-	layout (offset = 68) float deltaTheta;
+layout (binding = 0) uniform samplerCube samplerEnv;
+layout(binding = 1, std140) uniform  PushConstsStruct{
+    mat4 mvp;
+    float deltaPhi;
+	float deltaTheta;
 } pushConsts;
+
 
 #define PI 3.1415926535897932384626433832795
 

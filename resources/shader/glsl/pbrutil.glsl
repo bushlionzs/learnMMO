@@ -65,7 +65,7 @@ float microfacetDistribution(PBRInfo pbrInputs)
 
 vec3 getPbrNormal(vec3 worldPos, float3 normal, float2 uv)
 {
-	vec3 tangentNormal = texture(normal_pbr, uv).xyz * 2.0 - 1.0;
+	vec3 tangentNormal = texture(sampler2D(normal_pbr, normalSampler), uv).xyz * 2.0 - 1.0;
 
 	vec3 q1 = dFdx(worldPos);
 	vec3 q2 = dFdy(worldPos);

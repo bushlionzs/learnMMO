@@ -53,6 +53,10 @@ private:
 	Ogre::OgreTexture* prefilteredMap = nullptr;
 	Ogre::OgreTexture* irradianceMap = nullptr;
 	Ogre::OgreTexture* brdf = nullptr;
+
+	Ogre::RenderTarget* prefilteredTarget = nullptr;
+	Ogre::RenderTarget* irradianceTarget = nullptr;
+	Ogre::RenderTarget* brdfTarget = nullptr;
 	//SceneManager* mSceneManager;
 	//GameCamera* mGameCamera;
 	//RenderSystem* mRenderSystem;

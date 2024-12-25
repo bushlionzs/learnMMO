@@ -64,7 +64,6 @@ public:
 		for (auto r : engineRenerList.mOpaqueList)
 		{
 			Ogre::Material* mat = r->getMaterial().get();
-			
 			if (!mat->isLoaded())
 			{
 				mat->load(nullptr);

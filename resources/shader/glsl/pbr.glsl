@@ -58,7 +58,7 @@ float3 ReconstructNormal(float4 sampleNormal, float intensity)
 
 vec3 getNormal(float3 viewDirection, float3 normal, float2 uv)
 {
-    float4  sampleNormal = texture(normal_pbr, uv);
+    float4  sampleNormal = texture(sampler2D(normal_pbr, normalSampler), uv);
 	// Perturb normal, see http://www.thetenthplanet.de/archives/1180
 	vec3 tangentNormal = ReconstructNormal(sampleNormal, 0.56);
 	
@@ -199,10 +199,10 @@ float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection)
     float mipCount = 4.0; // resolution of 512x512
     float lod = (pbrInputs.perceptualRoughness * mipCount);
     // retrieve a scale and bias to F0. See [1], Figure 3
-    float3 brdf = SRGBtoLINEAR2(texture(brdflut, float2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
-    float3 diffuseLight = SRGBtoLINEAR2(tonemap(texture(irradianceCube, n))).rgb;
+    float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut, brdflutSampler), float2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
+    float3 diffuseLight = SRGBtoLINEAR2(tonemap(texture(samplerCube(irradianceCube, irradianceSampler), n))).rgb;
 
-    float3 specularLight = SRGBtoLINEAR2(tonemap(textureLod(prefilteredCube, reflection, lod))).rgb;
+    float3 specularLight = SRGBtoLINEAR2(tonemap(textureLod(samplerCube(prefilteredCube, prefilteredSampler), reflection, lod))).rgb;
 
     float3 diffuse = diffuseLight * pbrInputs.diffuseColor;
     float3 specular = specularLight * (pbrInputs.specularColor * brdf.x + brdf.y);
@@ -241,11 +241,11 @@ float3 EnvironmentBRDF(float3 N, float3 V, float3 albedo, float roughness, float
 	float3 kD = (float3(1.0f, 1.0f, 1.0f) - kS) * (1.0f - metalness);
 	float lod = roughness * 4.0f;
 	
-	float3 irradiance = SRGBtoLINEAR2(tonemap(texture(irradianceCube, N))).rgb;
-	float3 specular = SRGBtoLINEAR2(tonemap(textureLod(prefilteredCube, reflection, lod))).rgb;
+	float3 irradiance = SRGBtoLINEAR2(tonemap(texture(samplerCube(irradianceCube, irradianceSampler), N))).rgb;
+	float3 specular = SRGBtoLINEAR2(tonemap(textureLod(samplerCube(prefilteredCube, prefilteredSampler), reflection, lod))).rgb;
 
 	float2 maxNVRough = float2(max(dot(N, V), 0.0), roughness);
-	float3 brdf = SRGBtoLINEAR2(texture(brdflut, maxNVRough)).rgb;
+	float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut, brdflutSampler), maxNVRough)).rgb;
 	// Id & Is: diffuse & specular illumination
 	float3 Is = specular * (F * brdf.x + brdf.y);	
 	float3 Id = kD * irradiance * albedo;
@@ -281,7 +281,7 @@ void main()
 #ifdef HAS_METALROUGHNESSMAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    float4 mrSample = texture(metal_roughness_pbr, inUV0);
+    float4 mrSample = texture(sampler2D(metal_roughness_pbr, metalRoughnessSampler), inUV0);
 	float metalness = mrSample.b;
     float roughness = mrSample.g;
 #else
@@ -293,17 +293,17 @@ void main()
   
 
     #ifdef HAS_METALMAP
-        metalness = texture(metal_roughness_pbr, inUV0).r;
+        metalness = texture(sampler2D(metal_roughness_pbr, metalRoughnessSampler), inUV0).r;
     #endif
 
     #ifdef HAS_ROUGHNESSMAP
-        roughness = texture(roughness_pbr, inUV0).r;
+        roughness = texture(sampler2D(roughness_pbr, roughnessSampler), inUV0).r;
     #endif
 
     // The albedo may be defined from a base texture or a flat color
 	float4 baseColorSource = float4(1.0f, 1.0f, 1.0f, 1.0f);
 #ifdef HAS_BASECOLORMAP
-    baseColorSource = texture(albedo_pbr, inUV0);
+    baseColorSource = texture(sampler2D(albedo_pbr, albedoSampler), inUV0);
     float4 baseColor = SRGBtoLINEAR(baseColorSource) * pbrMaterial.u_BaseColorFactor;
 	
 	if (pbrMaterial.alpha_mask > 0)
@@ -388,12 +388,12 @@ void main()
     // Apply optional PBR terms for additional (optional) shading
 	float ao = 0.0f;
 #ifdef HAS_OCCLUSIONMAP
-	ao = texture(ao_pbr, inUV0).r;
+	ao = texture(sampler2D(ao_pbr, aoSampler), inUV0).r;
     //color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
 #endif
 
 #ifdef HAS_EMISSIVEMAP
-	float3 emissive = texture(emissive_pbr,inUV0).rgb * pbrMaterial.u_EmissiveFactor;
+	float3 emissive = texture(sampler2D(emissive_pbr, emissiveSampler),inUV0).rgb * pbrMaterial.u_EmissiveFactor;
     color += emissive;
 #endif
     
@@ -408,7 +408,7 @@ void main()
 		default:
 		case 0: break;
 		case 1: color = baseColorSource.rgb; break;
-		case 2: color =  texture(normal_pbr, inUV0).rgb; break;
+		//case 2: color =  texture(sampler2D(normal_pbr, normalSampler), inUV0).rgb; break;
 		case 3: color = float3(roughness); break;
 		case 4: color = float3(metalness); break;
 		case 5: color = float3(ao); break;
@@ -433,7 +433,7 @@ void main1()
 #ifdef HAS_METALROUGHNESSMAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    float4 mrSample = texture(metal_roughness_pbr, inUV0);
+    float4 mrSample = texture(sampler2D(metal_roughness_pbr, metalRoughnessSampler), inUV0);
 	float metalness = mrSample.b;
     float roughness = mrSample.g;
 #else
@@ -442,11 +442,11 @@ void main1()
 #endif
     
 #ifdef HAS_METALMAP
-    metalness = texture(metal_roughness_pbr, inUV0).r;
+    metalness = texture(sampler2D(metal_roughness_pbr, metalRoughnessSampler), inUV0).r;
 #endif
 
 #ifdef HAS_ROUGHNESSMAP
-  roughness = texture(roughness_pbr, inUV0).r;
+  roughness = texture(sampler2D(roughness_pbr, roughnessSampler), inUV0).r;
 #endif
 
     roughness = clamp(roughness, c_MinRoughness, 1.0);
@@ -454,7 +454,7 @@ void main1()
 
     // The albedo may be defined from a base texture or a flat color
 #ifdef HAS_BASECOLORMAP
-    float4 baseColorSource = texture(albedo_pbr, inUV0);
+    float4 baseColorSource = texture(sampler2D(albedo_pbr, albedoSampler), inUV0);
     float4 baseColor = SRGBtoLINEAR(baseColorSource) * pbrMaterial.u_BaseColorFactor;
 	
 	if (pbrMaterial.alpha_mask > 0)
@@ -506,12 +506,12 @@ void main1()
     // Apply optional PBR terms for additional (optional) shading
 	float ao = 0.0f;
 #ifdef HAS_OCCLUSIONMAP
-	ao = texture(ao_pbr, inUV0).r;
+	ao = texture(sampler2D(ao_pbr, aoSampler), inUV0).r;
     color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
 #endif
 
 #ifdef HAS_EMISSIVEMAP
-	float3 emissive = texture(emissive_pbr,inUV0).rgb * pbrMaterial.u_EmissiveFactor;
+	float3 emissive = texture(sampler2D(emissive_pbr, emissiveSampler),inUV0).rgb * pbrMaterial.u_EmissiveFactor;
     color += emissive;
 #endif
     

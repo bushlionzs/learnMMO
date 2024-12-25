@@ -6,12 +6,13 @@
 
 #version 450
 
-layout (location = 0) in vec3 position;
-
-layout(push_constant) uniform PushConsts {
-	layout (offset = 0) mat4 mvp;
+layout(binding = 1, std140) uniform  PushConstsStruct{
+    mat4 mvp;
+	float roughness;
+	uint numSamples;
 } pushConsts;
 
+layout (location = 0) in vec3 position;
 layout (location = 0) out vec3 outUVW;
 
 void main() 

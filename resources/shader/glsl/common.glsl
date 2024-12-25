@@ -1,8 +1,3 @@
-#ifdef DIRECT3D12
-#include "base.hlsl"
-#else
-#include "base.glsl"
-#endif
 #ifndef MAX_NUM_DIR_LIGHTS
     #define MAX_NUM_DIR_LIGHTS 1
 #endif
@@ -124,16 +119,26 @@ layout(binding = 3, std140) uniform cbSkinnedStruct {
 } cbSkinned;
 
 #ifdef PBR
-layout (set=1, binding = 0) uniform sampler2D albedo_pbr;
-layout (set=1, binding = 1) uniform sampler2D ao_pbr;
-layout (set=1, binding = 2) uniform sampler2D normal_pbr;
-layout (set=1, binding = 3) uniform sampler2D emissive_pbr;
-layout (set=1, binding = 4) uniform sampler2D metal_roughness_pbr;
-layout (set=1, binding = 5) uniform sampler2D roughness_pbr;
-layout (set=1, binding = 6) uniform sampler2D brdflut;
+layout (set=1, binding = 0) uniform texture2D albedo_pbr;
+layout (set=1, binding = 1) uniform texture2D ao_pbr;
+layout (set=1, binding = 2) uniform texture2D normal_pbr;
+layout (set=1, binding = 3) uniform texture2D emissive_pbr;
+layout (set=1, binding = 4) uniform texture2D metal_roughness_pbr;
+layout (set=1, binding = 5) uniform texture2D roughness_pbr;
+layout (set=1, binding = 6) uniform texture2D brdflut;
 
-layout (set=1, binding = 7) uniform samplerCube irradianceCube;
-layout (set=1, binding = 8) uniform samplerCube prefilteredCube;
+layout (set=1, binding = 7) uniform textureCube irradianceCube;
+layout (set=1, binding = 8) uniform textureCube prefilteredCube;
+
+layout(set=1, binding = 9) uniform sampler albedoSampler;
+layout(set=1, binding = 10) uniform sampler aoSampler;
+layout(set=1, binding = 11) uniform sampler normalSampler;
+layout(set=1, binding = 12) uniform sampler emissiveSampler;
+layout(set=1, binding = 13) uniform sampler metalRoughnessSampler;
+layout(set=1, binding = 14) uniform sampler roughnessSampler;
+layout(set=1, binding = 15) uniform sampler brdflutSampler;
+layout(set=1, binding = 16) uniform sampler irradianceSampler;
+layout(set=1, binding = 17) uniform sampler prefilteredSampler;
 #else
 layout(set=1, binding = 0) uniform texture2D first;
 layout (set=1, binding = 1) uniform texture2D second;
