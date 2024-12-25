@@ -78,6 +78,11 @@ namespace Ogre {
             return mMaterialName;
         }
 
+        void setName(const std::string& name)
+        {
+            mMaterialName = name;
+        }
+
         void setMaterialFlags(uint32_t flags)
         {
             mMaterialFlags = flags;

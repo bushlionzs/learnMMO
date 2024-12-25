@@ -73,10 +73,7 @@ Ogre::OgreTexture* RenderSystem::createTexture(Ogre::TextureProperty* texPropert
 
 Ogre::RenderTarget* RenderSystem::createRenderTarget(
     const String& name, 
-    uint32_t width, 
-    uint32_t height, 
-    Ogre::PixelFormat format, 
-    uint32_t textureUsage)
+    TextureProperty& texProperty)
 {
     return nullptr;
 }

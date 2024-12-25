@@ -148,56 +148,73 @@ namespace Ogre {
             auto& texs = mat->getAllTexureUnit();
             if (mat->isPbr())
             {
+                OgreTexture* texArray[9];
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
                     const char* pName = "";
+                    const char* samplerName = "";
                     int32_t texIndex = -1;
                     switch (texs[i]->getTextureProperty()->_pbrType)
                     {
                     case TextureTypePbr_Albedo:
                         texIndex = 0;
                         pName = "albedo_pbr";
+                        samplerName = "albedoSampler";
                         break;
                     case TextureTypePbr_MetalRoughness:
                         texIndex = 4;
                         pName = "metal_roughness_pbr";
+                        samplerName = "metalRoughnessSampler";
                         break;
                     case TextureTypePbr_NormalMap:
                         texIndex = 2;
                         pName = "normal_pbr";
+                        samplerName = "normalSampler";
                         break;
                     case TextureTypePbr_Emissive:
                         texIndex = 3;
                         pName = "emissive_pbr";
+                        samplerName = "emissiveSampler";
                         break;
                     case TextureTypePbr_AmbientOcclusion:
                         texIndex = 1;
                         pName = "ao_pbr";
+                        samplerName = "aoSampler";
                         break;
                     case TextureTypePbr_Roughness:
                         texIndex = 5;
                         pName = "roughness_pbr";
+                        samplerName = "roughnessSampler";
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
                         pName = "brdflut";
+                        samplerName = "brdflutSampler";
                         break;
                     case TextureTypePbr_IBL_Diffuse:
                         texIndex = 7;
                         pName = "irradianceCube";
+                        samplerName = "irradianceSampler";
                         break;
                     case TextureTypePbr_IBL_Specular:
                         texIndex = 8;
                         pName = "prefilteredCube";
+                        samplerName = "prefilteredSampler";
                         break;
                     }
                     assert(texIndex >= 0);
                     OgreTexture* tex = texs[i]->getRaw();
-
+                    texArray[i] = tex;
                     descriptorData[descriptorCount].pName = pName;
                     descriptorData[descriptorCount].mCount = 1; 
                     descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
-                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&tex;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[i];
+                    descriptorCount++;
+
+                    descriptorData[descriptorCount].pName = samplerName;
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE_SAMPLER;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[i];
                     descriptorCount++;
                 }
                 rs->updateDescriptorSet(resourceInfo->firstSet, descriptorCount, descriptorData);
@@ -349,56 +366,73 @@ namespace Ogre {
             auto& resourceInfo = mFrameResourceInfoList[i];
             if (mat->isPbr())
             {
+                OgreTexture* texArray[9];
                 for (int32_t i = 0; i < texs.size(); i++)
                 {
                     const char* pName = "";
+                    const char* samplerName = "";
                     int32_t texIndex = -1;
                     switch (texs[i]->getTextureProperty()->_pbrType)
                     {
                     case TextureTypePbr_Albedo:
                         texIndex = 0;
                         pName = "albedo_pbr";
+                        samplerName = "albedoSampler";
                         break;
                     case TextureTypePbr_MetalRoughness:
                         texIndex = 4;
                         pName = "metal_roughness_pbr";
+                        samplerName = "metalRoughnessSampler";
                         break;
                     case TextureTypePbr_NormalMap:
                         texIndex = 2;
                         pName = "normal_pbr";
+                        samplerName = "normalSampler";
                         break;
                     case TextureTypePbr_Emissive:
                         texIndex = 3;
                         pName = "emissive_pbr";
+                        samplerName = "emissiveSampler";
                         break;
                     case TextureTypePbr_AmbientOcclusion:
                         texIndex = 1;
                         pName = "ao_pbr";
+                        samplerName = "aoSampler";
                         break;
                     case TextureTypePbr_Roughness:
                         texIndex = 5;
                         pName = "roughness_pbr";
+                        samplerName = "roughnessSampler";
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
                         pName = "brdflut";
+                        samplerName = "brdflutSampler";
                         break;
                     case TextureTypePbr_IBL_Diffuse:
                         texIndex = 7;
                         pName = "irradianceCube";
+                        samplerName = "irradianceSampler";
                         break;
                     case TextureTypePbr_IBL_Specular:
                         texIndex = 8;
                         pName = "prefilteredCube";
+                        samplerName = "prefilteredSampler";
                         break;
                     }
                     assert(texIndex >= 0);
                     OgreTexture* tex = texs[i]->getRaw();
-
+                    texArray[i] = tex;
                     descriptorData[descriptorCount].pName = pName;
                     descriptorData[descriptorCount].mCount = 1;
                     descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&tex;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[i];
+                    descriptorCount++;
+
+                    descriptorData[descriptorCount].pName = samplerName;
+                    descriptorData[descriptorCount].mCount = 1;
+                    descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+                    descriptorData[descriptorCount].ppTextures = (const OgreTexture**)&texArray[i];
                     descriptorCount++;
                 }
                 rs->updateDescriptorSet(resourceInfo.firstSet, descriptorCount, descriptorData);

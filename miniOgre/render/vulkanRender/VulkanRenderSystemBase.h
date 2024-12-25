@@ -40,12 +40,11 @@ public:
 
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
-        uint32_t width, 
-        uint32_t height, 
-        Ogre::PixelFormat format, 
-        uint32_t usage) override;
+        TextureProperty& texProperty) override;
     virtual void frameStart() override;
     virtual void frameEnd() override;
+    virtual void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth);
+    virtual void setScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
     virtual void beginRenderPass(RenderPassInfo& renderPassInfo) override;
     virtual void endRenderPass(RenderPassInfo& renderPassInfo) override;
     virtual void bindPipeline(
@@ -71,14 +70,13 @@ public:
     virtual void endComputePass() override;
 
     virtual void present() override;
+
+    virtual void copyImage(
+        Ogre::RenderTarget* dst,
+        Ogre::RenderTarget* src,
+        ImageCopyDesc& desc);
+
 protected:
-    virtual Ogre::OgreTexture* generateCubeMap(
-        const std::string& name,
-        Ogre::OgreTexture* environmentCube,
-        Ogre::PixelFormat format,
-        int32_t dim,
-        CubeType type);
-    virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name);
     virtual void pushGroupMarker(const char* maker);
     virtual void popGroupMarker();
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);

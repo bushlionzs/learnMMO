@@ -155,6 +155,7 @@ struct RenderPassInfo
     BindDepthTargetDesc  depthTarget;
     LoadActionType depthLoadAction = LOAD_ACTION_CLEAR;
     StoreActionType depthStoreAction = STORE_ACTION_STORE;
+    bool viewport = true;
     /*Ogre::SceneManager* sceneMgr;
     Ogre::OgreTexture* shadowMap = nullptr;
     Ogre::ICamera* cam = nullptr;

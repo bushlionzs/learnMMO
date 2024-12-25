@@ -34,13 +34,14 @@ public:
         const NameValuePairList* miscParams) override;
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name,
-        uint32_t width,
-        uint32_t height,
-        Ogre::PixelFormat format,
-        uint32_t usage) override;
+        TextureProperty& texProperty) override;
     virtual void frameStart();
     virtual void frameEnd();
     virtual void present();
+    virtual void copyImage(
+        Ogre::RenderTarget* dst,
+        Ogre::RenderTarget* src,
+        ImageCopyDesc& desc);
     virtual void beginRenderPass(
         RenderPassInfo& renderPassInfo);
     virtual void endRenderPass(RenderPassInfo& renderPassInfo);
@@ -75,13 +76,6 @@ public:
     virtual void pushGroupMarker(const char* maker);
     virtual void popGroupMarker();
 
-    virtual Ogre::OgreTexture* generateCubeMap(
-        const std::string& name,
-        Ogre::OgreTexture* environmentCube,
-        Ogre::PixelFormat format,
-        int32_t dim,
-        CubeType type);
-    virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name);
     virtual void bindVertexBuffer(
         Handle<HwBufferObject> bufHandle, 
         uint32_t binding,

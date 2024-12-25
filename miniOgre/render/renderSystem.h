@@ -40,10 +40,7 @@ public:
 
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
-        uint32_t width, 
-        uint32_t height, 
-        Ogre::PixelFormat format, 
-        uint32_t textureUsage);
+        TextureProperty& texProperty);
 
     virtual void ready() {}
 
@@ -75,7 +72,8 @@ public:
     {
         return mJobSystem;
     }
-
+    virtual void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth) {}
+    virtual void setScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {}
     virtual void beginRenderPass(
         RenderPassInfo& renderPassInfo);
     virtual void endRenderPass(RenderPassInfo& renderPassInfo);
@@ -96,7 +94,10 @@ public:
 
     virtual void traceRay(Handle<HwRaytracingProgram> programHandle) {}
 
-    virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src) {}
+    virtual void copyImage(
+        Ogre::RenderTarget* dst, 
+        Ogre::RenderTarget* src, 
+        ImageCopyDesc& desc) {}
     virtual void drawIndexed(
         uint32_t indexCount,
         uint32_t instanceCount,
@@ -128,20 +129,6 @@ public:
 
     virtual void pushGroupMarker(const char* maker) {}
     virtual void popGroupMarker() {}
-
-    virtual Ogre::OgreTexture* generateCubeMap(
-        const std::string& name,
-        Ogre::OgreTexture* environmentCube,
-        Ogre::PixelFormat format,
-        int32_t dim,
-        CubeType type)
-    {
-        return nullptr;
-    }
-    virtual Ogre::OgreTexture* generateBRDFLUT(const std::string& name)
-    {
-        return nullptr;
-    }
     virtual void bindVertexBuffer(
         Handle<HwBufferObject> bufHandle, 
         uint32_t binding,

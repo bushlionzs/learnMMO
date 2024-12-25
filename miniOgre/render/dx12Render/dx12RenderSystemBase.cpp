@@ -121,19 +121,9 @@ Ogre::RenderWindow* Dx12RenderSystemBase::createRenderWindow(
 }
 Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
     const String& name,
-    uint32_t width,
-    uint32_t height,
-    Ogre::PixelFormat format,
-    uint32_t usage)
+    TextureProperty& texProperty)
 {
-    TextureProperty texProperty;
-    texProperty._width = width;
-    texProperty._height = height;
-    texProperty._tex_usage = usage;
-    texProperty._tex_format = format;
-    texProperty._need_mipmap = false;
-
-    if (usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    if (texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
     {
         texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
@@ -168,6 +158,14 @@ void Dx12RenderSystemBase::frameEnd()
 void Dx12RenderSystemBase::present()
 {
     mSwapChain->present();
+}
+
+void Dx12RenderSystemBase::copyImage(
+    Ogre::RenderTarget* dst,
+    Ogre::RenderTarget* src,
+    ImageCopyDesc& desc)
+{
+    assert(false);
 }
 
 void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
@@ -333,20 +331,6 @@ void Dx12RenderSystemBase::pushGroupMarker(const char* maker)
 }
 void Dx12RenderSystemBase::popGroupMarker() 
 {
-}
-
-Ogre::OgreTexture* Dx12RenderSystemBase::generateCubeMap(
-    const std::string& name,
-    Ogre::OgreTexture* environmentCube,
-    Ogre::PixelFormat format,
-    int32_t dim,
-    CubeType type)
-{
-    return nullptr;
-}
-Ogre::OgreTexture* Dx12RenderSystemBase::generateBRDFLUT(const std::string& name)
-{
-    return nullptr;
 }
 
 void Dx12RenderSystemBase::bindVertexBuffer(
@@ -794,10 +778,12 @@ void Dx12RenderSystemBase::resourceBarrier(
 
 void Dx12RenderSystemBase::beginCmd() 
 {
+    auto* cl = mCommands->get();
 }
 
 void Dx12RenderSystemBase::flushCmd(bool waitCmd)
 {
+    mCommands->flush(true);
 }
 
 

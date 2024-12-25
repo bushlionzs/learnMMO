@@ -203,19 +203,9 @@ Ogre::RenderWindow* VulkanRenderSystemBase::createRenderWindow(
 
 Ogre::RenderTarget* VulkanRenderSystemBase::createRenderTarget(
     const String& name, 
-    uint32_t width, 
-    uint32_t height, 
-    Ogre::PixelFormat format, 
-    uint32_t usage)
+    TextureProperty& texProperty)
 {
-    TextureProperty texProperty;
-    texProperty._width = width;
-    texProperty._height = height;
-    texProperty._tex_usage = usage;
-    texProperty._tex_format = format;
-    texProperty._need_mipmap = false;
-
-    if (usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    if (texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
     {
         texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
@@ -246,6 +236,28 @@ void VulkanRenderSystemBase::frameEnd()
 {
     mStagePool->gc();
     mCommandBuffer = nullptr;
+}
+
+void VulkanRenderSystemBase::setViewport(
+    float x, float y, float width, float height, float minDepth, float maxDepth)
+{
+    VkViewport viewport{};
+    viewport.x = 0.0;
+    viewport.y = height;
+    viewport.width = width;
+    viewport.height = -(float)height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    bluevk::vkCmdSetViewport(mCommandBuffer, 0, 1, &viewport);
+}
+
+void VulkanRenderSystemBase::setScissor(
+    uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+    VkRect2D scissor = vks::initializers::rect2D(width, height, 0, 0);
+
+    bluevk::vkCmdSetScissor(mCommandBuffer, 0, 1, &scissor);
 }
 
 void VulkanRenderSystemBase::beginRenderPass(
@@ -342,19 +354,22 @@ void VulkanRenderSystemBase::beginRenderPass(
 
     bluevk::vkCmdBeginRenderingKHR(cmdBuffer, &renderingInfo);
 
-    auto width = renderArea.extent.width;
-    auto height = renderArea.extent.height;
-    VkViewport viewport{};
-    viewport.x = 0.0;
-    viewport.y = height;
-    viewport.width = width;
-    viewport.height = -(float)height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    VkRect2D scissor = vks::initializers::rect2D(width, height, 0, 0);
+    if (renderPassInfo.viewport)
+    {
+        auto width = renderArea.extent.width;
+        auto height = renderArea.extent.height;
+        VkViewport viewport{};
+        viewport.x = 0.0;
+        viewport.y = height;
+        viewport.width = width;
+        viewport.height = -(float)height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        VkRect2D scissor = vks::initializers::rect2D(width, height, 0, 0);
 
-    bluevk::vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-    bluevk::vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+        bluevk::vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+        bluevk::vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+    }
 }
 
 void VulkanRenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
@@ -378,23 +393,28 @@ void VulkanRenderSystemBase::bindPipeline(
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     auto pipelineLayout = vulkanProgram->getVulkanPipelineLayout();
 
-    VkDescriptorSet descriptorSet[4];
 
-    for (auto i = 0; i < setCount; i++)
+    if (setCount > 0)
     {
-        if (descSets[i])
-        {
-            VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(descSets[i]);
-            descriptorSet[i] = set->vkSet;
-        }
-        else
-        {
-            descriptorSet[i] = pEmptyDescriptorSet;
-        }
-    }
+        VkDescriptorSet descriptorSet[4];
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipelineLayout, 0, setCount, &descriptorSet[0], 0, nullptr);
+        for (auto i = 0; i < setCount; i++)
+        {
+            if (descSets[i])
+            {
+                VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(descSets[i]);
+                descriptorSet[i] = set->vkSet;
+            }
+            else
+            {
+                descriptorSet[i] = pEmptyDescriptorSet;
+            }
+        }
+
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipelineLayout, 0, setCount, &descriptorSet[0], 0, nullptr);
+    }
+    
 }
 
 void VulkanRenderSystemBase::draw(uint32_t vertexCount, uint32_t firstVertex)
@@ -471,379 +491,32 @@ void VulkanRenderSystemBase::present()
     mSwapChain->present();
 }
 
-Ogre::OgreTexture* VulkanRenderSystemBase::generateCubeMap(
-    const std::string& name,
-    Ogre::OgreTexture* environmentCube,
-    Ogre::PixelFormat format,
-    int32_t dim,
-    CubeType type)
+void VulkanRenderSystemBase::copyImage(
+    Ogre::RenderTarget* dst,
+    Ogre::RenderTarget* src,
+    ImageCopyDesc& desc)
 {
-    Ogre::TextureProperty texProperty;
-    texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
-    texProperty._texType = TEX_TYPE_CUBE_MAP;
-    texProperty._width = dim;
-    texProperty._height = dim;
-    texProperty._tex_format = format;
-    texProperty._samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
-    texProperty._samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
-    texProperty._samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
-    texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::REPEAT;
-    texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::REPEAT;
-    texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::REPEAT;
-    texProperty._samplerParams.anisotropyLog2 = 0;
-    VulkanTexture* tex = new VulkanTexture(name, mVulkanPlatform, mCommands, &texProperty);
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.srcSubresource.baseArrayLayer = desc.srcSubresource.baseArrayLayer;
+    copyRegion.srcSubresource.layerCount = desc.srcSubresource.layerCount;
+    copyRegion.srcSubresource.mipLevel = desc.srcSubresource.mipLevel;
 
-    tex->load(nullptr);
-
-
-    
-    struct PushBlockIrradiance {
-        Ogre::Matrix4 mvp;
-        float deltaPhi = (2.0f * float(Ogre::Math::PI)) / 180.0f;
-        float deltaTheta = (0.5f * float(Ogre::Math::PI)) / 64.0f;
-    } pushBlockIrradiance;
-
-    struct PushBlockPrefilterEnv {
-        Ogre::Matrix4 mvp;
-        float roughness;
-        uint32_t numSamples = 32u;
-    } pushBlockPrefilterEnv;
-
-
-    // Pipeline layout
-    ShaderInfo shaderInfo;
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    if (type == CubeType_Irradiance)
-    {
-        pushConstantRange.size = sizeof(PushBlockIrradiance);
-        shaderInfo.shaderName = "irradianceMap";
-    }
-    else
-    {
-        pushConstantRange.size = sizeof(PushBlockPrefilterEnv);
-        shaderInfo.shaderName = "prefilteredMap";
-    }
-
-    std::string meshName = "box.mesh";
-    auto mesh = MeshManager::getSingleton().createBox(meshName, 256, "SkyLan");
-    auto* subMesh = mesh->getSubMesh(0);
-    IndexData* indexData = subMesh->getIndexData();
-    VertexData* vertexData = subMesh->getVertexData();
-    VertexDeclaration* decl = vertexData->getVertexDeclaration();
-    Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, decl);
-
-    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
-    backend::RasterState rasterState{};
-    rasterState.colorWrite = true;
-    rasterState.renderTargetCount = 1;
-    rasterState.depthWrite = false;
-    rasterState.depthTest = false;
-    rasterState.pixelFormat = format;
-
-    Handle<HwPipeline> pipelineHandle = createPipeline(rasterState, programHandle);
-    VulkanPipeline* vulkanPipeline = mResourceAllocator.handle_cast<VulkanPipeline*>(pipelineHandle);
-
-    auto pipeline = vulkanPipeline->getPipeline();
-    
-    VkPipelineLayout pipelinelayout = vulkanProgram->getVulkanPipelineLayout();
-
-    auto zeroDescSet = createDescriptorSet(programHandle, 0);
-    updateDescriptorSetTexture(zeroDescSet, 0, 
-        &environmentCube, 1, TextureBindType_Combined_Image_Sampler);
-    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(zeroDescSet);
-    std::vector<Ogre::Matrix4> matrices = {
-        Ogre::Math::makeRotateMatrix(Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, 90.0f, Ogre::Vector3(0.0f, 1.0f, 0.0f)), 180.0f, Ogre::Vector3(1.0f, 0.0f, 0.0f)),
-        Ogre::Math::makeRotateMatrix(Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, -90.0f, Ogre::Vector3(0.0f, 1.0f, 0.0f)), 180.0f, Ogre::Vector3(1.0f, 0.0f, 0.0f)),
-        Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, -90.0f, Ogre::Vector3(1.0f, 0.0f, 0.0f)),
-        Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, 90.0f, Ogre::Vector3(1.0f, 0.0f, 0.0f)),
-        Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, 180.0f, Ogre::Vector3(1.0f, 0.0f, 0.0f)),
-        Ogre::Math::makeRotateMatrix(Ogre::Matrix4::IDENTITY, 180.0f, Ogre::Vector3(0.0f, 0.0f, 1.0f)),
-    };
-
-    const uint32_t numMips = static_cast<uint32_t>(floor(log2(dim))) + 1;
-
-    VkViewport viewport{};
-    viewport.width = (float)dim;
-    viewport.height = (float)dim;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor{};
-    scissor.extent.width = dim;
-    scissor.extent.height = dim;
-
-    VkImageSubresourceRange subresourceRange{};
-    subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresourceRange.baseMipLevel = 0;
-    subresourceRange.levelCount = numMips;
-    subresourceRange.layerCount = 6;
-    auto cubeImage = tex->getVkImage();
-    VkCommandBuffer cmdBuf = mCommands->get().buffer();
-    // Change image layout for all cubemap faces to transfer destination
-    {
-        VkImageMemoryBarrier imageMemoryBarrier{};
-        imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.image = cubeImage;
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageMemoryBarrier.srcAccessMask = 0;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageMemoryBarrier.subresourceRange = subresourceRange;
-        vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-    }
-    auto* rs = VulkanHelper::getSingleton()._getRenderSystem();
-
-    auto outPutTarget = rs->createRenderTarget("outputTarget",
-        dim, dim, format, Ogre::TextureUsage::COLOR_ATTACHMENT);
-
-    VulkanTexture* vulkanTexture = (VulkanTexture*)outPutTarget->getTarget();
-    VkRenderingAttachmentInfo colorAttachment{};
-    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-    colorAttachment.pNext = NULL;
-    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.imageView = vulkanTexture->getVkImageView();
-    colorAttachment.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    VkRect2D renderArea = {};
-    renderArea.offset.x = 0;
-    renderArea.offset.y = 0;
-    renderArea.extent.width = dim;
-    renderArea.extent.height = dim;
-    VkRenderingInfoKHR renderingInfo = {};
-    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-    renderingInfo.pColorAttachments = &colorAttachment;
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pDepthAttachment = nullptr;
-    renderingInfo.pStencilAttachment = nullptr;
-    renderingInfo.renderArea = renderArea;
-    renderingInfo.layerCount = 1;
-
-    
-    for (uint32_t m = 0; m < numMips; m++) {
-        for (uint32_t f = 0; f < 6; f++) {
-            VkCommandBuffer cmdBuf = mCommands->get().buffer();
-            viewport.width = static_cast<float>(dim * std::pow(0.5f, m));
-            viewport.height = static_cast<float>(dim * std::pow(0.5f, m));
-            vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
-            vkCmdSetScissor(cmdBuf, 0, 1, &scissor);
-
-           
-            bluevk::vkCmdBeginRenderingKHR(cmdBuf, &renderingInfo);
-
-            // Pass parameters for current pass using a push constant block
-            auto perspective = Ogre::Math::makePerspectiveMatrixRH((float)(Ogre::Math::PI / 2.0), 1.0f, 0.1f, 512);
-            if (type == CubeType_Irradiance)
-            {
-                pushBlockIrradiance.mvp = perspective * matrices[f];
-                pushBlockIrradiance.mvp = pushBlockIrradiance.mvp.transpose();
-                vkCmdPushConstants(cmdBuf, pipelinelayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushBlockIrradiance), &pushBlockIrradiance);
-            }
-            else
-            {
-                pushBlockPrefilterEnv.mvp = perspective * matrices[f];
-                pushBlockPrefilterEnv.mvp = pushBlockPrefilterEnv.mvp.transpose();
-                pushBlockPrefilterEnv.roughness = (float)m / (float)(numMips - 1);
-                vkCmdPushConstants(cmdBuf, pipelinelayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushBlockPrefilterEnv), &pushBlockPrefilterEnv);
-            }
-
-            bluevk::vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            bluevk::vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelinelayout, 0, 1, &set->vkSet, 0, NULL);
-
-            VkDeviceSize offsets[1] = { 0 };
-
-            vertexData->bind(cmdBuf);
-
-            if (indexData)
-            {
-                indexData->bind();
-                IndexDataView* view = subMesh->getIndexView();
-                vkCmdDrawIndexed(cmdBuf, view->mIndexCount, 1,
-                    view->mIndexLocation, view->mBaseVertexLocation, 0);
-            }
-
-            vkCmdEndRenderingKHR(cmdBuf);
-            VkImageSubresourceRange subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = numMips;
-            subresourceRange.layerCount = 6;
-
-            {
-                VkImageMemoryBarrier imageMemoryBarrier{};
-                imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                imageMemoryBarrier.image = vulkanTexture->getVkImage();
-                imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-                imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-                vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-            }
-
-            // Copy region for transfer from framebuffer to cube face
-            VkImageCopy copyRegion{};
-
-            copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copyRegion.srcSubresource.baseArrayLayer = 0;
-            copyRegion.srcSubresource.mipLevel = 0;
-            copyRegion.srcSubresource.layerCount = 1;
-            copyRegion.srcOffset = { 0, 0, 0 };
-
-            copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copyRegion.dstSubresource.baseArrayLayer = f;
-            copyRegion.dstSubresource.mipLevel = m;
-            copyRegion.dstSubresource.layerCount = 1;
-            copyRegion.dstOffset = { 0, 0, 0 };
-
-            copyRegion.extent.width = static_cast<uint32_t>(viewport.width);
-            copyRegion.extent.height = static_cast<uint32_t>(viewport.height);
-            copyRegion.extent.depth = 1;
-
-            bluevk::vkCmdCopyImage(
-                cmdBuf,
-                vulkanTexture->getVkImage(),
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                cubeImage,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                1,
-                &copyRegion);
-
-            {
-                VkImageMemoryBarrier imageMemoryBarrier{};
-                imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                imageMemoryBarrier.image = vulkanTexture->getVkImage();
-                imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-                imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-                vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-            }
-            mCommands->flush(true);
-        }
-    }
-
-    {
-        VkCommandBuffer cmdBuf = mCommands->get().buffer();
-        VkImageMemoryBarrier imageMemoryBarrier{};
-        imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.image = cubeImage;
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageMemoryBarrier.subresourceRange = subresourceRange;
-        vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-    }
-
-    mCommands->flush(true);
-    
-    return tex;
-}
-
-Ogre::OgreTexture* VulkanRenderSystemBase::generateBRDFLUT(const std::string& name)
-{
-    auto dim = 512;
-    const uint32_t numMips = static_cast<uint32_t>(floor(log2(dim))) + 1;
-
-    Ogre::TextureProperty texProperty;
-    texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
-    texProperty._texType = TEX_TYPE_2D;
-    texProperty._width = dim;
-    texProperty._height = dim;
-    texProperty._need_mipmap = false;
-    texProperty._tex_format = PF_FLOAT16_GR;
-    texProperty._samplerParams.filterMag = backend::SamplerFilterType::LINEAR;
-    texProperty._samplerParams.filterMin = backend::SamplerFilterType::LINEAR;
-    texProperty._samplerParams.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
-    texProperty._samplerParams.wrapS = backend::SamplerWrapMode::CLAMP_TO_EDGE;
-    texProperty._samplerParams.wrapT = backend::SamplerWrapMode::CLAMP_TO_EDGE;
-    texProperty._samplerParams.wrapR = backend::SamplerWrapMode::CLAMP_TO_EDGE;
-    texProperty._samplerParams.anisotropyLog2 = 0;
-    VulkanTexture* tex = new VulkanTexture(name, mVulkanPlatform, mCommands, &texProperty);
-
-    tex->load(nullptr);
-
-    auto device = mVulkanPlatform->getDevice();
-    auto vulkanFormat = VK_FORMAT_R16G16_SFLOAT;
-
-    ShaderInfo shaderInfo;
-    shaderInfo.shaderName = "generateBRDFLUT";
-    Handle<HwProgram> programHandle = createShaderProgram(shaderInfo, nullptr);
-
-    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
-    backend::RasterState rasterState;
-    rasterState.colorWrite = true;
-    rasterState.renderTargetCount = 1;
-    rasterState.depthWrite = false;
-    rasterState.depthTest = false;
-    rasterState.pixelFormat = PF_FLOAT16_GR;
-    Handle<HwPipeline> pipelineHandle = createPipeline(rasterState, programHandle);
-    VulkanPipeline* vulkanPipeline = mResourceAllocator.handle_cast<VulkanPipeline*>(pipelineHandle);
-
-    auto pipeline = vulkanPipeline->getPipeline();
-
-    VkPipelineLayout pipelinelayout = vulkanProgram->getVulkanPipelineLayout();
-
-   
-    VkViewport viewport{};
-    viewport.width = (float)dim;
-    viewport.height = (float)dim;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor{};
-    scissor.extent.width = dim;
-    scissor.extent.height = dim;
-
-    VkRenderingAttachmentInfo colorAttachment{};
-    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-    colorAttachment.pNext = NULL;
-    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.imageView = tex->getVkImageView();
-    colorAttachment.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    VkRect2D renderArea = {};
-    renderArea.offset.x = 0;
-    renderArea.offset.y = 0;
-    renderArea.extent.width = dim;
-    renderArea.extent.height = dim;
-    VkRenderingInfoKHR renderingInfo = {};
-    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-    renderingInfo.pColorAttachments = &colorAttachment;
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pDepthAttachment = nullptr;
-    renderingInfo.pStencilAttachment = nullptr;
-    renderingInfo.renderArea = renderArea;
-    renderingInfo.layerCount = 1;
-
-    auto cmdBuf = mCommands->get().buffer();
-
-    bluevk::vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
-    bluevk::vkCmdSetScissor(cmdBuf, 0, 1, &scissor);
-    bluevk::vkCmdBeginRenderingKHR(cmdBuf, &renderingInfo);
-    bluevk::vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    bluevk::vkCmdDraw(cmdBuf, 3, 1, 0, 0);
-    vkCmdEndRenderingKHR(cmdBuf);
-
-    {
-        VkImageMemoryBarrier imageMemoryBarrier{};
-        imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.image = tex->getVkImage();
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-        vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-    }
-
-    flushCmd(true);
-
-    return tex;
+    copyRegion.srcOffset = { 0, 0, 0 };
+    copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.dstSubresource.baseArrayLayer = desc.dstSubresource.baseArrayLayer;
+    copyRegion.dstSubresource.layerCount = desc.dstSubresource.layerCount;
+    copyRegion.dstSubresource.mipLevel = desc.dstSubresource.mipLevel;
+    copyRegion.dstOffset = { 0, 0, 0 };
+    copyRegion.extent.width = desc.extent.width;
+    copyRegion.extent.height = desc.extent.height;
+    copyRegion.extent.depth = desc.extent.depth;
+    VulkanTexture* srcImage = (VulkanTexture*)src->getTarget();
+    VulkanTexture* dstImage = (VulkanTexture*)dst->getTarget();
+    vkCmdCopyImage(mCommandBuffer, srcImage->getVkImage(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage->getVkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &copyRegion);
 }
 
 void VulkanRenderSystemBase::pushGroupMarker(const char* maker)
@@ -999,7 +672,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
 
     vks::tools::BingdingInfo bindingMap;
-    std::vector<vks::tools::PushConstants> pushConstantsList;
 
     auto bingingUpdate = [](
         vks::tools::BingdingInfo& bindingMap,
@@ -1038,42 +710,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
             }
         };
 
-    auto constantsUpdate = [](
-        std::vector < vks::tools::PushConstants>& pushConstantsList,
-        std::vector < vks::tools::PushConstants>& constantsList)
-        {
-            for (auto& obj : constantsList)
-            {
-                bool update = false;
-                for (auto& pushConstant : pushConstantsList)
-                {
-                    if (obj.name == pushConstant.name)
-                    {
-                        pushConstant.size = std::max(obj.size, pushConstant.size);
-                        pushConstant.stage |= obj.stage;
-                        update = true;
-                        break;
-                    }
-                }
-                if (!update)
-                {
-                    pushConstantsList.push_back(obj);
-                }
-            }
-        };
-    /*{
-        Ogre::ShaderPrivateInfo* privateInfo =
-            ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
-        String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
-        VkShaderModuleInfo moduleInfo;
-        moduleInfo.shaderType = Ogre::VertexShader;
-        hlslCompileShader(
-            res->_fullname,
-            *vertexContent,
-            privateInfo->vertexShaderEntryPoint,
-            shaderInfo.shaderMacros,
-            moduleInfo);
-    }*/
     String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
     VkShaderModuleInfo moduleInfo;
     moduleInfo.shaderType = Ogre::VertexShader;
@@ -1097,7 +733,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         moduleInfo.spv, 
         VK_SHADER_STAGE_VERTEX_BIT,
         &constantsList);
-    constantsUpdate(pushConstantsList, constantsList);
     for (auto& pair : results)
     {
         for (auto& layoutBingding : pair.second)
@@ -1143,7 +778,6 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
             moduleInfo.spv, 
             VK_SHADER_STAGE_FRAGMENT_BIT,
             &constantsList);
-        constantsUpdate(pushConstantsList, constantsList);
         bingingUpdate(bindingMap, results, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
     
@@ -1214,16 +848,9 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         }
     }
 
-    if (pushConstantsList.empty())
-    {
-        keys.pushConstant->size = 0;
-        keys.pushConstant->stage = 0;
-    }
-    else
-    {
-        keys.pushConstant->size = pushConstantsList[0].size;
-        keys.pushConstant->stage = pushConstantsList[0].stage;
-    }
+    keys.pushConstant->size = 0;
+    keys.pushConstant->stage = 0;
+   
     VkPipelineLayout vulkanPipelineLayout = mPipelineLayoutCache->getLayout(keys);
     vulkanProgram->updateVulkanPipelineLayout(vulkanPipelineLayout);
     

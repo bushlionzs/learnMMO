@@ -1018,6 +1018,27 @@ namespace Ogre {
         NameValuePairList   miscParams;
     };
 
+    struct ImageSubresourceLayer
+    {
+        uint32_t aspectMask;
+        uint32_t mipLevel;
+        uint32_t baseArrayLayer;
+        uint32_t layerCount;
+    };
+
+    typedef struct Extent3D {
+        uint32_t    width;
+        uint32_t    height;
+        uint32_t    depth;
+    } Extent3D;
+
+    struct ImageCopyDesc
+    {
+        ImageSubresourceLayer srcSubresource;
+        ImageSubresourceLayer dstSubresource;
+        Extent3D extent;
+    };
+
     enum VertexElementType
     {
         VET_FLOAT1 = 0,
