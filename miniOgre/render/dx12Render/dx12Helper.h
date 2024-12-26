@@ -6,10 +6,9 @@
 
 
 class Dx12RenderSystemBase;
-class Dx12TextureHandleManager;
-class Dx12HardwareBuffer;
 class Dx12Shader;
 struct DX12Sampler;
+class Dx12Texture;
 
 class DX12Helper : public Ogre::Singleton<DX12Helper>
 {
@@ -22,7 +21,6 @@ public:
 	ID3D12Device* getDevice();
 	IDXGIFactory4* getDXGIFactory();
 	ID3D12CommandQueue* getCommandQueue();
-	Dx12TextureHandleManager* getDx12TextureMgr();
 	void executeCommand(ID3D12CommandList* commandList);
 
 	void FlushCommandQueue();
@@ -31,8 +29,7 @@ public:
 	void waitFence(uint64_t fence);
 	uint64_t incrFence();
 	void signalFence(uint64_t fence);
-	DXGI_FORMAT getBackBufferFormat();
-	DXGI_FORMAT getDepthStencilFormat();
+
 	uint32_t getRtvDescriptorSize();
 	uint32_t getDsvDescriptorSize();
 	uint32_t getCbvSrvUavDescriptorSize();
@@ -44,21 +41,12 @@ public:
 	{
 		return mDx12RenderSystem;
 	}
-	ID3D12GraphicsCommandList* getCurrentCommandList();
-	ID3D12GraphicsCommandList* getMipmapCommandList();
-	Dx12HardwareBuffer* getMipmapVetexBuffer();
-	ID3D12RootSignature* getMipmapRootSignature();
-	UploadBuffer<ObjectConstantBuffer>* getMipmapFrameCB();
-	ID3D12PipelineState* getMipmapPipelineState();
-	void _incrMipmapCommandList();
-	void _submitCommandList(bool force = false);
-	void _createMipmapPrepare();
 
 	DxDescriptorID getSampler(
 		const filament::backend::SamplerParams& params,
 		DescriptorHeap* heap);
-private:
-	
+
+	void generateMipmaps(Dx12Texture* tex);
 private:
 	ComPtr<ID3D12Device> mDx12Device;
 	ComPtr<IDXGIFactory4> mdxgiFactory;
@@ -68,9 +56,6 @@ private:
 	uint32_t mDsvDescriptorSize = 0;
 	uint32_t mCbvSrvUavDescriptorSize = 0;
 
-	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
 	uint64_t mCurrentFence = 0;
 
 
@@ -78,17 +63,11 @@ private:
 	uint32_t  m4xMsaaQuality = 0;      // quality level of 4X MSAA
 
 	Dx12RenderSystemBase* mDx12RenderSystem;
-
-	//for directx12 mipmap
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureMipmap = nullptr;
-	Dx12HardwareBuffer* mMipmapVertexBuffer;
-	Dx12Shader* mMipmapShader;
-	std::shared_ptr<UploadBuffer<ObjectConstantBuffer>> mMipmapFrameCB;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mMipmapCmdListAlloc;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mMipmapCommandList;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mMipmapPipelineState;
-	uint32_t mMipmapCommandCount = 0;
-
-
+	Handle<HwProgram> mMipmapHandle;
+	Handle<HwPipeline> mMipmapPipelineHandle;
+	Handle<HwDescriptorSet> mMipMapDescSet;
+	Handle<HwBufferObject> mMipMapBlockHandle;
+	Handle<HwSampler> mMipMapSamplerHandle;
+	Ogre::RenderTarget* mMipmapTarget;
 	tsl::robin_map<SamplerParams, DxDescriptorID, SamplerParams::Hasher, SamplerParams::EqualTo> mSamplersCache;
 };

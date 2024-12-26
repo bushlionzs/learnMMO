@@ -9,9 +9,9 @@
 #include "OgreString.h"
 #include "shaderManager.h"
 #include "OgreMemoryStream.h"
-String ParticleScriptParser::getSuffix()
+std::vector<String> ParticleScriptParser::getSuffix()
 {
-	return ".particle";
+    return { ".particle" };
 }
 void ParticleScriptParser::parseScript(ResourceInfo* res, const String& groupName)
 {

@@ -41,9 +41,6 @@ bool Dx12RenderSystem::engineInit(bool raytracing)
 	return true;
 }
 
-void Dx12RenderSystem::ready()
-{
-}
 
 void Dx12RenderSystem::_resourceLoaded()
 {
@@ -158,7 +155,7 @@ OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, Te
 	DxDescriptorID descriptorId = consume_descriptor_handles(
 		mDescriptorHeapContext.mCPUDescriptorHeaps[0], 1);
 	Dx12Texture* tex = new Dx12Texture(
-		name, texProperty, mCommands, descriptorId);
+		name, texProperty, mCommands, descriptorId, -1);
 
 	if (!tex->load(nullptr))
 	{

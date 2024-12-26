@@ -302,6 +302,11 @@ void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
     {
         return;
     }
+
+    if (vDeclaration == nullptr)
+    {
+        return;
+    }
     const VertexDeclaration::VertexElementList& elementList = vDeclaration->getElementList();
 
     D3d12ShaderParameters shaderInputParameters;

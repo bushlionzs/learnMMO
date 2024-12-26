@@ -28,11 +28,30 @@ DX12BufferObject::DX12BufferObject(
         D3D12_RESOURCE_STATE_COMMON,
         nullptr,
         IID_PPV_ARGS(BufferGPU.GetAddressOf())));
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-    cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
-    cbvDesc.SizeInBytes = (UINT)mByteCount;
-    auto cpuHandle = descriptor_id_to_cpu_handle(context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], id);
-    dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
+
+    auto cpuHandle = descriptor_id_to_cpu_handle(
+        context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], id);
+
+
+    if (mByteCount < 65536)
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = (UINT)mByteCount;
+        dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
+    }
+    else
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Buffer.NumElements = mByteCount;
+        srvDesc.Buffer.StructureByteStride = 1;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        dx12Device->CreateShaderResourceView(BufferGPU.Get(), &srvDesc, cpuHandle);
+    }
+
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(mByteCount);
     ThrowIfFailed(dx12Device->CreateCommittedResource(

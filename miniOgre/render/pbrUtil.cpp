@@ -103,6 +103,7 @@ namespace Ogre
         texProperty._height = dim;
         texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
         texProperty._tex_format = format;
+        texProperty._texType = TEX_TYPE_2D;
         auto outPutTarget = rs->createRenderTarget("outputTarget", texProperty);
 
         RenderPassInfo renderPassInfo;
@@ -117,7 +118,7 @@ namespace Ogre
         RenderTargetBarrier uavBarriers[] = {
                {
                rt,
-               RESOURCE_STATE_UNDEFINED,
+               RESOURCE_STATE_GENERIC_READ,
                RESOURCE_STATE_COPY_DEST},
         };
 
@@ -180,7 +181,7 @@ namespace Ogre
                 {
                     {
                         outPutTarget,
-                        RESOURCE_STATE_UNDEFINED,
+                        RESOURCE_STATE_RENDER_TARGET,
                         RESOURCE_STATE_GENERIC_READ
                     }
                 };
@@ -268,16 +269,24 @@ namespace Ogre
         renderPassInfo.depthTarget.depthStencil = nullptr;
         renderPassInfo.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
         rs->beginCmd();
-        rs->beginRenderPass(renderPassInfo);
-        rs->bindPipeline(programHandle, pipelineHandle, nullptr, 0);
-        rs->draw(3, 0);
-        rs->endRenderPass(renderPassInfo);
 
         RenderTargetBarrier uavBarriers[] = {
                {
                rt,
                RESOURCE_STATE_UNDEFINED,
-               RESOURCE_STATE_SHADER_RESOURCE},
+               RESOURCE_STATE_RENDER_TARGET},
+        };
+        rs->resourceBarrier(0, nullptr, 0, nullptr, 1, uavBarriers);
+
+        rs->beginRenderPass(renderPassInfo);
+        rs->bindPipeline(programHandle, pipelineHandle, nullptr, 0);
+        rs->draw(3, 0);
+        rs->endRenderPass(renderPassInfo);
+
+        uavBarriers[0] = {
+               rt,
+               RESOURCE_STATE_RENDER_TARGET,
+               RESOURCE_STATE_SHADER_RESOURCE
         };
         rs->resourceBarrier(0, nullptr, 0, nullptr, 1, uavBarriers);
         rs->flushCmd(true);

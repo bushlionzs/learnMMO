@@ -15,7 +15,8 @@ public:
 		const std::string& name,
 		DX12Commands* commands,
 		TextureProperty* texProperty,
-		DxDescriptorID descriptorId);
+		DxDescriptorID descriptorId,
+		DxDescriptorID targetId);
 	Dx12RenderTarget(DX12SwapChain* swapChain, bool depth = false);
 	~Dx12RenderTarget();
 
@@ -26,6 +27,11 @@ public:
 	virtual bool useMsaa() 
 	{
 		return false;
+	}
+
+	DX12SwapChain* getSwapChain()
+	{
+		return mSwapChain;
 	}
 private:
 	Dx12Texture* mTarget = nullptr;

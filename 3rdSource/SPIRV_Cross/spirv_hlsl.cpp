@@ -2548,10 +2548,11 @@ string CompilerHLSL::layout_for_member(const SPIRType &type, uint32_t index)
 
 	// Flip the convention. HLSL is a bit odd in that the memory layout is column major ... but the language API is "row-major".
 	// The way to deal with this is to multiply everything in inverse order, and reverse the memory layout.
+	
 	if (flags.get(DecorationColMajor))
-		return "row_major ";
-	else if (flags.get(DecorationRowMajor))
 		return "column_major ";
+	else if (flags.get(DecorationRowMajor))
+		return "row_major ";
 
 	return "";
 }

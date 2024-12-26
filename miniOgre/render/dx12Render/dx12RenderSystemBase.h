@@ -10,7 +10,7 @@
 
 class Dx12GraphicsCommandList;
 class Dx12RenderTarget;
-class Dx12TextureHandleManager;
+class Dx12Texture;
 class Dx12RenderWindow;
 class DX12Commands;
 class DX12SwapChain;
@@ -30,8 +30,7 @@ public:
     virtual bool engineInit();
     virtual void ready();
     virtual Ogre::RenderWindow* createRenderWindow(
-        const String& name, unsigned int width, unsigned int height,
-        const NameValuePairList* miscParams) override;
+        const CreateWindowDesc& desc) override;
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name,
         TextureProperty& texProperty) override;
@@ -42,6 +41,14 @@ public:
         Ogre::RenderTarget* dst,
         Ogre::RenderTarget* src,
         ImageCopyDesc& desc);
+    void copyImage(
+        Dx12Texture* dst,
+        Dx12Texture* src,
+        ImageCopyDesc& desc
+    );
+
+    virtual void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth);
+    virtual void setScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
     virtual void beginRenderPass(
         RenderPassInfo& renderPassInfo);
     virtual void endRenderPass(RenderPassInfo& renderPassInfo);
@@ -49,10 +56,9 @@ public:
     virtual void bindPipeline(
         Handle<HwProgram> programHandle,
         Handle<HwPipeline> pipelineHandle,
-        Handle<HwDescriptorSet>* descSets,
+        const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount);
 
-    virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src);
     virtual void drawIndexed(
         uint32_t indexCount,
         uint32_t instanceCount,
@@ -145,4 +151,6 @@ protected:
     DxMemoryAllocator* mMemoryAllocator;
 
     DescriptorHeapContext mDescriptorHeapContext;
+
+    bool mSetDescriptorHeaps;
 };

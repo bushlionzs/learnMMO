@@ -60,9 +60,7 @@ void* Dx12HardwareBuffer::lockimpl(size_t offset, size_t length, LockOptions opt
 
 void Dx12HardwareBuffer::unlock()
 {
-    ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
-
-    _copydataimpl(cmdList, mMemBuffer.data(), mMemBuffer.size());
+    assert(false);
 }
 
 void Dx12HardwareBuffer::_copydataimpl(
@@ -87,7 +85,8 @@ void Dx12HardwareBuffer::_copydataimpl(
 
 void Dx12HardwareBuffer::bind(int32_t slot, void* cb) const
 {
-    ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
+    assert(false);
+    /*ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
 
     if (mBufferType == VERTEX_BUFFER)
     {
@@ -104,7 +103,7 @@ void Dx12HardwareBuffer::bind(int32_t slot, void* cb) const
         ibv.Format = mIndexFormat;
         ibv.SizeInBytes = mVertexSize * mNumVerts;
         cmdList->IASetIndexBuffer(&ibv);
-    }
+    }*/
 
 }
 

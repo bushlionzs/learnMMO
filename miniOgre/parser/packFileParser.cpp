@@ -29,9 +29,9 @@ PackfileParser::~PackfileParser()
 
 }
 
-String PackfileParser::getSuffix()
+std::vector<String> PackfileParser::getSuffix()
 {
-	return ".pack";
+	return { ".pack" };
 }
 
 void PackfileParser::parseScript(

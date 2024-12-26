@@ -7,7 +7,6 @@ class DX12Commands;
 class Dx12TextureHandleManager;
 class Dx12HardwarePixelBuffer;
 struct DX12Sampler;
-
 class Dx12Texture :public OgreTexture
 {
 public:
@@ -15,7 +14,8 @@ public:
         const std::string& name, 
         Ogre::TextureProperty* texProperty, 
         DX12Commands* commands,
-        DxDescriptorID descriptorId);
+        DxDescriptorID descriptorId, 
+        DxDescriptorID renderTargetId);
 
     Dx12Texture(
         const std::string& name,
@@ -26,10 +26,7 @@ public:
 
     ~Dx12Texture();
 
-    DxDescriptorID getDescriptorId() const
-    {
-        return mDescriptors;
-    }
+    
 
     ID3D12Resource* getResource()
     {
@@ -46,7 +43,17 @@ public:
         return mTextureProperty._numMipmaps + 1;
     }
 
-    DxDescriptorID getSampler()
+
+    DxDescriptorID getDescriptorId() const
+    {
+        return mDescriptors;
+    }
+
+    DxDescriptorID getTargetDescriptorId() const
+    {
+        return mTargetDescriptorID;
+    }
+    DxDescriptorID getSamplerDescriptorID()
     {
         return mSamplerDescriptorID;
     }
@@ -59,11 +66,12 @@ private:
     void _createSurfaceList(void);
     virtual void postLoad();
     void buildDescriptorHeaps();
+    bool need_midmap();
 private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> mTex;
     Microsoft::WRL::ComPtr<ID3D12Resource> mTexUpload;
-    DxDescriptorID mDescriptors;
+    
 
     bool mCreate = false;
     DXGI_FORMAT mD3DFormat;
@@ -73,5 +81,11 @@ private:
 
     DX12Commands* mCommands;
 
+
+    DxDescriptorID mDescriptors;
+    DxDescriptorID mTargetDescriptorID;
+
     DxDescriptorID mSamplerDescriptorID;
+    uint32_t mMipLevels = 1;
+    bool mNeedMipmaps = false;
 };

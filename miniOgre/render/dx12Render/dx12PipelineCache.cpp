@@ -119,13 +119,12 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.SampleMask = UINT_MAX;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)mPipelineRequirements.topology;
     psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.RTVFormats[0] = mPipelineRequirements.colorFormat;
     psoDesc.SampleDesc.Count = mPipelineRequirements.rasterState.rasterizationSamples; 
     psoDesc.SampleDesc.Quality = 0;
-    psoDesc.DSVFormat = DX12Helper::getSingleton().getDepthStencilFormat();
-
+    psoDesc.DSVFormat = mPipelineRequirements.depthFormat;
 
     
     D3D12_DEPTH_STENCIL_DESC depthDSS;

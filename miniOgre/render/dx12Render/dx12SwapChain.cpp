@@ -7,11 +7,23 @@
 #include "D3D12Mappings.h"
 #include "memoryAllocator.h"
 
-DX12SwapChain::DX12SwapChain(DX12Commands* commands, HWND hWnd)
+DX12SwapChain::DX12SwapChain(DX12Commands* commands, HWND hWnd, bool srgb)
 {
     mCommands = commands;
 	mHwnd = hWnd;
+
+	mColorFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+	mDepthFormat = DXGI_FORMAT_D32_FLOAT;
+
+	mCurrentFrameIndex = 0;
+	if (srgb)
+	{
+		mColorFormat = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+	}
+
 	createSwapChain();
+
+	
 }
 
 void DX12SwapChain::present()
@@ -60,13 +72,12 @@ void DX12SwapChain::createSwapChain()
 
 	mSwapChain.Reset();
 	
-	auto format = DX12Helper::getSingleton().getBackBufferFormat();
 	DXGI_SWAP_CHAIN_DESC sd;
 	sd.BufferDesc.Width = ogreConfig.width;
 	sd.BufferDesc.Height = ogreConfig.height;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.BufferDesc.Format = format;
+	sd.BufferDesc.Format = mColorFormat;
 	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 	sd.SampleDesc.Count = 1;
@@ -87,7 +98,7 @@ void DX12SwapChain::createSwapChain()
 	ThrowIfFailed(mSwapChain->ResizeBuffers(
 		ogreConfig.swapBufferCount,
 		mWidth, mHeight,
-		format,
+		mColorFormat,
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
 	mColors.resize(ogreConfig.swapBufferCount);
@@ -97,7 +108,7 @@ void DX12SwapChain::createSwapChain()
 	texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
 	texProperty._width = ogreConfig.width;
 	texProperty._height = ogreConfig.height;
-	texProperty._tex_format = D3D12Mappings::getPixelFormat(format);
+	texProperty._tex_format = D3D12Mappings::getPixelFormat(mColorFormat);
 
 	struct DescriptorHeap* rtvHeap = cpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
 	auto descriptors = consume_descriptor_handles(rtvHeap, ogreConfig.swapBufferCount);
@@ -123,7 +134,7 @@ void DX12SwapChain::createSwapChain()
 	depthStencilDesc.Height = mHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
-	depthStencilDesc.Format = DX12Helper::getSingleton().getDepthStencilFormat();
+	depthStencilDesc.Format = mDepthFormat;
 	depthStencilDesc.SampleDesc.Count = DX12Helper::getSingleton().hasMsaa() ? 4 : 1;
 	depthStencilDesc.SampleDesc.Quality = DX12Helper::getSingleton().hasMsaa() ?
 		(DX12Helper::getSingleton().getMsaaQuality() - 1) : 0;
@@ -131,7 +142,7 @@ void DX12SwapChain::createSwapChain()
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 	D3D12_CLEAR_VALUE optClear;
-	optClear.Format = DX12Helper::getSingleton().getDepthStencilFormat();
+	optClear.Format = mDepthFormat;
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 

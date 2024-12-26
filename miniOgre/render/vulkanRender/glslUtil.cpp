@@ -1,9 +1,11 @@
 #include <OgreHeader.h>
 #include <platform_file.h>
 #include "glslUtil.h"
+#include "myutils.h"
 #include <libshaderc_util/file_finder.h>
 #include <VulkanTools.h>
 #include <VulkanHelper.h>
+#include <shaderManager.h>
 #include <mutex>
 #include "OgreResourceManager.h"
 #include <spirv_cross/spirv_cross.hpp>
@@ -244,7 +246,11 @@ void parserGlslInputDesc(
 }
 
 
-void spvToHlsl(Ogre::ShaderType shaderType, const std::string& code, std::string& hlslSource)
+void spvToHlsl(
+    Ogre::ShaderType shaderType, 
+    const std::string& name,
+    const std::string& code, 
+    std::string& hlslSource)
 {
     std::vector<uint32_t> spirv;
 
@@ -266,67 +272,46 @@ void spvToHlsl(Ogre::ShaderType shaderType, const std::string& code, std::string
     // 设置编译选项
     spirv_cross::CompilerHLSL::Options options;
     options.shader_model = 51; // 对应 HLSL Shader Model 5.1
+    
     compiler.set_hlsl_options(options);
     SPIRV_CROSS_NAMESPACE::HLSLVertexAttributeRemap attr;
+
+    std::string shortname = getShortFilename(name);
     if (shaderType == ShaderType::VertexShader)
     {
-        attr.location = 0;
-        attr.semantic = "POSITION";
-        compiler.add_vertex_attribute_remap(attr);
-        attr.location = 1;
-        attr.semantic = "NORMAL";
-        compiler.add_vertex_attribute_remap(attr);
-        attr.location = 3;
-        attr.semantic = "TEXCOORD";
-        compiler.add_vertex_attribute_remap(attr);
-        attr.location = 5;
-        attr.semantic = "BLENDINDICES";
-        compiler.add_vertex_attribute_remap(attr);
-        attr.location = 6;
-        attr.semantic = "BLENDWEIGHT";
-        compiler.add_vertex_attribute_remap(attr);
+        {
+            const auto& semanticList = ShaderManager::getSingleton().getVertexInputMapping(shortname);
 
-        attr.location = 0;
-        attr.semantic = "POSITION0";
-        compiler.add_vertex_attribute_remap_output(attr);
+            for (auto& obj : semanticList)
+            {
+                attr.location = obj.location;
+                attr.semantic = obj.semantic;
+                compiler.add_vertex_attribute_remap(attr);
+            }
+        }
 
-        attr.location = 1;
-        attr.semantic = "POSITION1";
-        compiler.add_vertex_attribute_remap_output(attr);
+        {
+            const auto& semanticList = ShaderManager::getSingleton().getVertexOutputMapping(shortname);
 
-        attr.location = 2;
-        attr.semantic = "POSITION2";
-        compiler.add_vertex_attribute_remap_output(attr);
-
-        attr.location = 3;
-        attr.semantic = "NORMAL";
-        compiler.add_vertex_attribute_remap_output(attr);
-
-        attr.location = 4;
-        attr.semantic = "TEXCOORD";
-        compiler.add_vertex_attribute_remap_output(attr);
+            for (auto& obj : semanticList)
+            {
+                attr.location = obj.location;
+                attr.semantic = obj.semantic;
+                compiler.add_vertex_attribute_remap_output(attr);
+            }
+        }
+       
     }
     else if (shaderType == ShaderType::PixelShader)
     {
-        attr.location = 0;
-        attr.semantic = "POSITION0";
-        compiler.add_vertex_attribute_remap(attr);
+        const auto& semanticList = ShaderManager::getSingleton().getPixelInputMapping(shortname);
 
-        attr.location = 1;
-        attr.semantic = "POSITION1";
-        compiler.add_vertex_attribute_remap(attr);
-
-        attr.location = 2;
-        attr.semantic = "POSITION2";
-        compiler.add_vertex_attribute_remap(attr);
-
-        attr.location = 3;
-        attr.semantic = "NORMAL";
-        compiler.add_vertex_attribute_remap(attr);
-
-        attr.location = 4;
-        attr.semantic = "TEXCOORD";
-        compiler.add_vertex_attribute_remap(attr);
+        for (auto& obj : semanticList)
+        {
+            attr.location = obj.location;
+            attr.semantic = obj.semantic;
+            compiler.add_vertex_attribute_remap(attr);
+        }
     }
     
     // 编译 HLSL 代码
@@ -350,6 +335,6 @@ bool translateToHlsl(
     {
         return false;
     }
-    spvToHlsl(shaderType, moduleInfo.spv, hlslSource);
+    spvToHlsl(shaderType, shaderName, moduleInfo.spv, hlslSource);
     return true;
 }

@@ -15,7 +15,10 @@ class DX12SwapChain
     };
 
 public:
-    DX12SwapChain(DX12Commands* commands, HWND hWnd);
+    DX12SwapChain(
+        DX12Commands* commands, 
+        HWND hWnd,
+        bool srgb);
     void present();
     void acquire(bool& reized);
 
@@ -30,6 +33,16 @@ public:
 
     Dx12Texture* getDepthTexture();
     Dx12Texture* getCurrentColor();
+
+    DXGI_FORMAT getColorFormat()
+    {
+        return mColorFormat;
+    }
+
+    DXGI_FORMAT getDepthFormat()
+    {
+        return mDepthFormat;
+    }
 private:
     void createSwapChain();
 private:
@@ -46,4 +59,7 @@ private:
 
     uint32_t mWidth;
     uint32_t mHeight;
+
+    DXGI_FORMAT mColorFormat;
+    DXGI_FORMAT mDepthFormat;
 };

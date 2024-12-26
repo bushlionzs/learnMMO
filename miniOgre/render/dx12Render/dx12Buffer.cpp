@@ -44,30 +44,30 @@ void* Dx12Buffer::lockimpl(size_t offset, size_t length, HardwareBuffer::LockOpt
 
 void Dx12Buffer::unlock()
 {
-    ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
-   
+    
 }
 
 void Dx12Buffer::bind(int32_t slot, void* cb)
 {
-    ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
+    assert(false);
+    //ID3D12GraphicsCommandList* cmdList = DX12Helper::getSingleton().getCurrentCommandList();
 
-    if (mBufferType == HardwareBuffer::VERTEX_BUFFER)
-    {
-        D3D12_VERTEX_BUFFER_VIEW vbv;
-        //vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
-        vbv.StrideInBytes = mVertexSize;
-        vbv.SizeInBytes = mVertexSize * mNumVerts;
-        cmdList->IASetVertexBuffers(slot, 1, &vbv);
-    }
-    else if (mBufferType == HardwareBuffer::INDEX_BUFFER)
-    {
-        D3D12_INDEX_BUFFER_VIEW ibv;
-       // ibv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
-        ibv.Format = mIndexFormat;
-        ibv.SizeInBytes = mVertexSize * mNumVerts;
-        cmdList->IASetIndexBuffer(&ibv);
-    }
+    //if (mBufferType == HardwareBuffer::VERTEX_BUFFER)
+    //{
+    //    D3D12_VERTEX_BUFFER_VIEW vbv;
+    //    //vbv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
+    //    vbv.StrideInBytes = mVertexSize;
+    //    vbv.SizeInBytes = mVertexSize * mNumVerts;
+    //    cmdList->IASetVertexBuffers(slot, 1, &vbv);
+    //}
+    //else if (mBufferType == HardwareBuffer::INDEX_BUFFER)
+    //{
+    //    D3D12_INDEX_BUFFER_VIEW ibv;
+    //   // ibv.BufferLocation = mDX12BufferObject.getGPUVirtualAddress();
+    //    ibv.Format = mIndexFormat;
+    //    ibv.SizeInBytes = mVertexSize * mNumVerts;
+    //    cmdList->IASetIndexBuffer(&ibv);
+    //}
 
 }
 

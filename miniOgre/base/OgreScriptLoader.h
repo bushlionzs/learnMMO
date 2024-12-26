@@ -73,7 +73,7 @@ namespace Ogre {
         ScriptLoader();
         virtual ~ScriptLoader();
         
-        virtual String getSuffix() = 0;
+        virtual std::vector<String> getSuffix() = 0;
         /** Parse a script file.
         @param stream Weak reference to a data stream which is the source of the script
         @param groupName The name of a resource group which should be used if any resources

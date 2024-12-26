@@ -11,6 +11,7 @@ class DX12Commands
 public:
     DX12Commands(ID3D12Device* device);
     ~DX12Commands();
+    void setDescriptorHeaps(ID3D12DescriptorHeap* const* heaps, uint32_t count);
     ID3D12GraphicsCommandList* get();
     ID3D12CommandQueue* getCommandQueue();
     bool flush(bool waitCmd);

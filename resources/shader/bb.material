@@ -62,6 +62,7 @@ material myrect
 			texture_unit
 			{
 				texture studio_garden_px.jpg
+				//texture outputTarget
 			}
 
 		}

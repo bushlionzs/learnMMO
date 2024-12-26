@@ -330,8 +330,8 @@ namespace Ogre {
     {
         switch (format)
         {
-        case DXGI_FORMAT_R8G8B8A8_UNORM:          return PF_A8R8G8B8;
-        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:           return PF_A8R8G8B8_SRGB;
+        case DXGI_FORMAT_B8G8R8A8_UNORM:          return PF_A8R8G8B8;
+        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:           return PF_A8R8G8B8_SRGB;
         case DXGI_FORMAT_D32_FLOAT:              return PF_DEPTH32F;
         case DXGI_FORMAT_D24_UNORM_S8_UINT: return PF_DEPTH24_STENCIL8;
         default:

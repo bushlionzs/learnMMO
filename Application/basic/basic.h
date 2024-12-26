@@ -34,4 +34,5 @@ private:
 	GameCamera* mGameCamera;
 	RenderSystem* mRenderSystem;
 	RenderWindow* mRenderWindow;
+	RenderPipeline* mRenderPipeline;
 };

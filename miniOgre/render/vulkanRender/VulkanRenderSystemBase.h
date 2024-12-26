@@ -35,8 +35,7 @@ public:
     virtual Ogre::OgreTexture* createTexture(Ogre::TextureProperty* texProperty);
     virtual void ready();
     virtual Ogre::RenderWindow* createRenderWindow(
-        const String& name, unsigned int width, unsigned int height,
-        const NameValuePairList* miscParams) override;
+        const CreateWindowDesc& desc) override;
 
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
@@ -50,7 +49,7 @@ public:
     virtual void bindPipeline(
         Handle<HwProgram> programHandle,
         Handle<HwPipeline> pipelineHandle,
-        Handle<HwDescriptorSet>* descSets,
+        const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount) override;
     virtual void draw(uint32_t vertexCount, uint32_t firstVertex) override;
     virtual void drawIndexed(

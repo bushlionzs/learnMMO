@@ -17,7 +17,6 @@ public:
     Dx12RenderSystem(HWND wnd);
     ~Dx12RenderSystem();
     virtual bool engineInit(bool raytracing);
-    virtual void ready();
     virtual void _resourceLoaded();
     
     virtual void render(Ogre::Renderable* r, RenderListType t);

@@ -7,7 +7,7 @@ class WowResourceParser : public Ogre::ScriptLoader
 public:
     WowResourceParser();
 
-    virtual String getSuffix();
+    virtual std::vector<String> getSuffix();
     virtual void parseScript(ResourceInfo* res, const String& groupName);
     virtual Real getLoadingOrder(void) const;
 private:

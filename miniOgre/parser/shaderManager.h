@@ -33,13 +33,18 @@ namespace Ogre {
 		ShaderTypeInfo shaderInfo[EngineType_Count];
 	};
 
+	struct ShaderMappingInfo
+	{
+		uint32_t location;
+		std::string semantic;
+	};
 	class ShaderManager : public Ogre::Singleton<ShaderManager>, public ScriptLoader
 	{
 	public:
 		ShaderManager();
 		~ShaderManager();
 
-        virtual String getSuffix();
+        virtual std::vector<String> getSuffix();
 
         virtual void parseScript(ResourceInfo* res, const String& groupName);
 
@@ -53,11 +58,27 @@ namespace Ogre {
 
 		void addMacro(const String& name);
 		int32_t getMacroIndex(const String& name);
+
+		const std::vector<ShaderMappingInfo>& getVertexInputMapping(
+			const std::string& shaderFileName);
+
+		const std::vector<ShaderMappingInfo>& getVertexOutputMapping(
+			const std::string& shaderFileName);
+
+		const std::vector<ShaderMappingInfo>& getPixelInputMapping(
+			const std::string& shaderFileName);
 	private:
 		void parseShaderImpl(const String& content);
 		bool readShaderUnit(
 			std::stringstream& ss,
 			ShaderFormat* shaderFormat);
+		enum MappingType
+		{
+			VertexInput,
+			VertexOutput,
+			PixelInput
+		};
+		bool readMappingInfo(std::stringstream& ss, std::string& name, MappingType mappingType);
 		void addShader(const String& name, ShaderFormat* sf);
 	private:
 		std::unordered_map<String, ShaderFormat*> mShaderMap;
@@ -66,5 +87,12 @@ namespace Ogre {
 		std::unordered_map<String, uint32_t> mMacroMap;
 
 		uint64_t mMacroValue = 1;
+
+
+		std::unordered_map<String, std::vector<ShaderMappingInfo>> mVertexInputMap;
+		std::unordered_map<String, std::vector<ShaderMappingInfo>> mVertexOutputMap;
+		std::unordered_map<String, std::vector<ShaderMappingInfo>> mPixelOutputMap;
+
+		std::vector<ShaderMappingInfo> mDummy;
 	};
 }

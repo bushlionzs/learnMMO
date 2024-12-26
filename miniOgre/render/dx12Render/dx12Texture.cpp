@@ -17,11 +17,13 @@ Dx12Texture::Dx12Texture(
     const std::string& name, 
     Ogre::TextureProperty* texProperty, 
     DX12Commands* commands,
-    DxDescriptorID descriptorId)
+    DxDescriptorID descriptorId,
+    DxDescriptorID renderTargetId)
     :
     mCommands(commands),
     OgreTexture(name, texProperty),
-    mDescriptors(descriptorId)
+    mDescriptors(descriptorId),
+    mTargetDescriptorID(renderTargetId)
 {
     
 }
@@ -37,7 +39,8 @@ Dx12Texture::Dx12Texture(
     mName = name;
     mCommands = commands;
     mTex = resource;
-    mDescriptors = descriptorId;
+    mDescriptors = -1;
+    mTargetDescriptorID = descriptorId;
     createInternalResourcesImpl();
 }
 
@@ -113,6 +116,7 @@ void Dx12Texture::createInternalResourcesImpl(void)
 
     _createSurfaceList();
     
+    buildDescriptorHeaps();
 }
 
 void Dx12Texture::freeInternalResourcesImpl()
@@ -127,7 +131,23 @@ void Dx12Texture::_create2DTex()
     if (mTex)
         return;
     auto device = DX12Helper::getSingleton().getDevice();
-    UINT numMips = mTextureProperty._numMipmaps + 1;
+    mMipLevels = mTextureProperty._numMipmaps + 1;
+
+    auto width = getWidth();
+    auto height = getHeight();
+    if (need_midmap())
+    {
+        if (mTextureProperty._numMipmaps == 0)
+        {
+            auto current = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
+
+            if (current > mMipLevels)
+            {
+                mNeedMipmaps = true;
+                mMipLevels = current;
+            }
+        }
+    }
     D3D12_RESOURCE_DESC texDesc;
     ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
     texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -135,7 +155,7 @@ void Dx12Texture::_create2DTex()
     texDesc.Width = mTextureProperty._width;
     texDesc.Height = mTextureProperty._height;
     texDesc.DepthOrArraySize = mFace;
-    texDesc.MipLevels = numMips;
+    texDesc.MipLevels = mMipLevels;
     texDesc.Format = mD3DFormat;
     texDesc.SampleDesc.Count = 1;
     texDesc.SampleDesc.Quality = 0;
@@ -154,6 +174,8 @@ void Dx12Texture::_create2DTex()
         texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         states = D3D12_RESOURCE_STATE_GENERIC_READ;
         texDesc.SampleDesc.Count = 1;
+
+        mNeedMipmaps = false;
     }
     else
     {
@@ -210,20 +232,22 @@ void Dx12Texture::postLoad()
 
     updateTextureData();
 
-   // generateMipmaps();
-
-    buildDescriptorHeaps();
+    if (mNeedMipmaps)
+    {
+        generateMipmaps();
+    }
+   
 
     Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
     struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
-    mSamplerDescriptorID = DX12Helper::getSingleton().getSampler(mTextureProperty._samplerParams, heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]);
+    
 }
 
 void Dx12Texture::buildDescriptorHeaps()
 {
-    auto device = DX12Helper::getSingleton().getDevice();
     if (!mCreate)
     {
+        auto device = DX12Helper::getSingleton().getDevice();
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -250,18 +274,46 @@ void Dx12Texture::buildDescriptorHeaps()
             srvDesc.Texture2D.MostDetailedMip = 0;
             srvDesc.Texture2D.MipLevels = mTex->GetDesc().MipLevels;
         }
+
         Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
         struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
-        auto cpuHandle = descriptor_id_to_cpu_handle(heaps[0], mDescriptors);
 
-        device->CreateShaderResourceView(mTex.Get(), &srvDesc, cpuHandle);
+        if (mDescriptors >= 0)
+        {
+            auto cpuHandle = descriptor_id_to_cpu_handle(heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], mDescriptors);
 
+            device->CreateShaderResourceView(mTex.Get(), &srvDesc, cpuHandle);
+        }
+        
+
+        if (mTargetDescriptorID >= 0)
+        {
+            if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::COLOR_ATTACHMENT)
+            {
+                auto cpuHandle = descriptor_id_to_cpu_handle(heaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], mTargetDescriptorID);
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+                rtvDesc.Format = mTex->GetDesc().Format;
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                device->CreateRenderTargetView(mTex.Get(), &rtvDesc, cpuHandle);
+            }
+            else if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+            {
+                auto cpuHandle = descriptor_id_to_cpu_handle(heaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], mTargetDescriptorID);
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+                rtvDesc.Format = mTex->GetDesc().Format;
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                device->CreateDepthStencilView(mTex.Get(), nullptr, cpuHandle);
+            }
+        }
+
+        mSamplerDescriptorID = DX12Helper::getSingleton().getSampler(mTextureProperty._samplerParams, heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]);
         mCreate = true;
     }
 }
 
 void Dx12Texture::generateMipmaps()
 {
+    DX12Helper::getSingleton().generateMipmaps(this);
 }
 
 void Dx12Texture::updateTextureData()
@@ -295,4 +347,19 @@ void Dx12Texture::updateTextureData()
         0,
         mSurfaceList.size(),
         subResourceData.data());
+}
+
+bool Dx12Texture::need_midmap()
+{
+    if (!mTextureProperty._need_mipmap)
+        return false;
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
+    {
+        return false;
+    }
+    if (mTextureProperty._tex_usage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
+    {
+        return false;
+    }
+    return true;
 }

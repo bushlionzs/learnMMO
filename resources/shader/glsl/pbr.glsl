@@ -19,10 +19,7 @@ layout (location = 3) in vec2 texcoord;
 
 layout (location = 0) out vec3 outWorldPos;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec3 outTagent;
-layout (location = 3) out vec2 outUV0;
-layout (location = 4) out vec2 outUV1;
-layout (location = 5) out vec4 outColor0;
+layout (location = 2) out vec2 outUV;
 
 
 
@@ -31,7 +28,7 @@ void main()
     vec4 locPos = (cbPerObject.gWorld * float4(position, 1.0f));
     outWorldPos = locPos.xyz / locPos.w;
     outNormal = mat3(cbPerObject.gWorld) * normal;
-    outUV0 = texcoord;
+    outUV = texcoord;
 	gl_Position = cbPass.gViewProj * float4(outWorldPos, 1.0f);
 }
 
@@ -262,14 +259,9 @@ float3 EnvironmentBRDF(float3 N, float3 V, float3 albedo, float roughness, float
 
 
 
-
-
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec3 inTagent;
-layout (location = 3) in vec2 inUV0;
-layout (location = 4) in vec2 inUV1;
-layout (location = 5) in vec4 inColor0;
+layout (location = 2) in vec2 inUV0;
 
 layout (location = 0) out vec4 outColor;
 

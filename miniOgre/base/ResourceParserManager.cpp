@@ -61,16 +61,20 @@ namespace Ogre {
 
 	bool ResourceParserManager::registerParser(ScriptLoader* loader)
 	{
-		String suffix = loader->getSuffix();
+		std::vector<String> suffixs = loader->getSuffix();
 
-		auto itor = mResourceParserMap.find(suffix);
-
-		if (itor != mResourceParserMap.end())
+		for (auto& suffix : suffixs)
 		{
-			OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "parser already exists");
-		}
+			auto itor = mResourceParserMap.find(suffix);
 
-		mResourceParserMap[suffix] = loader;
+			if (itor != mResourceParserMap.end())
+			{
+				OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "parser already exists");
+			}
+
+			mResourceParserMap[suffix] = loader;
+		}
+		
 		return true;
 	}
 

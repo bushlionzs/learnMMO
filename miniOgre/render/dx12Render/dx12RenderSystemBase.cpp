@@ -94,27 +94,28 @@ bool Dx12RenderSystemBase::engineInit()
         d3dUtil::add_descriptor_heap(mDevice, &desc, &mDescriptorHeapContext.pSamplerHeaps[i]);
     }
 
+
+    ID3D12DescriptorHeap* heaps[] =
+    {
+        mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
+        mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
+    };
+    //mCommands->setDescriptorHeaps(heaps, 2);
+
 	return true;
 }
 
 void Dx12RenderSystemBase::ready()
 {
-
+    /*Dx12Texture* tex = (Dx12Texture*)createTextureFromFile("studio_garden_px.jpg", nullptr);
+    DX12Helper::getSingleton().generateMipmaps(tex);*/
 }
 
 Ogre::RenderWindow* Dx12RenderSystemBase::createRenderWindow(
-    const String& name, unsigned int width, unsigned int height,
-    const NameValuePairList* miscParams)
+    const CreateWindowDesc& desc)
 {
-
-    auto itor = miscParams->find("externalWindowHandle");
-    if (itor == miscParams->end())
-    {
-        OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "externalWindowHandle should be provided");
-    }
-
-    auto wnd = (HWND)StringConverter::parseSizeT(itor->second);
-    mSwapChain = new DX12SwapChain(mCommands, wnd);
+    auto wnd = (HWND)StringConverter::parseSizeT(desc.windowHandle);
+    mSwapChain = new DX12SwapChain(mCommands, wnd, desc.srgb);
     mRenderWindow = new Dx12RenderWindow(mSwapChain);
     mRenderWindow->create();
     return mRenderWindow;
@@ -123,16 +124,36 @@ Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
     const String& name,
     TextureProperty& texProperty)
 {
+    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+    DxDescriptorID targetId = -1;
     if (texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
     {
         texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
+        type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+
+        targetId = consume_descriptor_handles(
+            mDescriptorHeapContext.mCPUDescriptorHeaps[type], 1);
+    }
+    else if (texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::COLOR_ATTACHMENT)
+    {
+        type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+
+        targetId = consume_descriptor_handles(
+            mDescriptorHeapContext.mCPUDescriptorHeaps[type], 1);
+    }
+    else
+    {
+        //WRITEABLE
     }
 
-    DxDescriptorID descriptorId = consume_descriptor_handles(mDescriptorHeapContext.mCPUDescriptorHeaps[0], 1);
+    DxDescriptorID descriptorId = consume_descriptor_handles(
+        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
+    
     Dx12RenderTarget* renderTarget = new Dx12RenderTarget(
-        name, mCommands, &texProperty, descriptorId);
+        name, mCommands, &texProperty, descriptorId, targetId);
     return renderTarget;
 }
 
@@ -152,7 +173,6 @@ void Dx12RenderSystemBase::frameStart()
 
 void Dx12RenderSystemBase::frameEnd()
 {
-
 }
 
 void Dx12RenderSystemBase::present()
@@ -165,9 +185,69 @@ void Dx12RenderSystemBase::copyImage(
     Ogre::RenderTarget* src,
     ImageCopyDesc& desc)
 {
-    assert(false);
+    Dx12Texture* dstTexture = (Dx12Texture*)dst->getTarget();
+    Dx12Texture* srcTexture  = (Dx12Texture*)src->getTarget();
+
+    copyImage(dstTexture, srcTexture, desc);
 }
 
+void Dx12RenderSystemBase::copyImage(
+    Dx12Texture* dstTexture,
+    Dx12Texture* srcTexture,
+    ImageCopyDesc& desc)
+{
+    auto width = desc.extent.width;
+    auto height = desc.extent.height;
+    auto depth = desc.extent.depth;
+    auto* cl = mCommands->get();
+
+    D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+    srcLocation.pResource = srcTexture->getResource();
+    srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    srcLocation.SubresourceIndex = D3D12CalcSubresource(
+        desc.srcSubresource.mipLevel, 0, 0, 1, 1);
+
+    D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+    dstLocation.pResource = dstTexture->getResource();
+    dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+
+    // 设置SubresourceIndex为目标CubeMap的特定面
+    // CubeMap面的索引顺序是：+X, -X, +Y, -Y, +Z, -Z
+    uint32_t MipLevels = static_cast<UINT>(floor(log2(std::max(dstTexture->getWidth(), dstTexture->getHeight())))) + 1;
+    UINT dstSubresource = D3D12CalcSubresource(
+        desc.dstSubresource.mipLevel,
+        desc.dstSubresource.baseArrayLayer, 0, MipLevels, 1);
+    dstLocation.SubresourceIndex = dstSubresource;
+
+    // 执行拷贝
+    CD3DX12_BOX srcBox(0, 0, width, height); // 定义源纹理的矩形区域
+    cl->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, &srcBox);
+}
+
+void Dx12RenderSystemBase::setViewport(
+    float x, float y, float width, float height, float minDepth, float maxDepth)
+{
+    D3D12_VIEWPORT viewport;
+    
+    viewport.TopLeftX = x;
+    viewport.TopLeftY = y;
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MinDepth = minDepth;
+    viewport.MaxDepth = maxDepth;
+
+    auto* cl = mCommands->get();
+    cl->RSSetViewports(1, &viewport);
+}
+
+void Dx12RenderSystemBase::setScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+    D3D12_RECT scissorRect;
+    scissorRect = { (LONG)x, (LONG)y, (LONG)width, (LONG)height };
+
+    auto* cl = mCommands->get();
+    cl->RSSetScissorRects(1, &scissorRect);
+}
 void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
 {
     auto* cl = mCommands->get();
@@ -182,8 +262,9 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     {
         Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
         auto* tex = colorTarget->getTarget();
-        DxDescriptorID srcid = tex->getDescriptorId();
-        auto cpuHandle = descriptor_id_to_cpu_handle(mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], srcid);
+        DxDescriptorID srcid = tex->getTargetDescriptorId();
+        DescriptorHeap* heap = mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
+        auto cpuHandle = descriptor_id_to_cpu_handle(heap, srcid);
         renderTargetHandle[i] = cpuHandle;
         cl->ClearRenderTargetView(cpuHandle, ptr, 0, nullptr);
         hasColor = true;
@@ -194,7 +275,7 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     {
         Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
         auto* tex = depthTarget->getTarget();
-        DxDescriptorID srcid = tex->getDescriptorId();
+        DxDescriptorID srcid = tex->getTargetDescriptorId();
         depthHandle = descriptor_id_to_cpu_handle(mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], srcid);
         cl->ClearDepthStencilView(depthHandle, D3D12_CLEAR_FLAG_DEPTH,
             renderPassInfo.depthTarget.clearValue.depth, renderPassInfo.depthTarget.clearValue.stencil, 0, nullptr);
@@ -218,18 +299,22 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
     cl->OMSetRenderTargets(renderPassInfo.renderTargetCount, renderTargetHandle, 
         FALSE, hasDepth?&depthHandle:NULL);
 
-    D3D12_VIEWPORT viewport;
-    D3D12_RECT scissorRect;
+    if (renderPassInfo.viewport)
+    {
+        D3D12_VIEWPORT viewport;
+        D3D12_RECT scissorRect;
 
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    viewport.Width = static_cast<float>(width);
-    viewport.Height = static_cast<float>(height);
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    scissorRect = { 0, 0, (LONG)width, (LONG)height };
-    cl->RSSetViewports(1, &viewport);
-    cl->RSSetScissorRects(1, &scissorRect);
+        viewport.TopLeftX = 0;
+        viewport.TopLeftY = 0;
+        viewport.Width = static_cast<float>(width);
+        viewport.Height = static_cast<float>(height);
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+        scissorRect = { 0, 0, (LONG)width, (LONG)height };
+        cl->RSSetViewports(1, &viewport);
+        cl->RSSetScissorRects(1, &scissorRect);
+    }
+    
 }
 
 void Dx12RenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
@@ -239,7 +324,7 @@ void Dx12RenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
 void Dx12RenderSystemBase::bindPipeline(
     Handle<HwProgram> programHandle,
     Handle<HwPipeline> pipelineHandle,
-    Handle<HwDescriptorSet>* descSets,
+    const Handle<HwDescriptorSet>* descSets,
     uint32_t setCount)
 {
     DX12Pipeline* dx12Pipeline = mResourceAllocator.handle_cast<DX12Pipeline*>(pipelineHandle);
@@ -275,10 +360,6 @@ void Dx12RenderSystemBase::bindPipeline(
             
         }
     }
-}
-
-void Dx12RenderSystemBase::copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src) 
-{
 }
 
 void Dx12RenderSystemBase::drawIndexed(
@@ -488,7 +569,9 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
     {
         format = mRenderWindow->getColorFormat();
     }
-    mDX12PipelineCache.bindFormat(D3D12Mappings::_getPF(format), DXGI_FORMAT_D32_FLOAT);
+
+    DXGI_FORMAT colorFormat = D3D12Mappings::_getPF(format);
+    mDX12PipelineCache.bindFormat(colorFormat, DXGI_FORMAT_D32_FLOAT);
     mDX12PipelineCache.bindProgram(
         dx12ProgramImpl->getVsBlob(),
         dx12ProgramImpl->getGsBlob(),
@@ -551,6 +634,10 @@ void Dx12RenderSystemBase::updateDescriptorSet(
     {
         const DescriptorData* pParam = pParams + i;
         const DescriptorInfo* descriptroInfo = dx12ProgramImpl->getDescriptor(pParam->pName);
+        if (descriptroInfo == nullptr)
+        {
+            continue;
+        }
         dx12DescSet->addDescriptroInfo(descriptroInfo);
         assert(descriptroInfo);
         const uint32_t       arrayCount = std::max(1U, pParam->mCount);
@@ -602,7 +689,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
                 {
                     Dx12Texture* dx12Texture = (Dx12Texture*)pParam->ppTextures[arr];
 
-                    DxDescriptorID srcId = dx12Texture->getSampler();
+                    DxDescriptorID srcId = dx12Texture->getSamplerDescriptorID();
 
                     d3dUtil::copy_descriptor_handle(
                         mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
@@ -779,6 +866,13 @@ void Dx12RenderSystemBase::resourceBarrier(
 void Dx12RenderSystemBase::beginCmd() 
 {
     auto* cl = mCommands->get();
+    ID3D12DescriptorHeap* heaps[] =
+    {
+        mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
+        mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
+    };
+    cl->SetDescriptorHeaps(2, heaps);
+
 }
 
 void Dx12RenderSystemBase::flushCmd(bool waitCmd)

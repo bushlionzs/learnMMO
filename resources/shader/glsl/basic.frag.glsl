@@ -15,6 +15,6 @@ void main() {
     outColor = texture(sampler2D(first, firstSampler), inTexC) * cbMaterial.gDiffuseAlbedo;
 	if(outColor.a < 0.5f)
 	{
-	    discard;
+	    //discard;
 	}
 }

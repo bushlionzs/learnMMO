@@ -47,6 +47,14 @@ DX12Commands::~DX12Commands()
 
 }
 
+void DX12Commands::setDescriptorHeaps(ID3D12DescriptorHeap* const* heaps, uint32_t count)
+{
+	for (auto i = 0; i < mCommandList.size(); i++)
+	{
+		mCommandList[i].commandList->SetDescriptorHeaps(count, heaps);
+	}
+}
+
 ID3D12GraphicsCommandList* DX12Commands::get()
 {
 	if (mCurrentCommandBufferIndex >= 0)
@@ -80,7 +88,7 @@ bool DX12Commands::flush(bool waitCmd)
 	}
 
 	auto* commandList = mCommandList[mCurrentCommandBufferIndex].commandList;
-	commandList->Close();
+	auto hr = commandList->Close();
 	mCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &commandList);
 
 	mLastCommandBufferIndex = mCurrentCommandBufferIndex;

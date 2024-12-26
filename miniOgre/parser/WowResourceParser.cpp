@@ -7,9 +7,9 @@ WowResourceParser::WowResourceParser()
 
 }
 
-String WowResourceParser::getSuffix()
+std::vector<String> WowResourceParser::getSuffix()
 {
-    return ".MPQ";
+    return { ".MPQ" };
 }
 
 void WowResourceParser::parseScript(ResourceInfo* res, const String& groupName)

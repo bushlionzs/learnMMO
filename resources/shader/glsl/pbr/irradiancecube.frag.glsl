@@ -12,7 +12,7 @@ layout (location = 0) in vec3 inPos;
 layout (location = 0) out vec4 outColor;
 
 layout (binding = 0) uniform samplerCube samplerEnv;
-layout(binding = 1, std140) uniform  PushConstsStruct{
+layout(binding = 1, std140) uniform  pushConstsStruct{
     mat4 mvp;
     float deltaPhi;
 	float deltaTheta;

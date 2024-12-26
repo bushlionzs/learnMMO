@@ -7,9 +7,9 @@
 #include "myutils.h"
 #include "OgreMemoryStream.h"
 
-String MaterialScriptParser::getSuffix()
+std::vector<String> MaterialScriptParser::getSuffix()
 {
-	return ".material";
+    return { ".material" };
 }
 void MaterialScriptParser::parseScript(ResourceInfo* res, const String& groupName)
 {

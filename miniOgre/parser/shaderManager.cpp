@@ -20,9 +20,9 @@ namespace Ogre {
 
 	}
 
-	String ShaderManager::getSuffix()
+	std::vector<String> ShaderManager::getSuffix()
 	{
-		return ".shader";
+		return { ".shader" };
 	}
 
 	void ShaderManager::parseScript(ResourceInfo* res, const String& groupName)
@@ -40,7 +40,7 @@ namespace Ogre {
 		std::string linePart;
 		ss >> linePart;
 
-		std::string shadername;
+		std::string name;
 
 
 		
@@ -51,36 +51,74 @@ namespace Ogre {
 				NextAfterNewLine(ss, linePart);
 				continue;
 			}
-			if (linePart != "shader") {
+
+			if (linePart == "shader")
+			{
+				ss >> name;
+
+				ShaderFormat* shaderFormat = new ShaderFormat;
+				addShader(name, shaderFormat);
+				do
+				{
+					ss >> linePart;
+				} while (linePart != partBlockStart);
+
 				ss >> linePart;
-				continue;
+
+				while (linePart != partBlockEnd) {
+					// Skip commented lines
+					if (linePart == partComment) {
+						SkipLine(ss);
+						continue;
+					}
+
+					if (linePart == "shader_unit") {
+						readShaderUnit(ss, shaderFormat);
+					}
+
+
+					ss >> linePart;
+				}
 			}
+			else if (linePart == "shaderMapping")
+			{
+				ss >> name;
+				do
+				{
+					ss >> linePart;
+				} while (linePart != partBlockStart);
 
-			ss >> shadername;
+				ss >> linePart;
 
-			ShaderFormat* shaderFormat = new ShaderFormat;
-			addShader(shadername, shaderFormat);
-			do
+				while (linePart != partBlockEnd) {
+					// Skip commented lines
+					if (linePart == partComment) {
+						SkipLine(ss);
+						continue;
+					}
+
+					if (linePart == "vertexShaderInput") 
+					{
+						readMappingInfo(ss, name, VertexInput);
+					}
+					else if (linePart == "vertexShaderOutput")
+					{
+						readMappingInfo(ss, name, VertexOutput);
+					}
+					else if (linePart == "PixelShaderInput")
+					{
+						readMappingInfo(ss, name, PixelInput);
+					}
+
+
+					ss >> linePart;
+				}
+			}
+			else
 			{
 				ss >> linePart;
-			} while (linePart != partBlockStart);
-
-			ss >> linePart;
-
-			while (linePart != partBlockEnd) {
-				// Skip commented lines
-				if (linePart == partComment) {
-					SkipLine(ss);
-					continue;
-				}
-
-				if (linePart == "shader_unit") {
-					readShaderUnit(ss, shaderFormat);
-				}
-				
-
-				ss >> linePart;
 			}
+			
 		}
 	}
 
@@ -218,6 +256,51 @@ namespace Ogre {
 		return &itor->second;
 	}
 
+	bool ShaderManager::readMappingInfo(
+		std::stringstream& ss, std::string& name, MappingType mappingType)
+	{
+		std::string first;
+		std::string second;
+
+		std::unordered_map<String, std::vector<ShaderMappingInfo>>* pMap = nullptr;
+		if (mappingType == VertexInput)
+		{
+			pMap = &mVertexInputMap;
+		}
+		else if (mappingType == VertexOutput)
+		{
+			pMap = &mVertexOutputMap;
+		}
+		else if (mappingType == PixelInput)
+		{
+			pMap = &mPixelOutputMap;
+		}
+
+
+		std::unordered_map<String, std::vector<ShaderMappingInfo>>& shaderMap = *pMap;
+		do
+		{
+			ss >> first;
+		} while (first != partBlockStart);
+
+		ss >> first ;
+		ShaderMappingInfo info;
+		while (first != partBlockEnd) {
+			// Skip commented lines
+			if (first == partComment) {
+				SkipLine(ss);
+				continue;
+			}
+
+			ss >> second;
+			info.location = atoi(first.c_str());
+			info.semantic = second;
+			shaderMap[name].push_back(info);
+			ss >> first;
+		}
+		return true;
+	}
+
 	void ShaderManager::addShader(const String& name, ShaderFormat* sf)
 	{
 		auto itor = mShaderMap.find(name);
@@ -251,6 +334,42 @@ namespace Ogre {
 		}
 
 		return itor->second;
+	}
+
+	const std::vector<ShaderMappingInfo>& ShaderManager::getVertexInputMapping(
+		const std::string& shaderFileName)
+	{
+		auto itor = mVertexInputMap.find(shaderFileName);
+		if (itor != mVertexInputMap.end())
+		{
+			return itor->second;
+		}
+
+		return mDummy;
+	}
+
+	const std::vector<ShaderMappingInfo>& ShaderManager::getVertexOutputMapping(
+		const std::string& shaderFileName)
+	{
+		auto itor = mVertexOutputMap.find(shaderFileName);
+		if (itor != mVertexOutputMap.end())
+		{
+			return itor->second;
+		}
+
+		return mDummy;
+	}
+
+	const std::vector<ShaderMappingInfo>& ShaderManager::getPixelInputMapping(
+		const std::string& shaderFileName)
+	{
+		auto itor = mPixelOutputMap.find(shaderFileName);
+		if (itor != mPixelOutputMap.end())
+		{
+			return itor->second;
+		}
+
+		return mDummy;
 	}
 }
 

@@ -12,7 +12,7 @@ namespace Ogre
 class ParticleScriptParser : public ScriptLoader
 {
 public:
-	virtual String getSuffix();
+	virtual std::vector<String> getSuffix();
 	virtual void parseScript(ResourceInfo* res, const String& groupName);
 	virtual Real getLoadingOrder(void) const;
 private:

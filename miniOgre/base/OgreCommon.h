@@ -1039,6 +1039,14 @@ namespace Ogre {
         Extent3D extent;
     };
 
+    struct CreateWindowDesc
+    {
+        uint32_t width;
+        uint32_t height;
+        bool srgb;
+        char windowHandle[128];
+    };
+
     enum VertexElementType
     {
         VET_FLOAT1 = 0,

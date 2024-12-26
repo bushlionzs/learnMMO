@@ -6,7 +6,7 @@
 
 #version 450
 
-layout(binding = 1, std140) uniform  PushConstsStruct{
+layout(binding = 1, std140) uniform  pushConstsStruct{
     mat4 mvp;
 	float roughness;
 	uint numSamples;

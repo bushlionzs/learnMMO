@@ -75,6 +75,6 @@ VertexOut VS(VertexIn vIn)
 float4 PS(VertexOut pin) : SV_Target
 {
     float4 diffuseAlbedo = first.Sample(firstSampler, pin.TexC) * gDiffuseAlbedo;
-	clip(diffuseAlbedo.a - 0.5f);
+	//clip(diffuseAlbedo.a - 0.5f);
 	return diffuseAlbedo;
 }

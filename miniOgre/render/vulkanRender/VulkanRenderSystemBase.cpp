@@ -157,40 +157,25 @@ void VulkanRenderSystemBase::ready()
 }
 
 Ogre::RenderWindow* VulkanRenderSystemBase::createRenderWindow(
-    const String& name, unsigned int width, unsigned int height,
-    const NameValuePairList* miscParams)
+    const CreateWindowDesc& desc)
 {
     mRenderWindow = new VulkanWindow();
 
-    auto itor = miscParams->find("externalWindowHandle");
-    if (itor == miscParams->end())
-    {
-        OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS, "externalWindowHandle should be provided");
-    }
-
-    HWND wnd = (HWND)StringConverter::parseSizeT(itor->second);
+    HWND wnd = (HWND)StringConverter::parseSizeT(desc.windowHandle);
 
     bool srgb = false;
 
-    itor = miscParams->find("srgb");
-
-    if (itor != miscParams->end())
-    {
-        srgb = true;
-    }
-    
-    
+   
     VkExtent2D extent;
     extent.width = 0;
     extent.height = 0;
 
     uint32_t flags = 0;
 
-    if (srgb)
+    if (desc.srgb)
     {
         flags = backend::SWAP_CHAIN_CONFIG_SRGB_COLORSPACE;
     }
-    //flags |= SWAP_CHAIN_CONFIG_HAS_STENCIL_BUFFER;
     mSwapChain = new VulkanSwapChain(
         mVulkanPlatform, 
         mVulkanContext, 
@@ -381,7 +366,7 @@ void VulkanRenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
 void VulkanRenderSystemBase::bindPipeline(
     Handle<HwProgram> programHandle,
     Handle<HwPipeline> pipelineHandle,
-    Handle<HwDescriptorSet>* descSets,
+    const Handle<HwDescriptorSet>* descSets,
     uint32_t setCount)
 {
     VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
@@ -1053,8 +1038,8 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
         format = mRenderWindow->getColorFormat();
     }
     
-
-    mPipelineCache->bindFormat(VulkanMappings::_getPF(format), VK_FORMAT_D32_SFLOAT);
+    VkFormat colorFormat = VulkanMappings::_getPF(format);
+    mPipelineCache->bindFormat(colorFormat, VK_FORMAT_D32_SFLOAT);
     mPipelineCache->bindProgram(
         vulkanProgram->getVertexShader(), 
         vulkanProgram->getGeometryShader(), 

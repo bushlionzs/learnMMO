@@ -1,10 +1,17 @@
 #include "OgreHeader.h"
+#include "OgreVertexDeclaration.h"
+#include "OgreVertexData.h"
+#include "OgreIndexData.h"
+#include "OgreRenderTarget.h"
 #include "dx12Helper.h"
 #include "dx12RenderSystem.h"
 #include "Dx12HardwareBuffer.h"
 #include "dx12Shader.h"
 #include "dx12Handles.h"
+#include "dx12Texture.h"
 #include "D3D12Mappings.h"
+#include "OgreMeshManager.h"
+#include "OgreTextureManager.h"
 #include "memoryAllocator.h"
 
 template<> DX12Helper* Ogre::Singleton<DX12Helper>::msSingleton = 0;
@@ -59,7 +66,7 @@ void DX12Helper::createBaseInfo()
 		mDx12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
-	msQualityLevels.Format = mBackBufferFormat;
+	msQualityLevels.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	msQualityLevels.SampleCount = 4;
 	msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 	msQualityLevels.NumQualityLevels = 0;
@@ -95,10 +102,6 @@ ID3D12CommandQueue* DX12Helper::getCommandQueue()
 	return mCommandQueue.Get();
 }
 
-Dx12TextureHandleManager* DX12Helper::getDx12TextureMgr()
-{
-	return nullptr;
-}
 
 void DX12Helper::executeCommand(ID3D12CommandList* commandList)
 {
@@ -145,15 +148,6 @@ void DX12Helper::signalFence(uint64_t fence)
 	mCommandQueue->Signal(mFence.Get(), fence);
 }
 
-DXGI_FORMAT DX12Helper::getBackBufferFormat()
-{
-	return mBackBufferFormat;
-}
-
-DXGI_FORMAT DX12Helper::getDepthStencilFormat()
-{
-	return mDepthStencilFormat;
-}
 
 uint32_t DX12Helper::getRtvDescriptorSize()
 {
@@ -180,195 +174,6 @@ uint32_t DX12Helper::getMsaaQuality()
 	return m4xMsaaQuality;
 }
 
-ID3D12GraphicsCommandList* DX12Helper::getCurrentCommandList()
-{
-	return nullptr;
-}
-
-ID3D12GraphicsCommandList* DX12Helper::getMipmapCommandList()
-{
-	return mMipmapCommandList.Get();
-}
-
-Dx12HardwareBuffer* DX12Helper::getMipmapVetexBuffer()
-{
-	return mMipmapVertexBuffer;
-}
-
-ID3D12RootSignature* DX12Helper::getMipmapRootSignature()
-{
-	return mRootSignatureMipmap.Get();
-}
-
-UploadBuffer<ObjectConstantBuffer>* DX12Helper::getMipmapFrameCB()
-{
-	return mMipmapFrameCB.get();
-}
-
-ID3D12PipelineState* DX12Helper::getMipmapPipelineState()
-{
-	return mMipmapPipelineState.Get();
-}
-
-void DX12Helper::_incrMipmapCommandList()
-{
-	mMipmapCommandCount++;
-}
-
-void DX12Helper::_submitCommandList(bool force)
-{
-	bool execute = false;
-	if (mMipmapCommandCount > 5)
-	{
-		execute = true;
-	}
-	else
-	{
-		if (force & mMipmapCommandCount > 0)
-		{
-			execute = true;
-		}
-	}
-
-	if (execute)
-	{
-		ID3D12GraphicsCommandList* cl = mMipmapCommandList.Get();
-		cl->Close();
-		ID3D12CommandList* dummy = (ID3D12CommandList*)cl;
-		mCommandQueue->ExecuteCommandLists(1, &dummy);
-
-		FlushCommandQueue();
-
-		mMipmapCmdListAlloc->Reset();
-		mMipmapCommandList->Reset(mMipmapCmdListAlloc.Get(), nullptr);
-
-		mMipmapCommandCount = 0;
-
-		
-	}
-}
-
-void DX12Helper::_createMipmapPrepare()
-{
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
-
-	CD3DX12_DESCRIPTOR_RANGE texTable0;
-	texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable0, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[1].InitAsConstantBufferView(0);
-
-	auto staticSamplers = GetStaticSamplers();
-
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter,
-		(UINT)staticSamplers.size(), staticSamplers.data(),
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-	Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
-
-	if (errorBlob != nullptr)
-	{
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-	}
-	ThrowIfFailed(hr);
-
-	ThrowIfFailed(mDx12Device->CreateRootSignature(
-		0,
-		serializedRootSig->GetBufferPointer(),
-		serializedRootSig->GetBufferSize(),
-		IID_PPV_ARGS(&mRootSignatureMipmap)));
-
-	
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
-	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	};
-
-	psoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
-	psoDesc.pRootSignature = mRootSignatureMipmap.Get();
-
-	
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	//psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	psoDesc.RasterizerState.FrontCounterClockwise = true;
-	psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
-	psoDesc.RasterizerState.MultisampleEnable = true;
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState.DepthEnable = false;
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.SampleDesc.Count = 1;
-	psoDesc.SampleDesc.Quality = 0;
-
-	ThrowIfFailed(mDx12Device.Get()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mMipmapPipelineState)));
-
-	ThrowIfFailed(mDx12Device.Get()->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(mMipmapCmdListAlloc.GetAddressOf())));
-
-	ThrowIfFailed(mDx12Device.Get()->CreateCommandList(
-		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		mMipmapCmdListAlloc.Get(),
-		nullptr,
-		IID_PPV_ARGS(mMipmapCommandList.GetAddressOf())));
-
-
-
-	struct MipmapVertex
-	{
-		Ogre::Vector3 _vertex;
-		Ogre::Vector2 _coord;
-	};
-	mMipmapVertexBuffer = new Dx12HardwareBuffer(
-		HardwareBuffer::VERTEX_BUFFER,
-		sizeof(MipmapVertex),
-		6,
-		0
-	);
-
-	float d = 1.0f;
-	std::array<MipmapVertex, 6> vertices;
-	vertices[0]._vertex = Ogre::Vector3(-d, d, 0);
-	vertices[0]._coord = Ogre::Vector2(0, 0);
-	vertices[1]._vertex = Ogre::Vector3(d, d, 0);
-	vertices[1]._coord = Ogre::Vector2(1, 0);
-	vertices[2]._vertex = Ogre::Vector3(-d, -d, 0);
-	vertices[2]._coord = Ogre::Vector2(0, 1);
-	vertices[3]._vertex = Ogre::Vector3(-d, -d, 0);
-	vertices[3]._coord = Ogre::Vector2(0, 1);
-	vertices[4]._vertex = Ogre::Vector3(d, d, 0);
-	vertices[4]._coord = Ogre::Vector2(1, 0);
-	vertices[5]._vertex = Ogre::Vector3(d, -d, 0);
-	vertices[5]._coord = Ogre::Vector2(1, 1);
-	_incrMipmapCommandList();
-	mMipmapVertexBuffer->_copydataimpl(mMipmapCommandList.Get(),
-		vertices.data(), sizeof(MipmapVertex) * 6);
-	_submitCommandList(true);
-	mMipmapFrameCB = std::make_shared<UploadBuffer<ObjectConstantBuffer>>(mDx12Device.Get(), 1, true);
-
-	ObjectConstantBuffer dummy;
-
-	Ogre::Matrix4 proj;
-	proj = Ogre::Math::makeOrthoRH(-1, 1, -1, 1, 1, 1000);
-
-	Ogre::Matrix4 view = Ogre::Math::makeViewMatrix(
-		Ogre::Vector3(0, 0, 15), Ogre::Quaternion::IDENTITY);
-
-	mMipmapFrameCB->CopyData(0, dummy);
-}
 
 DxDescriptorID DX12Helper::getSampler(
 	const filament::backend::SamplerParams& params, 
@@ -399,4 +204,182 @@ DxDescriptorID DX12Helper::getSampler(
 
 	mSamplersCache.insert({ params, id });
 	return id;
+}
+
+void DX12Helper::generateMipmaps(Dx12Texture* tex)
+{
+	auto* rs = mDx12RenderSystem;
+	ShaderInfo shaderInfo;
+	shaderInfo.shaderName = "mipmap";
+
+	if (!mMipmapHandle)
+	{
+		VertexDeclaration decl;
+		decl.addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
+		decl.addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
+		decl.addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
+		mMipmapHandle = rs->createShaderProgram(shaderInfo, &decl);
+		backend::RasterState rasterState{};
+		rasterState.colorWrite = true;
+		rasterState.renderTargetCount = 1;
+		rasterState.depthWrite = false;
+		rasterState.depthTest = false;
+		rasterState.pixelFormat = PF_A8B8G8R8;
+		mMipmapPipelineHandle = rs->createPipeline(rasterState, mMipmapHandle);
+
+		Ogre::TextureProperty texProperty;
+		texProperty._width = 1024;
+		texProperty._height = 1024;
+		texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
+		texProperty._tex_format = PF_A8B8G8R8;
+
+		mMipmapTarget = rs->createRenderTarget("outputTarget", texProperty);
+
+
+		TextureManager::getSingleton().addTexture("outputTarget", mMipmapTarget->getTarget());
+
+		mMipMapDescSet = rs->createDescriptorSet(mMipmapHandle, 0);
+
+		mMipMapBlockHandle = rs->createBufferObject(
+			BufferObjectBinding::BufferObjectBinding_Uniform,
+			RESOURCE_MEMORY_USAGE_GPU_ONLY,
+			0,
+			sizeof(Ogre::Matrix4));
+
+		
+		DescriptorData descriptorData[1];
+
+		descriptorData[0].pName = "cbPerObject";
+		descriptorData[0].mCount = 1;
+		descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[0].ppBuffers = &mMipMapBlockHandle;
+
+
+		rs->updateDescriptorSet(mMipMapDescSet, 1, descriptorData);
+	}
+
+
+	if (tex == nullptr)
+	{
+		return;
+	}
+	DescriptorData descriptorData[2];
+
+	descriptorData[0].pName = "first";
+	descriptorData[0].mCount = 1;
+	descriptorData[0].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+	descriptorData[0].ppTextures =  (const OgreTexture**) & tex;
+
+	descriptorData[1].pName = "firstSampler";
+	descriptorData[1].mCount = 1;
+	descriptorData[1].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+	descriptorData[1].ppTextures = (const OgreTexture**)&tex;
+	rs->updateDescriptorSet(mMipMapDescSet, 2, descriptorData);
+
+	
+
+	float aa = 1024.0f;
+	Ogre::Vector3 leftop = Ogre::Vector3(0.0f, 0.0f, 0.0f);
+	Ogre::Vector3 leftbottom = Ogre::Vector3(0.0f, aa, 0.0f);
+	Ogre::Vector3 righttop = Ogre::Vector3(aa, 0.0f, 0.0f);
+	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, aa, 0.0f);
+	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
+
+	std::string meshName = "mipmapMesh";
+
+	auto mesh = MeshManager::getSingletonPtr()->createRect(
+		nullptr,
+		meshName,
+		leftop, leftbottom, righttop, rightbottom, normal);
+	auto* subMesh = mesh->getSubMesh(0);
+	VertexData* vertexData = mesh->getVertexData();
+	IndexData* indexData = mesh->getIndexData();
+
+	RenderPassInfo renderPassInfo;
+	renderPassInfo.renderTargetCount = 1;
+	renderPassInfo.renderTargets[0].renderTarget = mMipmapTarget;
+	renderPassInfo.depthTarget.depthStencil = nullptr;
+	renderPassInfo.renderTargets[0].clearColour = { 1.0f, 0.0f, 0.0f, 1.0f };
+	renderPassInfo.viewport = false;
+	auto texWidth = tex->getWidth();
+	auto texHeight = tex->getHeight();
+
+	const uint32_t numMips = static_cast<uint32_t>(floor(log2(std::max(texWidth, texHeight))) + 1.0);
+
+	Dx12Texture* srcTexture = (Dx12Texture*)mMipmapTarget->getTarget();
+
+	Ogre::Matrix4 project;
+
+	project = Ogre::Math::makeOrthoLH(
+		0.0f, srcTexture->getWidth(), srcTexture->getHeight(), 0.0f, 0.1, 1000.0f);
+
+	Ogre::Vector3 eyePos = Ogre::Vector3(0, 0, -10);
+	Ogre::Matrix4 view = Ogre::Math::makeLookAtLH(eyePos, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y);
+
+	Ogre::Matrix4 viewProj = (project * view).transpose();
+
+	rs->updateBufferObject(mMipMapBlockHandle, (const char*)&viewProj, sizeof(viewProj));
+
+	for (uint32_t m = 1; m < numMips; m++)
+	{
+		uint32_t width = static_cast<float>(texWidth * std::pow(0.5f, m));
+		uint32_t height = static_cast<float>(texHeight * std::pow(0.5f, m));
+		rs->beginCmd();
+		
+		RenderTargetBarrier uavBarriers[] = {
+				   {
+				   mMipmapTarget,
+				   RESOURCE_STATE_UNDEFINED,
+				   RESOURCE_STATE_RENDER_TARGET},
+		};
+		rs->resourceBarrier(0, nullptr, 0, nullptr, 1, uavBarriers);
+		rs->setViewport(0, 0, width, height, 0.0f, 1.0f);
+		rs->setScissor(0, 0, width, height);
+		rs->beginRenderPass(renderPassInfo);
+		rs->bindPipeline(mMipmapHandle, mMipmapPipelineHandle, &mMipMapDescSet, 1);
+		vertexData->bind(nullptr);
+		indexData->bind();
+		IndexDataView* indexView = subMesh->getIndexView();
+		rs->drawIndexed(indexView->mIndexCount, 1,
+			indexView->mIndexLocation, indexView->mBaseVertexLocation, 0);
+		rs->endRenderPass(renderPassInfo);
+
+		RenderTargetBarrier rtBarriers[] =
+		{
+			{
+				mMipmapTarget,
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_GENERIC_READ
+			}
+		};
+		rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+
+		ImageCopyDesc copyRegion;
+
+		copyRegion.srcSubresource.aspectMask = 0;
+		copyRegion.srcSubresource.baseArrayLayer = 0;
+		copyRegion.srcSubresource.mipLevel = 0;
+		copyRegion.srcSubresource.layerCount = 1;
+
+		copyRegion.dstSubresource.aspectMask = 0;
+		copyRegion.dstSubresource.baseArrayLayer = 0;
+		copyRegion.dstSubresource.mipLevel = m;
+		copyRegion.dstSubresource.layerCount = 1;
+
+		copyRegion.extent.width = width;
+		copyRegion.extent.height = height;
+		copyRegion.extent.depth = 1;
+		rs->copyImage(tex, srcTexture, copyRegion);
+
+		rtBarriers[0] =
+		{
+			mMipmapTarget,
+			RESOURCE_STATE_GENERIC_READ,
+			RESOURCE_STATE_RENDER_TARGET
+		};
+		rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+		rs->flushCmd(true);
+	}
+	
+	rs->beginCmd();
 }

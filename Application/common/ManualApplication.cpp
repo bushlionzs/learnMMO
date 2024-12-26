@@ -52,8 +52,8 @@ bool ManualApplication::appInit()
 	Ogre::Root::getSingleton()._initialise();
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	ogreConfig.width = 1600;
-	ogreConfig.height = 900;
+	ogreConfig.width = 1024;
+	ogreConfig.height = 1024;
 	ogreConfig.enableRaytracing = mAppInfo->enableRayTracing;
 	mApplicationWindow->createWindow(ogreConfig.width, ogreConfig.height);
 	
@@ -71,15 +71,14 @@ bool ManualApplication::appInit()
 		return false;
 	}
 	Ogre::ColourValue color(0.678431f, 0.847058f, 0.901960f, 1.000000000f);
-	Ogre::NameValuePairList params;
-	params["externalWindowHandle"] = Ogre::StringConverter::toString((uint64_t)wnd);
-	params["backGroundColor"] = Ogre::StringConverter::toString(color);
-	if (mAppInfo->useSRGB)
-	{
-		params["srgb"] = "1";
-	}
 	
-	mRenderWindow = mRenderSystem->createRenderWindow("", ogreConfig.width, ogreConfig.height, &params);
+	CreateWindowDesc desc;
+	desc.width = ogreConfig.width;
+	desc.height = ogreConfig.height;
+	desc.srgb = mAppInfo->useSRGB;
+	std::string wndString = Ogre::StringConverter::toString((uint64_t)wnd);
+	strncpy(desc.windowHandle, wndString.c_str(), sizeof(desc.windowHandle));
+	mRenderWindow = mRenderSystem->createRenderWindow(desc);
 
 	ResourceParserManager::getSingleton()._initialise();
 	ResourceManager::getSingletonPtr()->addDirectory(std::string("..\\..\\resources"), "sujian", true);
@@ -263,6 +262,7 @@ void updateFrameData(
 }
 void ManualApplication::addUIPass()
 {
+	return;
 	CEGUIManager* ceguiManager = CEGUIManager::getSingletonPtr();
 	Ogre::Camera*  cam = ceguiManager->getCamera();
 	Ogre::SceneManager* sceneManager = ceguiManager->getSceneManager();

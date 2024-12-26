@@ -35,8 +35,7 @@ public:
         Ogre::TextureProperty* texProperty);
     virtual Ogre::OgreTexture* createTexture(Ogre::TextureProperty* texProperty);
     virtual Ogre::RenderWindow* createRenderWindow(
-        const String& name, unsigned int width, unsigned int height,
-        const NameValuePairList* miscParams) = 0;
+        const CreateWindowDesc& desc) = 0;
 
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
@@ -81,14 +80,14 @@ public:
     virtual void bindPipeline(
         Handle<HwProgram> programHandle,
         Handle<HwPipeline> pipelineHandle,
-        Handle<HwDescriptorSet>* descSets,
+        const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount) 
     {
     }
 
     virtual void bindPipeline(
         Handle<HwRaytracingProgram> programHandle,
-        Handle<HwDescriptorSet>* descSets,
+        const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount
     ) {}
 

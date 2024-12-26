@@ -96,7 +96,7 @@ void Dx12ShadowMap::buildDescriptors()
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Format = DX12Helper::getSingleton().getDepthStencilFormat();
+	dsvDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	dsvDesc.Texture2D.MipSlice = 0;
 	md3dDevice->CreateDepthStencilView(mShadowMap.Get(), &dsvDesc, mCpuDsvHandle);
 
