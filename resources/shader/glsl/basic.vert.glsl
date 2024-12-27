@@ -8,7 +8,7 @@ layout (location = 1) in vec3 normal;
 layout (location = 3) in vec2 texcoord;
 #ifdef SKINNED
     layout (location = 6) in vec4 bone_weights;
-	layout (location = 5) in uvec4 bone_indices;
+    layout (location = 5) in uvec4 bone_indices;
 #endif
 
 layout (location = 0) out vec4 outPosH;
@@ -36,7 +36,8 @@ void main() {
 		weights[1] * cbSkinned.gBoneTransforms[bone_indices.y] + 
 		weights[2] * cbSkinned.gBoneTransforms[bone_indices.z] + 
 		weights[3] * cbSkinned.gBoneTransforms[bone_indices.w];
-	outPosH =  cbPerObject.gWorld * skinMat * vec4(position, 1.0);
+	vec4 aa = skinMat * vec4(position, 1.0);
+	outPosH =  cbPerObject.gWorld * aa;
 #else
     outPosH = cbPerObject.gWorld * vec4(position, 1.0);
 #endif

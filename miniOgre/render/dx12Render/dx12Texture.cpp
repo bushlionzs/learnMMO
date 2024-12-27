@@ -262,14 +262,9 @@ void Dx12Texture::buildDescriptorHeaps()
         else
         {
             srvDesc.Format = mTex->GetDesc().Format;
-            if (mUsage & Ogre::TextureUsage::COLOR_ATTACHMENT)
-            {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-            }
-            else
-            {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            }
+            
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            
 
             srvDesc.Texture2D.MostDetailedMip = 0;
             srvDesc.Texture2D.MipLevels = mTex->GetDesc().MipLevels;
@@ -292,17 +287,18 @@ void Dx12Texture::buildDescriptorHeaps()
             {
                 auto cpuHandle = descriptor_id_to_cpu_handle(heaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], mTargetDescriptorID);
                 D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-                rtvDesc.Format = mTex->GetDesc().Format;
+                
+                rtvDesc.Format = D3D12Mappings::_getPF(mTextureProperty._tex_format);
                 rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
                 device->CreateRenderTargetView(mTex.Get(), &rtvDesc, cpuHandle);
             }
             else if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
             {
                 auto cpuHandle = descriptor_id_to_cpu_handle(heaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], mTargetDescriptorID);
-                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-                rtvDesc.Format = mTex->GetDesc().Format;
-                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-                device->CreateDepthStencilView(mTex.Get(), nullptr, cpuHandle);
+                D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+                dsvDesc.Format = mTex->GetDesc().Format;
+                dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+                device->CreateDepthStencilView(mTex.Get(), &dsvDesc, cpuHandle);
             }
         }
 

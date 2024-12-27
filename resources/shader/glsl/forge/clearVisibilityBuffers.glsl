@@ -1,10 +1,10 @@
 #version 450 core
 #extension GL_GOOGLE_include_directive : require
 
-layout (set = 0, binding = 0)  buffer indirectDrawArgs
+layout (set = 0, binding = 0)  buffer indirectDrawArgsStruct
 {
 	uint indirectDrawArgs_data[];
-};
+}indirectDrawArgs;
 
 
 struct VBConstants
@@ -15,10 +15,10 @@ struct VBConstants
 	uint pad_2;
 };
 
-layout(set = 0, binding = 2) uniform VBConstantBuffer
+layout(set = 0, binding = 2) uniform VBConstantBufferStruct
 {
     VBConstants vbConstant[2];
-};
+}VBConstantBuffer;
 
 
 void ClearIndirectDrawArgsBuffers(const uint dispatchThreadIdX)
@@ -29,11 +29,11 @@ void ClearIndirectDrawArgsBuffers(const uint dispatchThreadIdX)
          {
             for (uint geom = 0; geom <  2 ; ++geom)
             {
-               indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (0)) ] = 0;
-               indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (1)) ] = 1;
-               indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (2)) ] = vbConstant[geom].indexOffset  ;
-               indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (3)) ] = 0;
-               indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (4)) ] = 0;
+               indirectDrawArgs.indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (0)) ] = 0;
+               indirectDrawArgs.indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (1)) ] = 1;
+               indirectDrawArgs.indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (2)) ] = VBConstantBuffer.vbConstant[geom].indexOffset  ;
+               indirectDrawArgs.indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (3)) ] = 0;
+               indirectDrawArgs.indirectDrawArgs_data[ (((((view) * 2 ) + (geom)) * 8 ) + (4)) ] = 0;
             }
          }
     }

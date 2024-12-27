@@ -88,6 +88,7 @@ target_include_directories(${MINIOGRE_LIB_NAME}
 	${ROOT_INC}/3rd/bullet3/include
 	${ROOT_INC}/3rd/ffmpeg/include
 	${ROOT_INC}/3rd/stormlib
+	${ROOT_INC}/3rd/DirectXShaderCompiler/inc
 	${ROOT_INC}/3rdSource/utils/include
 	${ROOT_INC}/3rdSource/math/include
 	${ROOT_INC}/3rdSource/vkmemalloc/include
@@ -106,6 +107,7 @@ dxgi
 dxguid
 d3d12
 d3d11
-D3DCompiler)
+D3DCompiler
+dxcompiler)
 
 set(MINIOGRE_INC ${MINIOGRE_INC} CACHE INTERNAL "shared")

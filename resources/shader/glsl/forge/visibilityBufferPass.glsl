@@ -4,14 +4,14 @@
 #include "glslBase.glsl"
 
 #ifdef VERTEX_SHADER
-layout (std430, UPDATE_FREQ_NONE, binding = 3) readonly buffer vertexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 3) readonly buffer vertexDataBufferStruct
 {
 	uint vertexDataBuffer_data[];
-};
+}vertexDataBuffer;
 
 float3 LoadVertexPositionFloat3(uint vtxIndex)
 {
-    return asfloat(LoadByte4(vertexDataBuffer_data, vtxIndex * 32)).xyz;
+    return asfloat(LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32)).xyz;
 }
 
 float4 LoadVertex(uint index)
@@ -19,18 +19,18 @@ float4 LoadVertex(uint index)
     return float4(LoadVertexPositionFloat3(index), 1.0f);
 }
 
-CBUFFER(objectUniformBlock, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
+CBUFFER(objectUniformBlockStruct, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
 {
     DATA(float4x4, worldViewProjMat, None);
     DATA(uint, viewID, None);
-};
+}objectUniformBlock;
 
 
 void main()
 {
 	const uint vertexID = uint(gl_VertexIndex);
 	float4 vertexPos = LoadVertex(vertexID);
-	gl_Position = mul(worldViewProjMat, vertexPos);
+	gl_Position = objectUniformBlock.worldViewProjMat * vertexPos;
 }
 #endif //VERTEX_SHADER
 

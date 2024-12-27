@@ -12,7 +12,7 @@
 #include "D3D12Mappings.h"
 #include "shaderManager.h"
 #include "dx12Helper.h"
-#include "myutils.h"
+#include "hlslUtil.h"
 
 
 DX12ProgramImpl::DX12ProgramImpl(
@@ -33,8 +33,12 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 {
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
-
-    const char* suffix = getSuffix(privateInfo->vertexShaderName);
+    std::string* shaderName = &privateInfo->vertexShaderName;
+    if (privateInfo->vertexShaderName.empty())
+    {
+        shaderName = &privateInfo->computeShaderName;
+    }
+    const char* suffix = getSuffix(*shaderName);
 
     bool glsl = false;
     if (strcmp(suffix, ".glsl") == 0)
@@ -57,26 +61,62 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
 
-    String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
-    mvsByteCode = d3dUtil::CompileGlslShader(
-        *vertexContent,
-        shaderInfo.shaderMacros,
-        privateInfo->vertexShaderEntryPoint,
-        Ogre::ShaderType::VertexShader,
-        "vs_5_1",
-        res->_fullname);
+    if (res)
+    {
+        String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
+        mVertexByteCode = d3dUtil::CompileGlslShader(
+            *vertexContent,
+            shaderInfo.shaderMacros,
+            privateInfo->vertexShaderEntryPoint,
+            Ogre::ShaderType::VertexShader,
+            "vs_5_1",
+            res->_fullname);
 
-    String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
+        
+    }
+    
 
     res = ResourceManager::getSingleton().getResource(privateInfo->fragShaderName);
-    mpsByteCode = d3dUtil::CompileGlslShader(
-        *fragContent,
-        shaderInfo.shaderMacros,
-        privateInfo->fragShaderEntryPoint,
-        Ogre::ShaderType::PixelShader,
-        "ps_5_1",
-        res->_fullname);
 
+    if (res)
+    {
+        String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
+        mFragByteCode = d3dUtil::CompileGlslShader(
+            *fragContent,
+            shaderInfo.shaderMacros,
+            privateInfo->fragShaderEntryPoint,
+            Ogre::ShaderType::PixelShader,
+            "ps_5_1",
+            res->_fullname);
+    }
+    
+    res = ResourceManager::getSingleton().getResource(privateInfo->geometryShaderName);
+
+    if (res)
+    {
+        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
+        mGeometryByteCode = d3dUtil::CompileGlslShader(
+            *Content,
+            shaderInfo.shaderMacros,
+            privateInfo->geometryShaderEntryPoint,
+            Ogre::ShaderType::GeometryShader,
+            "gs_5_1",
+            res->_fullname);
+    }
+
+    res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
+
+    if (res)
+    {
+        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
+        mComputeByteCode = d3dUtil::CompileGlslShader(
+            *Content,
+            shaderInfo.shaderMacros,
+            privateInfo->computeShaderEntryPoint,
+            Ogre::ShaderType::ComputeShader,
+            "cs_5_1",
+            res->_fullname);
+    }
     return true;
 }
 bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
@@ -96,10 +136,6 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     }
 
     macros.emplace_back();
-    macros.back().Name = "DIRECT3D12";
-    macros.back().Definition = "1";
-
-    macros.emplace_back();
     macros.back().Name = NULL;
     macros.back().Definition = NULL;
 
@@ -108,24 +144,53 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
 
-    String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
-    mvsByteCode = d3dUtil::CompileShader(
-        *vertexContent,
-        macro,
-        privateInfo->vertexShaderEntryPoint.c_str(),
-        "vs_5_1",
-        res->_fullname);
-
-    String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
-
+    if (res)
+    {
+        String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
+        mVertexByteCode = d3dUtil::CompileShader(
+            *vertexContent,
+            macro,
+            privateInfo->vertexShaderEntryPoint.c_str(),
+            "vs_5_1",
+            res->_fullname);
+    }
+    
     res = ResourceManager::getSingleton().getResource(privateInfo->fragShaderName);
-    mpsByteCode = d3dUtil::CompileShader(
-        *fragContent,
-        macro,
-        privateInfo->fragShaderEntryPoint.c_str(),
-        "ps_5_1",
-        res->_fullname);
+    if (res)
+    {
+        String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
+        mFragByteCode = d3dUtil::CompileShader(
+            *fragContent,
+            macro,
+            privateInfo->fragShaderEntryPoint.c_str(),
+            "ps_5_1",
+            res->_fullname);
+    }
+   
 
+    res = ResourceManager::getSingleton().getResource(privateInfo->geometryShaderName);
+    if (res)
+    {
+        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
+        mGeometryByteCode = d3dUtil::CompileShader(
+            *Content,
+            macro,
+            privateInfo->geometryShaderEntryPoint.c_str(),
+            "ps_5_1",
+            res->_fullname);
+    }
+
+    res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
+    if (res)
+    {
+        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
+        mComputeByteCode = d3dUtil::CompileShader(
+            *Content,
+            macro,
+            privateInfo->computeShaderEntryPoint.c_str(),
+            "ps_5_1",
+            res->_fullname);
+    }
     return true;
 }
 
@@ -155,7 +220,7 @@ auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
 void DX12ProgramImpl::parseShaderInfo()
 {
     {
-        ID3DBlob* blob = getVsBlob();
+        ID3DBlob* blob = mVertexByteCode;
         if (blob)
         {
             auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::VERTEX,
@@ -165,7 +230,7 @@ void DX12ProgramImpl::parseShaderInfo()
     }
 
     {
-        ID3DBlob* blob = getGsBlob();
+        ID3DBlob* blob = mGeometryByteCode;
         if (blob)
         {
             auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::GEOMETRY,
@@ -175,12 +240,22 @@ void DX12ProgramImpl::parseShaderInfo()
     }
 
     {
-        ID3DBlob* blob = getPsBlob();
+        ID3DBlob* blob = mFragByteCode;
         if (blob)
         {
             auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::FRAGMENT,
                 blob->GetBufferPointer(), blob->GetBufferSize());
             updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::FRAGMENT);
+        }
+    }
+
+    {
+        ID3DBlob* blob = mComputeByteCode;
+        if (blob)
+        {
+            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::COMPUTE,
+                blob->GetBufferPointer(), blob->GetBufferSize());
+            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::COMPUTE);
         }
     }
 
@@ -220,29 +295,14 @@ void DX12ProgramImpl::parseShaderInfo()
     uint32_t index = 0;
     for (auto& shaderResource : mProgramResourceList)
     {
-        if (shaderResource.type == D3D_SIT_SAMPLER)
-        {
-            int kk = 0;
-            //continue;
-        }
-
-
-        if (shaderResource.type == D3D_SIT_TEXTURE)
+        if (shaderResource.type == D3D_SIT_TEXTURE ||
+            shaderResource.type == D3D_SIT_CBUFFER ||
+            shaderResource.type == D3D_SIT_SAMPLER ||
+            shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,
                 &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
             
-        }
-        else if (shaderResource.type == D3D_SIT_CBUFFER)
-        {
-            d3dUtil::create_descriptor_table(shaderResource.size,
-                &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
-            //d3dUtil::create_root_descriptor(&shaderResource, &rootParams[rootParamCount]);
-        }
-        else if (shaderResource.type == D3D_SIT_SAMPLER)
-        {
-            d3dUtil::create_descriptor_table(shaderResource.size,
-                &shaderResource, samplerRange[index], &rootParams[rootParamCount]);
         }
         else
         {
@@ -259,19 +319,22 @@ void DX12ProgramImpl::parseShaderInfo()
         rootParamCount++;
     }
 
-    auto staticSamplers = GetStaticSamplers();
-
     D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
     rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    //rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
-    //rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+    if (mVertexByteCode == nullptr)
+    {
+        rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+    }
+    if (mFragByteCode == nullptr)
+    {
+        rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+    }
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc{};
     rootSigDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
     rootSigDesc.Desc_1_1.NumParameters = rootParamCount;
     rootSigDesc.Desc_1_1.pParameters = rootParams;
-    //rootSigDesc.Desc_1_1.NumStaticSamplers = staticSamplers.size();
     rootSigDesc.Desc_1_1.NumStaticSamplers = 0;
-    rootSigDesc.Desc_1_1.pStaticSamplers = staticSamplers.data();
+    rootSigDesc.Desc_1_1.pStaticSamplers = nullptr;
     rootSigDesc.Desc_1_1.pStaticSamplers = nullptr;
     rootSigDesc.Desc_1_1.Flags = rootSignatureFlags;
 
@@ -311,8 +374,8 @@ void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
 
     D3d12ShaderParameters shaderInputParameters;
     ID3D12ShaderReflection* shaderReflection = nullptr;
-    void* byteCode = mvsByteCode->GetBufferPointer();
-    uint32_t byteCodeSize = mvsByteCode->GetBufferSize();
+    void* byteCode = mVertexByteCode->GetBufferPointer();
+    uint32_t byteCodeSize = mVertexByteCode->GetBufferSize();
     HRESULT hr = D3DReflect(byteCode, byteCodeSize,
         IID_ID3D11ShaderReflection, (void**)&shaderReflection);
 

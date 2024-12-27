@@ -52,8 +52,8 @@ bool ManualApplication::appInit()
 	Ogre::Root::getSingleton()._initialise();
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	ogreConfig.width = 1024;
-	ogreConfig.height = 1024;
+	ogreConfig.width = 1600;
+	ogreConfig.height = 900;
 	ogreConfig.enableRaytracing = mAppInfo->enableRayTracing;
 	mApplicationWindow->createWindow(ogreConfig.width, ogreConfig.height);
 	

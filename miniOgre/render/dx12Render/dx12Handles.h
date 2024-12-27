@@ -95,6 +95,20 @@ private:
     DX12ProgramImpl* mProgramImpl;
 };
 
+struct DX12ComputeProgram : public HwComputeProgram
+{
+public:
+    DX12ComputeProgram(const ShaderInfo& info);
+    ~DX12ComputeProgram();
+
+    DX12ProgramImpl* getProgramImpl()
+    {
+        return mProgramImpl;
+    }
+private:
+    DX12ProgramImpl* mProgramImpl;
+};
+
 struct DX12Sampler : public HwSampler
 {
 public:
@@ -111,42 +125,17 @@ public:
 private:
     DxDescriptorID mDescriptorID;
 };
-struct DX12DescriptorSetLayout : public HwDescriptorSetLayout
-{
-public:
-    DX12DescriptorSetLayout():mRootSignature(nullptr){}
-    ~DX12DescriptorSetLayout() {}
-
-    void updateRootSignature(ID3D12RootSignature* rootSignature)
-    {
-        mRootSignature = rootSignature;
-    }
-
-    ID3D12RootSignature* getRootSignature()
-    {
-        return mRootSignature;
-    }
-private:
-    ID3D12RootSignature* mRootSignature;
-};
-
 
 struct DX12DescriptorSet : public HwDescriptorSet
 {
 public:
-    DX12DescriptorSet();
+    DX12DescriptorSet(DX12ProgramImpl* program, uint32_t set);
     ~DX12DescriptorSet();
 
-    void updateInfo(Handle<HwProgram> programHandle,
-        uint32_t set)
-    {
-        mProgramHandle = programHandle;
-        mSet = set;
-    }
 
-    Handle<HwProgram> getProgramHandle()
+    DX12ProgramImpl* getProgram()
     {
-        return mProgramHandle;
+        return mProgram;
     }
 
     DxDescriptorID getCbvSrvUavHandle()
@@ -181,7 +170,7 @@ public:
         return mDescriptorInfos;
     }
 private:
-    Handle<HwProgram> mProgramHandle;
+    DX12ProgramImpl* mProgram;
     uint32_t mSet;
 
     DxDescriptorID       mCbvSrvUavHandle;

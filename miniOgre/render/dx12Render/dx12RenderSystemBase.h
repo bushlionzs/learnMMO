@@ -103,19 +103,15 @@ public:
     virtual Handle<HwDescriptorSet> createDescriptorSet(
         Handle<HwProgram> programHandle,
         uint32_t set);
+    
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts);
     virtual Handle<HwProgram> createShaderProgram(const ShaderInfo& mShaderInfo, VertexDeclaration* decl);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwComputeProgram> programHandle, uint32_t set);
-    virtual Handle<HwDescriptorSetLayout> getDescriptorSetLayout(
-        Handle<HwRaytracingProgram> programHandle, uint32_t set);
-    virtual void updatePushConstants(
-        Handle<HwProgram> program,
-        uint32_t offset,
-        const char* data,
-        uint32_t size) {}
+    
     virtual Handle<HwSampler> createTextureSampler(filament::backend::SamplerParams& samplerParams);
     virtual Handle<HwComputeProgram> createComputeProgram(const ShaderInfo& shaderInfo);
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwComputeProgram> programHandle,
+        uint32_t set);
     virtual Handle<HwPipeline> createPipeline(
         backend::RasterState& rasterState,
         Handle<HwProgram>& program

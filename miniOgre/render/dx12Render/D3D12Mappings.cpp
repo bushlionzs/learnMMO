@@ -109,6 +109,7 @@ namespace Ogre {
         case PF_A4R4G4B4:       return DXGI_FORMAT_UNKNOWN;
         case PF_R8G8B8:         return DXGI_FORMAT_UNKNOWN;
         case PF_A8R8G8B8:       return DXGI_FORMAT_B8G8R8A8_UNORM;
+        case PF_A8R8G8B8_SRGB:       return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
         case PF_A8B8G8R8:       return DXGI_FORMAT_R8G8B8A8_UNORM;
         case PF_X8R8G8B8:       return DXGI_FORMAT_B8G8R8X8_UNORM;
         case PF_X8B8G8R8:       return DXGI_FORMAT_UNKNOWN;

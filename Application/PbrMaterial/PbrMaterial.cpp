@@ -68,7 +68,7 @@ void PbrMaterial::setup(
 	GameCamera* gameCamera)
 {
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
-	ogreConfig.reverseDepth = true;
+	ogreConfig.reverseDepth = false;
 	uiInit();
 	if (0)
 	{
@@ -326,9 +326,9 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 			});
 	}
 
-	
-	Ogre::Vector3 camPos = Ogre::Vector3(0, 0, -1);
-	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
+	float h = 82.0f;
+	Ogre::Vector3 camPos = Ogre::Vector3(-1, h, 0);
+	Ogre::Vector3 lookAt = Ogre::Vector3(0, h, 0);
 
 	gameCamera->lookAt(camPos, lookAt);
 	gameCamera->setMoveSpeed(50);
@@ -346,7 +346,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
 		projectMatrix = Ogre::Math::makePerspectiveMatrix(
-			Ogre::Math::PI / 4.0f, aspect, 0.01, 5000);
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 5000);
 	}
 
 	gameCamera->getCamera()->updateProjectMatrix(projectMatrix);

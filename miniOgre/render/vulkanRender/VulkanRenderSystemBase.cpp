@@ -1449,16 +1449,15 @@ void VulkanRenderSystemBase::parseAttributeDescriptions(
     }
     
     int32_t i = 0;
-
+    auto& elementlist = decl->getElementList();
     for (GlslInputDesc& input : inputDesc)
     {
         bool find = false;
 
-        auto& elementlist = decl->getElementList();
-        for (auto elem : elementlist)
+        
+        for (auto& elem : elementlist)
         {
-            if (input._name == VulkanMappings::getSemanticName(elem.getSemantic()) &&
-                input._index == elem.getIndex())
+            if (input._location == elem .getLocation())
             {
                 attributeDescriptions[i].binding = elem.getSource();
                 attributeDescriptions[i].location = input._location;

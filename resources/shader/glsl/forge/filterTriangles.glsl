@@ -5,59 +5,59 @@
 
 
 
-layout (UPDATE_FREQ_NONE, binding = 0)  buffer indirectDrawArgs
+layout (UPDATE_FREQ_NONE, binding = 0)  buffer indirectDrawArgsStruct
 {
 	uint indirectDrawArgs_data[];
-};
+}indirectDrawArgs;
 
-layout(UPDATE_FREQ_NONE, binding = 2) uniform VBConstantBuffer
+layout(UPDATE_FREQ_NONE, binding = 2) uniform VBConstantBufferStruct
 {
     VBConstants vbConstant[2];
-};
+}VBConstantBuffer;
 
-layout (std430, UPDATE_FREQ_NONE, binding = 1) readonly buffer vertexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 1) readonly buffer vertexDataBufferStruct
 {
 	uint vertexDataBuffer_data[];
-};
+}vertexDataBuffer;
 
 
-layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer indexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer indexDataBufferStruct
 {
 	uint indexDataBuffer_data[];
-};
+}indexDataBuffer;
 
-layout (std430, UPDATE_FREQ_NONE, binding = 5) readonly buffer meshConstantsBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 5) readonly buffer meshConstantsBufferStruct
 {
 	MeshConstants meshConstantsBuffer_data[];
-};
+}meshConstantsBuffer;
 
 
-layout(UPDATE_FREQ_PER_FRAME, binding = 1) uniform PerFrameVBConstants
+layout(UPDATE_FREQ_PER_FRAME, binding = 1) uniform PerFrameVBConstantsStruct
 {
     Transform transform[5];
 	CullingViewPort cullingViewports[5];
 	uint numViewports;
-};
+}PerFrameVBConstants;
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 3) readonly buffer filterDispatchGroupDataBuffer
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 3) readonly buffer filterDispatchGroupDataBufferStruct
 {
 	FilterDispatchGroupData filterDispatchGroupDataBuffer_data[];
-};
+}filterDispatchGroupDataBuffer;
 
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 6)  buffer indirectDataBuffer
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 6)  buffer indirectDataBufferStruct
 {
 	uint indirectDataBuffer_data[];
-};
+}indirectDataBuffer;
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 8)  buffer filteredIndicesBufferBlock
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 8)  buffer filteredIndicesBufferStruct
 {
 	uint _data[];
 } filteredIndicesBuffer[ 5 ];
 
 float3 LoadVertexPositionFloat3(uint vtxIndex)
 {
-    uint4 aa = LoadByte4(vertexDataBuffer_data, vtxIndex * 32);
+    uint4 aa = LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32);
     return asfloat(aa).xyz;
 }
 
@@ -158,10 +158,10 @@ void main()
 	
 	if (inGroupId.x == 0)
 	{
-		for (uint i = 0; i < numViewports; ++i)
+		for (uint i = 0; i < PerFrameVBConstants.numViewports; ++i)
 			AtomicStore(workGroupIndexCount[i], 0u);
 
-		filterDispatchGroupData = filterDispatchGroupDataBuffer_data[groupId.x];
+		filterDispatchGroupData = filterDispatchGroupDataBuffer.filterDispatchGroupDataBuffer_data[groupId.x];
 	}
 	
 	GroupMemoryBarrier();
@@ -169,7 +169,7 @@ void main()
 	bool cull[ 5 ];
 	uint threadOutputSlot[ 5 ];
 
-	for (uint i = 0; i < numViewports; ++i)
+	for (uint i = 0; i < PerFrameVBConstants.numViewports; ++i)
 	{
 		threadOutputSlot[i] = 0;
 		cull[i] = true;
@@ -178,21 +178,21 @@ void main()
 	uint batchMeshIndex = filterDispatchGroupData.meshIndex;
 	uint batchGeomSet = ((filterDispatchGroupData.geometrySet_faceCount &  0x3 ) >>  0 );
 	uint batchFaceCount = ((filterDispatchGroupData.geometrySet_faceCount &  0x1FFC ) >>  2 );
-	uint batchInputIndexOffset = (meshConstantsBuffer_data[batchMeshIndex].indexOffset + filterDispatchGroupData.indexOffset);
-	uint vertexOffset = meshConstantsBuffer_data[batchMeshIndex].vertexOffset;
-	bool twoSided = (meshConstantsBuffer_data[batchMeshIndex].twoSided == 1);
+	uint batchInputIndexOffset = (meshConstantsBuffer.meshConstantsBuffer_data[batchMeshIndex].indexOffset + filterDispatchGroupData.indexOffset);
+	uint vertexOffset = meshConstantsBuffer.meshConstantsBuffer_data[batchMeshIndex].vertexOffset;
+	bool twoSided = (meshConstantsBuffer.meshConstantsBuffer_data[batchMeshIndex].twoSided == 1);
 
 	uint indices[3] = { 0, 0, 0 };
 	if (inGroupId.x < batchFaceCount)
 	{
-		indices[0] = vertexOffset + LoadByte(indexDataBuffer_data, (inGroupId.x * 3 + 0 + batchInputIndexOffset) << 2);
-		indices[1] = vertexOffset + LoadByte(indexDataBuffer_data, (inGroupId.x * 3 + 1 + batchInputIndexOffset) << 2);
-		indices[2] = vertexOffset + LoadByte(indexDataBuffer_data, (inGroupId.x * 3 + 2 + batchInputIndexOffset) << 2);
+		indices[0] = vertexOffset + LoadByte(indexDataBuffer.indexDataBuffer_data, (inGroupId.x * 3 + 0 + batchInputIndexOffset) << 2);
+		indices[1] = vertexOffset + LoadByte(indexDataBuffer.indexDataBuffer_data, (inGroupId.x * 3 + 1 + batchInputIndexOffset) << 2);
+		indices[2] = vertexOffset + LoadByte(indexDataBuffer.indexDataBuffer_data, (inGroupId.x * 3 + 2 + batchInputIndexOffset) << 2);
 
 
-		indirectDataBuffer_data[indices[0]] = batchMeshIndex;
-		indirectDataBuffer_data[indices[1]] = batchMeshIndex;
-		indirectDataBuffer_data[indices[2]] = batchMeshIndex;
+		indirectDataBuffer.indirectDataBuffer_data[indices[0]] = batchMeshIndex;
+		indirectDataBuffer.indirectDataBuffer_data[indices[1]] = batchMeshIndex;
+		indirectDataBuffer.indirectDataBuffer_data[indices[2]] = batchMeshIndex;
 
 		float4 vert[3] =
 		{
@@ -201,9 +201,9 @@ void main()
 			LoadVertex(indices[2])
 		};
 		
-		for (uint i = 0; i < numViewports; ++i)
+		for (uint i = 0; i < PerFrameVBConstants.numViewports; ++i)
 		{
-			float4x4 worldViewProjection = transform[i].mvp;
+			float4x4 worldViewProjection = PerFrameVBConstants.transform[i].mvp;
 
 			vec4 vertices[3] =
 			{
@@ -212,7 +212,7 @@ void main()
 				mul(worldViewProjection, vert[2])
 			};
 
-			CullingViewPort viewport = cullingViewports[i];
+			CullingViewPort viewport = PerFrameVBConstants.cullingViewports[i];
 			cull[i] = FilterTriangle(indices, vertices, !twoSided, viewport.windowSize, viewport.sampleCount);
 			if (!cull[i])
 				AtomicAdd(workGroupIndexCount[i], 3, threadOutputSlot[i]);
@@ -224,25 +224,25 @@ void main()
 
 	if (inGroupId.x == 0)
 	{
-		for (uint i = 0; i < numViewports; ++i)
+		for (uint i = 0; i < PerFrameVBConstants.numViewports; ++i)
 		{
 			uint indirectDrawIndex =  (((((i) * 2 ) + (batchGeomSet)) * 8 ) + (0)) ;
-			AtomicAdd(indirectDrawArgs_data[indirectDrawIndex], workGroupIndexCount[i], workGroupOutputSlot[i]);
+			AtomicAdd(indirectDrawArgs.indirectDrawArgs_data[indirectDrawIndex], workGroupIndexCount[i], workGroupOutputSlot[i]);
 		}
 	}
 
 	GroupMemoryBarrier();
 
-	for (uint j = 0; j < numViewports; ++j)
+	for (uint j = 0; j < PerFrameVBConstants.numViewports; ++j)
 	{
 		if (!cull[j])
 		{
 			uint outputIndex = (AtomicLoad(workGroupOutputSlot[j]) + threadOutputSlot[j]);
 
 
-			StoreByte(filteredIndicesBuffer[j]._data, ( ( vbConstant[batchGeomSet].indexOffset )  + outputIndex + 0) << 2, indices[0]);
-			StoreByte(filteredIndicesBuffer[j]._data, ( ( vbConstant[batchGeomSet].indexOffset )  + outputIndex + 1) << 2, indices[1]);
-			StoreByte(filteredIndicesBuffer[j]._data, ( ( vbConstant[batchGeomSet].indexOffset )  + outputIndex + 2) << 2, indices[2]);
+			StoreByte(filteredIndicesBuffer[j]._data, ( ( VBConstantBuffer.vbConstant[batchGeomSet].indexOffset )  + outputIndex + 0) << 2, indices[0]);
+			StoreByte(filteredIndicesBuffer[j]._data, ( ( VBConstantBuffer.vbConstant[batchGeomSet].indexOffset )  + outputIndex + 1) << 2, indices[1]);
+			StoreByte(filteredIndicesBuffer[j]._data, ( ( VBConstantBuffer.vbConstant[batchGeomSet].indexOffset )  + outputIndex + 2) << 2, indices[2]);
 		}
 	}
 }

@@ -1,15 +1,15 @@
 #include "common.hlsl"
 struct VertexIn
 {
-	float3 PosL    : POSITION;
-    float3 NormalL : NORMAL;
+	[[vk::location(0)]]float3 PosL    : POSITION;
+    [[vk::location(1)]]float3 NormalL : NORMAL;
 #ifdef USETANGENT
 	float3 TangentL : TANGENT;
 #endif
-	float2 TexC    : TEXCOORD;
+	[[vk::location(3)]]float2 TexC    : TEXCOORD;
 #ifdef SKINNED
-    float4 BoneWeights : BLENDWEIGHT;
-    uint4 BoneIndices  : BLENDINDICES;
+    [[vk::location(6)]]float4 BoneWeights : BLENDWEIGHT;
+    [[vk::location(5)]]uint4 BoneIndices  : BLENDINDICES;
 #endif
 };
 
@@ -62,6 +62,8 @@ VertexOut VS(VertexIn vIn)
 
     float4 posW = mul(gWorld, float4(vIn.PosL, 1.0f));
 	vOut.PosH = mul(gViewProj, posW);
+
+	
     vOut.PosW = posW.xyz;
     vOut.NormalW = mul((float3x3) gWorld, vIn.NormalL);
 #ifdef USETANGENT

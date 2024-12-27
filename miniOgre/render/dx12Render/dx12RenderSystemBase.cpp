@@ -12,6 +12,7 @@
 #include "OgreRoot.h"
 #include "OgreSceneManager.h"
 #include "OgreStringConverter.h"
+#include "OgreResourceManager.h"
 #include "dx12Buffer.h"
 #include "dx12Shader.h"
 #include "dx12Texture.h"
@@ -25,8 +26,10 @@
 #include "dx12Frame.h"
 #include "D3D12Mappings.h"
 #include "d3dutil.h"
+
 #include "dx12SwapChain.h"
 #include "memoryAllocator.h"
+
 
 DescriptorHeapProperties gCpuDescriptorHeapProperties[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {
     { 1024 * 256, D3D12_DESCRIPTOR_HEAP_FLAG_NONE }, // CBV SRV UAV
@@ -100,15 +103,11 @@ bool Dx12RenderSystemBase::engineInit()
         mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
         mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
     };
-    //mCommands->setDescriptorHeaps(heaps, 2);
-
 	return true;
 }
 
 void Dx12RenderSystemBase::ready()
 {
-    /*Dx12Texture* tex = (Dx12Texture*)createTextureFromFile("studio_garden_px.jpg", nullptr);
-    DX12Helper::getSingleton().generateMipmaps(tex);*/
 }
 
 Ogre::RenderWindow* Dx12RenderSystemBase::createRenderWindow(
@@ -505,28 +504,54 @@ Handle<HwProgram> Dx12RenderSystemBase::createShaderProgram(
     return programHandle;
 }
 
-Handle<HwDescriptorSetLayout> Dx12RenderSystemBase::getDescriptorSetLayout(
-    Handle<HwComputeProgram> programHandle, uint32_t set)
-{
-    return Handle <HwDescriptorSetLayout>();
-}
-
-Handle<HwDescriptorSetLayout> Dx12RenderSystemBase::getDescriptorSetLayout(
-    Handle<HwRaytracingProgram> programHandle, uint32_t set)
-{
-    return Handle <HwDescriptorSetLayout>();
-}
 
 Handle<HwSampler> Dx12RenderSystemBase::createTextureSampler(
     filament::backend::SamplerParams& samplerParams)
 {
-    return Handle <HwSampler>();
+    Handle<HwSampler> samplerHandle = mResourceAllocator.allocHandle<HwSampler>();
+    DescriptorHeap* heap;
+    Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
+    struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
+    heap = heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER];
+    DxDescriptorID id = DX12Helper::getSingleton().getSampler(samplerParams, heap);
+    DX12Sampler* sampler = mResourceAllocator.construct<DX12Sampler>(samplerHandle, id);
+    return samplerHandle;
 }
 
 Handle<HwComputeProgram> Dx12RenderSystemBase::createComputeProgram(
     const ShaderInfo& shaderInfo)
 {
-    return Handle <HwComputeProgram>();
+    Handle<HwComputeProgram> program = mResourceAllocator.allocHandle<DX12ComputeProgram>();
+    DX12ComputeProgram* computeProgram = mResourceAllocator.construct<DX12ComputeProgram>(program, shaderInfo);
+
+    return program;
+}
+
+Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
+    Handle<HwComputeProgram> programHandle,
+    uint32_t set)
+{
+    Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<DX12DescriptorSet>();
+    DX12ComputeProgram* computeProgram = 
+        mResourceAllocator.handle_cast<DX12ComputeProgram*>(programHandle);
+
+    DX12ProgramImpl* programImpl = computeProgram->getProgramImpl();
+    DX12DescriptorSet* dx12DescSet = mResourceAllocator.construct<DX12DescriptorSet>(
+        dsh, programImpl, set);
+
+    uint32_t cbvSrvUavDescCount = programImpl->getCbvSrvUavDescCount(set);
+
+    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mDescriptorHeapContext.mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
+    dx12DescSet->updateCbvSrvUavHandle(cbvSrvUavHandle, cbvSrvUavDescCount);
+
+    uint32_t samplerCount = programImpl->getSamplerCount(set);
+
+    if (samplerCount > 0)
+    {
+        DxDescriptorID samplerHandle = consume_descriptor_handles(mDescriptorHeapContext.pSamplerHeaps[0], samplerCount);
+        dx12DescSet->updateSamplerHandle(samplerHandle, samplerCount);
+    }
+    return dsh;
 }
 
 Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
@@ -597,10 +622,11 @@ Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
     uint32_t set)
 {
     Handle<HwDescriptorSet> dsh = mResourceAllocator.allocHandle<DX12DescriptorSet>();
-    DX12DescriptorSet* dx12DescSet = mResourceAllocator.construct<DX12DescriptorSet>(dsh);
-    dx12DescSet->updateInfo(programHandle, set);
+
     DX12Program* dx12Program = mResourceAllocator.handle_cast<DX12Program*>(programHandle);
     DX12ProgramImpl* dx12ProgramImpl = dx12Program->getProgramImpl();
+
+    DX12DescriptorSet* dx12DescSet = mResourceAllocator.construct<DX12DescriptorSet>(dsh, dx12ProgramImpl, set);
 
     uint32_t cbvSrvUavDescCount = dx12ProgramImpl->getCbvSrvUavDescCount(set);
 
@@ -625,9 +651,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
 {
     DX12DescriptorSet* dx12DescSet = mResourceAllocator.handle_cast<DX12DescriptorSet*>(dsh);
 
-    Handle<HwProgram> programHandle = dx12DescSet->getProgramHandle();
-    DX12Program* dx12Program = mResourceAllocator.handle_cast<DX12Program*>(programHandle);
-    DX12ProgramImpl* dx12ProgramImpl = dx12Program->getProgramImpl();
+    DX12ProgramImpl* dx12ProgramImpl = dx12DescSet->getProgram();
 
     DxDescriptorID cbvSrvUavHandle = dx12DescSet->getCbvSrvUavHandle();
     for (auto i = 0; i < count; i++)

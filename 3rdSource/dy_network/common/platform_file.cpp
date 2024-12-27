@@ -38,6 +38,14 @@ bool get_file_content(const char* filename, std::string& content, uint32_t part)
     return true;
 }
 
+bool get_file_content(const char* filename, std::wstring& content, uint32_t part)
+{
+    std::string tmp;
+    get_file_content(filename, tmp, part);
+    content = dy::acsi_to_widebyte(tmp);
+    return true;
+}
+
 bool save_file_content(const char* filename, const std::string& content)
 {
     FILE* fp = fopen(filename, "wb");

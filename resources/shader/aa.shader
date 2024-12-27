@@ -12,8 +12,10 @@ shader basic
 	 shader_unit
 	 {
 		shader_type vulkan
-		vertex_shader basic.vert.glsl main
-		frag_shader basic.frag.glsl main
+		//vertex_shader basic.vert.glsl main
+		//frag_shader basic.frag.glsl main
+		vertex_shader basic.hlsl VS
+		frag_shader basic.hlsl PS
 	 }
 }
 
@@ -343,3 +345,4 @@ shader projector
 		frag_shader projector.glsl main
 	 }
 }
+

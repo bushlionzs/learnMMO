@@ -1,8 +1,12 @@
 #include <OgreHeader.h>
+#include <OgreResourceManager.h>
 #include "dx12Handles.h"
 #include "dx12Helper.h"
 #include "dx12Shader.h"
 #include "memoryAllocator.h"
+#include "glslUtil.h"
+#include "myutils.h"
+#include "shaderManager.h"
 
 DX12BufferObject::DX12BufferObject(
     DescriptorHeapContext* context,
@@ -107,7 +111,21 @@ DX12Program::DX12Program(const ShaderInfo& info, VertexDeclaration* decl)
 {
     mProgramImpl = new DX12ProgramImpl(info, decl);
 }
-DX12DescriptorSet::DX12DescriptorSet()
+
+DX12ComputeProgram::DX12ComputeProgram(const ShaderInfo& info)
+{
+    mProgramImpl = new DX12ProgramImpl(info, nullptr);
+}
+
+DX12ComputeProgram::~DX12ComputeProgram()
+{
+
+}
+
+
+DX12DescriptorSet::DX12DescriptorSet(DX12ProgramImpl* program, uint32_t set)
+    :mProgram(program),
+    mSet(set)
 {
 
 }

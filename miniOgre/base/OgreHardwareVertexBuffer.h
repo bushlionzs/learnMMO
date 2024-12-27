@@ -61,6 +61,8 @@ public:
         *pElem = reinterpret_cast<T*>(static_cast<char*>(pBase) + mOffset);
     }
 
+    uint32_t getLocation() const;
+
     static uint32_t getTypeSize(VertexElementType etype);
 
     static uint32_t convertColourValue(const Ogre::ColourValue& src,

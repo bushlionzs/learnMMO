@@ -35,30 +35,30 @@ RES(SamplerState, clampMiplessLinearSampler, UPDATE_FREQ_NONE, s2, binding = 8);
 RES(SamplerState, clampMiplessNearSampler, UPDATE_FREQ_NONE, s1, binding = 9);
 RES(SamplerState, textureSampler, UPDATE_FREQ_NONE, s0, binding = 7);
 
-CBUFFER(VBConstantBuffer, UPDATE_FREQ_NONE, b2, binding = 2)
+CBUFFER(VBConstantBufferStruct, UPDATE_FREQ_NONE, b2, binding = 2)
 {
     DATA(VBConstants, vbConstant[ 2 ], None);
-};
+}VBConstantBuffer;
 
-layout (std430, UPDATE_FREQ_NONE, binding = 35) readonly buffer vertexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 35) readonly buffer vertexDataBufferStruct
 {
 	uint vertexDataBuffer_data[];
-};
+}vertexDataBuffer;
 
-layout (std430, UPDATE_FREQ_NONE, binding = 6) readonly buffer meshConstantsBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 6) readonly buffer meshConstantsBufferStruct
 {
 	MeshConstants meshConstantsBuffer_data[];
-};
+}meshConstantsBuffer;
 
-CBUFFER(PerFrameVBConstants, UPDATE_FREQ_PER_FRAME, b1, binding = 1)
+CBUFFER(PerFrameVBConstantsStruct, UPDATE_FREQ_PER_FRAME, b1, binding = 1)
 {
 	DATA(Transform, transform[ 5 ], None);
 	DATA(CullingViewPort, cullingViewports[ 5 ], None);
 	DATA(uint, numViewports, None);
-};
+}PerFrameVBConstants;
 
 
-CBUFFER(lightUniformBlock, UPDATE_FREQ_PER_FRAME, b1, binding = 15)
+CBUFFER(lightUniformBlockStruct, UPDATE_FREQ_PER_FRAME, b1, binding = 15)
 {
     DATA(float4x4, mLightViewProj, None);
     DATA(float4, lightPosition, None);
@@ -66,9 +66,9 @@ CBUFFER(lightUniformBlock, UPDATE_FREQ_PER_FRAME, b1, binding = 15)
 	DATA(float4, mLightUpVec, None);
 	DATA(float4, mTanLightAngleAndThresholdValue, None);
 	DATA(float3, mLightDir, None);
-};
+}lightUniformBlock;
 
-CBUFFER(cameraUniformBlock, UPDATE_FREQ_PER_FRAME, b3, binding = 14)
+CBUFFER(cameraUniformBlockStruct, UPDATE_FREQ_PER_FRAME, b3, binding = 14)
 {
     DATA(float4x4, View, None);
     DATA(float4x4, Project, None);
@@ -84,48 +84,49 @@ CBUFFER(cameraUniformBlock, UPDATE_FREQ_PER_FRAME, b3, binding = 14)
 	DATA(float2, mTwoOverRes, None);
 	DATA(float2, mWindowSize, None);
 	DATA(float4, mDeviceZToWorldZ, None);
-};
+}cameraUniformBlock;
 
-CBUFFER(objectUniformBlock, UPDATE_FREQ_PER_FRAME, b0, binding = 13)
+CBUFFER(objectUniformBlockStruct, UPDATE_FREQ_PER_FRAME, b0, binding = 13)
 {
     DATA(float4x4, WorldViewProjMat, None);
-};
+}objectUniformBlock;
 
-CBUFFER(renderSettingUniformBlock, UPDATE_FREQ_PER_FRAME, b4, binding = 16)
+CBUFFER(renderSettingUniformBlockStruct, UPDATE_FREQ_PER_FRAME, b4, binding = 16)
 {
     DATA(float4, WindowDimension, None);
     DATA(int, ShadowType, None);
-};
+}renderSettingUniformBlock;
 
-CBUFFER(ESMInputConstants, UPDATE_FREQ_PER_FRAME, b5, binding = 17)
+CBUFFER(ESMInputConstantsStruct, UPDATE_FREQ_PER_FRAME, b5, binding = 17)
 {
     DATA(float, mEsmControl, None);
-};
+}ESMInputConstants;
 
-CBUFFER(SSSEnabled, UPDATE_FREQ_PER_FRAME, b8, binding = 19)
+CBUFFER(SSSEnabledStruct, UPDATE_FREQ_PER_FRAME, b8, binding = 19)
 {
 	DATA(uint, mSSSEnabled, None);
-};
+}SSSEnabled;
 
 
 
 
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 4) readonly buffer filteredIndexBuffer
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 4) readonly buffer filteredIndexBufferStruct
 {
 	uint filteredIndexBuffer_data[];
-};
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 5) readonly buffer indirectDataBuffer
+}filteredIndexBuffer;
+
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 5) readonly buffer indirectDataBufferStruct
 {
 	uint indirectDataBuffer_data[];
-};
+}indirectDataBuffer;
 
 
 #include "glslFunc.glsl"
 
 float3 LoadVertexPositionFloat3(uint vtxIndex)
 {
-    return asfloat(LoadByte4(vertexDataBuffer_data, vtxIndex * 32)).xyz;
+    return asfloat(LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32)).xyz;
 }
 
 float3 LoadVertex(uint index)
@@ -135,7 +136,7 @@ float3 LoadVertex(uint index)
 
 float2 LoadVertexUVFloat2(uint vtxIndex)
 {
-    return asfloat(LoadByte2(vertexDataBuffer_data, vtxIndex * 32 + 24)).xy;
+    return asfloat(LoadByte2(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32 + 24)).xy;
 }
 
 float2 LoadTexCoord(uint index)
@@ -145,7 +146,7 @@ float2 LoadTexCoord(uint index)
 
 float3 LoadVertexNormalFloat3(uint vtxIndex)
 {
-    return asfloat(LoadByte4(vertexDataBuffer_data, vtxIndex * 32 + 12)).xyz;
+    return asfloat(LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32 + 12)).xyz;
 }
 
 float3 LoadNormal(uint index)
@@ -168,7 +169,7 @@ void main()
 	In.ScreenPos = inScreenPos;
     const uint i = uint(gl_SampleID);
 	
-	float4 visRaw = LoadTex2D(Get(vbPassTexture), Get(clampMiplessLinearSampler), uint2(In.Position.xy), 0);
+	float4 visRaw = LoadTex2D(vbPassTexture, clampMiplessLinearSampler, uint2(In.Position.xy), 0);
 	
 	uint geomSetPrimID = packUnorm4x8(visRaw);
 	
@@ -180,28 +181,28 @@ void main()
 	uint primitiveID = (geomSetPrimID >>  0 ) &  0x3FFFFFFF ;
 	uint geomSet = (geomSetPrimID >>  30 ) &  0x00000003 ;
 
-	uint triIdx0 =  ( Get(vbConstant)[geomSet].indexOffset )  + (primitiveID * 3 + 0);
-	uint triIdx1 =  ( Get(vbConstant)[geomSet].indexOffset )  + (primitiveID * 3 + 1);
-	uint triIdx2 =  ( Get(vbConstant)[geomSet].indexOffset )  + (primitiveID * 3 + 2);
+	uint triIdx0 =  ( VBConstantBuffer.vbConstant[geomSet].indexOffset )  + (primitiveID * 3 + 0);
+	uint triIdx1 =  ( VBConstantBuffer.vbConstant[geomSet].indexOffset )  + (primitiveID * 3 + 1);
+	uint triIdx2 =  ( VBConstantBuffer.vbConstant[geomSet].indexOffset )  + (primitiveID * 3 + 2);
 
-	uint index0 = LoadByte(Get(filteredIndexBuffer_data), triIdx0 << 2);
-	uint index1 = LoadByte(Get(filteredIndexBuffer_data), triIdx1 << 2);
-	uint index2 = LoadByte(Get(filteredIndexBuffer_data), triIdx2 << 2);
+	uint index0 = LoadByte(filteredIndexBuffer.filteredIndexBuffer_data, triIdx0 << 2);
+	uint index1 = LoadByte(filteredIndexBuffer.filteredIndexBuffer_data, triIdx1 << 2);
+	uint index2 = LoadByte(filteredIndexBuffer.filteredIndexBuffer_data, triIdx2 << 2);
 	
 
 	float3 v0pos = LoadVertex(index0);
 	float3 v1pos = LoadVertex(index1);
 	float3 v2pos = LoadVertex(index2);
 
-	float4 pos0 = mul(Get(WorldViewProjMat), float4(v0pos, 1));
-	float4 pos1 = mul(Get(WorldViewProjMat), float4(v1pos, 1));
-	float4 pos2 = mul(Get(WorldViewProjMat), float4(v2pos, 1));
+	float4 pos0 = mul(objectUniformBlock.WorldViewProjMat, float4(v0pos, 1));
+	float4 pos1 = mul(objectUniformBlock.WorldViewProjMat, float4(v1pos, 1));
+	float4 pos2 = mul(objectUniformBlock.WorldViewProjMat, float4(v2pos, 1));
 
-	float4 wPos0 = mul(Get(InvViewProject),pos0);
-	float4 wPos1 = mul(Get(InvViewProject),pos1);
-	float4 wPos2 = mul(Get(InvViewProject),pos2);
+	float4 wPos0 = cameraUniformBlock.InvViewProject * pos0;
+	float4 wPos1 = mul(cameraUniformBlock.InvViewProject,pos1);
+	float4 wPos2 = mul(cameraUniformBlock.InvViewProject,pos2);
 
-	float2 two_over_windowsize = Get(mTwoOverRes);
+	float2 two_over_windowsize = cameraUniformBlock.mTwoOverRes;
 	
 	BarycentricDeriv derivativesOut = CalcFullBary(pos0,pos1,pos2,In.ScreenPos,two_over_windowsize);
 
@@ -210,12 +211,12 @@ void main()
 	float interpolatedW = dot(float3(pos0.w, pos1.w, pos2.w),derivativesOut.m_lambda);
 
 
-	float zVal = interpolatedW * getElem(Get(Project), 2, 2) + getElem(Get(Project), 3, 2);
+	float zVal = interpolatedW * getElem(cameraUniformBlock.Project, 2, 2) + getElem(cameraUniformBlock.Project, 3, 2);
 
 
 
 
-	float3 WorldPos = mul(Get(InvViewProject), float4(In.ScreenPos * interpolatedW, zVal, interpolatedW)).xyz;
+	float3 WorldPos = mul(cameraUniformBlock.InvViewProject, float4(In.ScreenPos * interpolatedW, zVal, interpolatedW)).xyz;
 
 
 	f3x2 texCoords = make_f3x2_cols(
@@ -225,15 +226,15 @@ void main()
 	);
 
 
-	float3 positionDX = mul(Get(InvViewProject), float4((In.ScreenPos+two_over_windowsize.x/2) * interpolatedW, zVal, interpolatedW)).xyz;
-	float3 positionDY = mul(Get(InvViewProject), float4((In.ScreenPos+two_over_windowsize.y/2) * interpolatedW, zVal, interpolatedW)).xyz;
+	float3 positionDX = mul(cameraUniformBlock.InvViewProject, float4((In.ScreenPos+two_over_windowsize.x/2) * interpolatedW, zVal, interpolatedW)).xyz;
+	float3 positionDY = mul(cameraUniformBlock.InvViewProject, float4((In.ScreenPos+two_over_windowsize.y/2) * interpolatedW, zVal, interpolatedW)).xyz;
 
 	derivativesOut = CalcRayBary(wPos0.xyz,wPos1.xyz,wPos2.xyz,WorldPos,positionDX,positionDY,
-												Get(mCameraPos).xyz);
+												cameraUniformBlock.mCameraPos.xyz);
 
 
 
-	uint materialID = Get(indirectDataBuffer_data)[index0];
+	uint materialID = indirectDataBuffer.indirectDataBuffer_data[index0];
     
 
 	GradientInterpolationResults results = Interpolate2DWithDeriv(derivativesOut,texCoords);
@@ -250,9 +251,9 @@ void main()
 	float4 specularColor = f4(0);
 #define CASE_LIST REPEAT_HUNDRED(0) REPEAT_HUNDRED(100) REPEAT_TEN(200) REPEAT_TEN(210) REPEAT_TEN(220) REPEAT_TEN(230) REPEAT_TEN(240) CASE(250) CASE(251) CASE(252) CASE(253) CASE(254) CASE(255) 
 #define NonUniformResourceIndexBlock(materialID) \
-		normalMapRG = SampleGradTex2D(Get(normalMaps)[materialID], Get(textureSampler), texCoord, texCoordDX, texCoordDY); \
-		diffuseColor = SampleGradTex2D(Get(diffuseMaps)[materialID], Get(textureSampler), texCoord, texCoordDX, texCoordDY); \
-		specularColor = SampleGradTex2D(Get(specularMaps)[materialID], Get(textureSampler), texCoord, texCoordDX, texCoordDY); \
+		normalMapRG = SampleGradTex2D(normalMaps[materialID], textureSampler, texCoord, texCoordDX, texCoordDY); \
+		diffuseColor = SampleGradTex2D(diffuseMaps[materialID], textureSampler, texCoord, texCoordDX, texCoordDY); \
+		specularColor = SampleGradTex2D(specularMaps[materialID], textureSampler, texCoord, texCoordDX, texCoordDY); \
 
 #if VK_EXT_DESCRIPTOR_INDEXING_ENABLED
 	NonUniformResourceIndexBlock(nonuniformEXT(materialID))
@@ -293,12 +294,12 @@ void main()
 	uint ShadowType = 1;
 	if(ShadowType ==  0 )
 	{
-		float4 posLS = mul(Get(mLightViewProj), float4(WorldPos.xyz, 1.0));
+		float4 posLS = mul(lightUniformBlock.mLightViewProj, float4(WorldPos.xyz, 1.0));
 		posLS /= posLS.w;
 		posLS.y *= -1;
 		posLS.xy = posLS.xy * 0.5 + f2(0.5);
 
-		//shadowFactor = calcESMShadowFactor(posLS, Get(ESMShadowTexture), Get(clampMiplessLinearSampler), Get(mEsmControl));
+		//shadowFactor = calcESMShadowFactor(posLS, ESMShadowTexture, clampMiplessLinearSampler, ESMInputConstants.mEsmControl);
 	}
 	
 
@@ -306,11 +307,11 @@ void main()
 	float Roughness = clamp(specularColor.a, 0.05f, 0.99f);
 	float Metallic = specularColor.b;
 
-	float3 camPos = Get(mCameraPos).xyz;
+	float3 camPos = cameraUniformBlock.mCameraPos.xyz;
 
 	float3 ViewVec = normalize(camPos.xyz - WorldPos.xyz);
 
-	bool isTwoSided = (geomSet ==  1 ) && (Get(meshConstantsBuffer_data)[materialID].twoSided == 1);
+	bool isTwoSided = (geomSet ==  1 ) && (meshConstantsBuffer.meshConstantsBuffer_data[materialID].twoSided == 1);
 	bool isBackFace = false;
 
 	if(isTwoSided && dot(normal, ViewVec) < 0.0)
@@ -320,7 +321,7 @@ void main()
 		isBackFace = true;
 	}
 
-	float3 lightDir = -Get(mLightDir);
+	float3 lightDir = -lightUniformBlock.mLightDir;
 
 	
 
@@ -356,7 +357,7 @@ void main()
 			true,
 			shadowFactor);
 
-	shadedColor = shadedColor * Get(lightColor).rgb * Get(lightColor).a * NoL;
+	shadedColor = shadedColor * lightUniformBlock.lightColor.rgb * lightUniformBlock.lightColor.a * NoL;
 
 	float ambientIntencity = 0.05f;
     float3 ambient = diffuseColor.rgb * ambientIntencity;

@@ -7,6 +7,28 @@
         return getTypeSize(mType);
     }
 
+    uint32_t VertexElement::getLocation() const
+    {
+        switch (mSemantic)
+        {
+        case VES_POSITION:
+            return 0;
+        case VES_BLEND_WEIGHTS:
+            return 6;
+        case VES_BLEND_INDICES:
+            return 5;
+        case VES_TEXTURE_COORDINATES:
+            return 3;
+        case VES_DIFFUSE:
+            return 2;
+        case VES_NORMAL:
+            return 1;
+        default:
+            assert(false);
+            return 0;
+        }
+    }
+
     uint32_t VertexElement::getTypeSize(VertexElementType etype)
     {
         switch (etype)

@@ -3,11 +3,6 @@
 //***************************************************************************************
 
 // Defaults for number of lights.
-#ifdef DIRECT3D12
-#include "base.hlsl"
-#else
-#include "base.glsl"
-#endif
 #ifndef MAX_NUM_DIR_LIGHTS
     #define MAX_NUM_DIR_LIGHTS 1
 #endif
@@ -27,7 +22,7 @@ struct Light {
     float FalloffEnd;   // point/spot light only
     float3 Position;    // point light only
     float SpotPower;    // spot light only
-	f4x4 viewProj;
+	float4x4 viewProj;
 };
 
 #ifdef PBR
@@ -41,21 +36,21 @@ Texture2D brdflut: register(t6,space1);
 TextureCube irradianceCube: register(t7,space1);
 TextureCube prefilteredCube: register(t8,space1);
 #else
-Texture2D first: register(t0,space1);
-Texture2D second: register(t1,space1);
-Texture2D third: register(t2,space1);
-Texture2D gShadowMap: register(t3,space1);
-TextureCube gCubeMap: register(t4,space1);
+Texture2D first        [[vk::binding(0, 1)]]: register(t0,space1);
+Texture2D second       [[vk::binding(1, 1)]]: register(t1,space1);
+Texture2D third        [[vk::binding(2, 1)]]: register(t2,space1);
+Texture2D gShadowMap   [[vk::binding(3, 1)]]: register(t3,space1);
+TextureCube gCubeMap   [[vk::binding(4, 1)]]: register(t4,space1);
 
 #endif //PBR
 
 
 
-SamplerState firstSampler       : register(s0,space1);
-SamplerState secondSampler      : register(s1,space1);
-SamplerState thirdSampler       : register(s2,space1);
-SamplerState shadowSampler      : register(s3,space1);
-SamplerState cubeSampler        : register(s4,space1);
+SamplerState firstSampler       [[vk::binding(5, 1)]]: register(s0,space1);
+SamplerState secondSampler      [[vk::binding(6, 1)]]: register(s1,space1);
+SamplerState thirdSampler       [[vk::binding(7, 1)]]: register(s2,space1);
+SamplerState shadowSampler      [[vk::binding(8, 1)]]: register(s3,space1);
+SamplerState cubeSampler        [[vk::binding(9, 1)]]: register(s4,space1);
 
 // Constant data that varies per frame.
 cbuffer cbPerObject : register(b0)

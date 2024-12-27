@@ -22,16 +22,21 @@ public:
 
     ID3DBlob* getVsBlob()
     {
-        return mvsByteCode;
+        return mVertexByteCode;
     }
 
     ID3DBlob* getGsBlob()
     {
-        return mgsByteCode;
+        return mGeometryByteCode;
     }
     ID3DBlob* getPsBlob()
     {
-        return mpsByteCode;
+        return mFragByteCode;
+    }
+
+    ID3DBlob* getComputeBlob()
+    {
+        return mComputeByteCode;
     }
     
     ID3D12RootSignature* getRootSignature()
@@ -73,9 +78,11 @@ private:
     std::vector <ShaderResource> mProgramResourceList;
     uint32_t mInputSize = 0;
     
-    ID3DBlob* mvsByteCode = nullptr;
-    ID3DBlob* mgsByteCode = nullptr;
-    ID3DBlob* mpsByteCode = nullptr;
+    ID3DBlob* mVertexByteCode = nullptr;
+    ID3DBlob* mGeometryByteCode = nullptr;
+    ID3DBlob* mFragByteCode = nullptr;
+
+    ID3DBlob* mComputeByteCode = nullptr;
     ID3D12RootSignature* mRootSignature;
     std::map<std::string, DescriptorInfo> mDescriptorInfoMap;
 };

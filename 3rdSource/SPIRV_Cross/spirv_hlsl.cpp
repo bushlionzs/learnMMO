@@ -813,7 +813,7 @@ void CompilerHLSL::emit_builtin_inputs_in_struct()
 
 		case BuiltInGlobalInvocationId:
 			type = "uint3";
-			semantic = "SV_DispatchThreadID";
+			semantic = "SV_DISPATCHTHREADID";
 			break;
 
 		case BuiltInLocalInvocationId:
@@ -5498,7 +5498,7 @@ void CompilerHLSL::emit_instruction(const Instruction &instruction)
 	case OpMatrixTimesVector:
 	{
 		// Matrices are kept in a transposed state all the time, flip multiplication order always.
-		emit_binary_func_op(ops[0], ops[1], ops[3], ops[2], "mul");
+		emit_binary_func_op(ops[0], ops[1], ops[2], ops[3], "mul");
 		break;
 	}
 

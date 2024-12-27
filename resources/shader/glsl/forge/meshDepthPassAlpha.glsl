@@ -6,26 +6,26 @@
 
 #ifdef VERTEX_SHADER
 
-layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer vertexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer vertexDataBufferStruct
 {
 	uint vertexDataBuffer_data[];
-};
+}vertexDataBuffer;
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 2) readonly buffer indirectDataBuffer
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 2) readonly buffer indirectDataBufferStruct
 {
 	uint indirectDataBuffer_data[];
-};
+}indirectDataBuffer;
 
-CBUFFER(objectUniformBlock, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
+CBUFFER(objectUniformBlockStruct, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
 {
     DATA(float4x4, worldViewProjMat, None);
     DATA(uint, viewID, None);
-};
+}objectUniformBlock;
 
 
 float3 LoadVertexPositionFloat3(uint vtxIndex)
 {
-    return asfloat(LoadByte4(vertexDataBuffer_data, vtxIndex * 32)).xyz;
+    return asfloat(LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32)).xyz;
 }
 
 float4 LoadVertex(uint index)
@@ -35,7 +35,7 @@ float4 LoadVertex(uint index)
 
 float2 LoadVertexUVFloat2(uint vtxIndex)
 {
-    return asfloat(LoadByte2(vertexDataBuffer_data, vtxIndex * 32 + 12)).xy;
+    return asfloat(LoadByte2(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32 + 12)).xy;
 }
 
 float2 LoadTexCoord(uint index)
@@ -49,9 +49,9 @@ layout(location = 1) flat out(uint) out_PsInAlphaTested_materialID;
 void main()
 {
 	float4 vertexPos = LoadVertex(gl_VertexIndex);
-	gl_Position= mul(worldViewProjMat, vertexPos);
+	gl_Position= objectUniformBlock.worldViewProjMat * vertexPos;
 	out_PsInAlphaTested_texCoord = LoadTexCoord(gl_VertexIndex);;
-    out_PsInAlphaTested_materialID = indirectDataBuffer_data[gl_VertexIndex];
+    out_PsInAlphaTested_materialID = indirectDataBuffer.indirectDataBuffer_data[gl_VertexIndex];
 }
 #endif //VERTEX_SHADER
 
@@ -64,16 +64,16 @@ CBUFFER(PerFrameVBConstants, UPDATE_FREQ_PER_FRAME, b1, binding = 1)
 	DATA(uint, numViewports, None);
 };
 
-layout (std430, UPDATE_FREQ_PER_FRAME, binding = 2) readonly buffer indirectDataBuffer
+layout (std430, UPDATE_FREQ_PER_FRAME, binding = 2) readonly buffer indirectDataBufferStruct
 {
 	uint indirectDataBuffer_data[];
-};
+}indirectDataBuffer;
 
 
-CBUFFER(VBConstantBuffer, UPDATE_FREQ_NONE, b2, binding = 2)
+CBUFFER(VBConstantBufferStruct, UPDATE_FREQ_NONE, b2, binding = 2)
 {
     DATA(VBConstants, vbConstant[2], None);
-};
+}VBConstantBuffer;
 
 RES(Tex2D(float4), diffuseMaps[ 256U ], UPDATE_FREQ_NONE, t3, binding = 6);
 
@@ -82,18 +82,18 @@ RES(SamplerState, nearClampSampler, UPDATE_FREQ_NONE, s0, binding = 5);
 
 
 
-layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer vertexDataBuffer
+layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer vertexDataBufferStruct
 {
 	uint vertexDataBuffer_data[];
-};
+}vertexDataBuffer;
 
 
 
-CBUFFER(objectUniformBlock, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
+CBUFFER(objectUniformBlockStruct, UPDATE_FREQ_PER_DRAW, b0, binding = 0)
 {
     DATA(float4x4, worldViewProjMat, None);
     DATA(uint, viewID, None);
-};
+}objectUniformBlock;
 
 
 STRUCT(PsInAlphaTested)

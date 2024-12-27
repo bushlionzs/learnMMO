@@ -1,6 +1,7 @@
 #include <OgreHeader.h>
 #include <platform_file.h>
 #include "glslUtil.h"
+#include "hlslUtil.h"
 #include "myutils.h"
 #include <libshaderc_util/file_finder.h>
 #include <VulkanTools.h>
@@ -112,75 +113,94 @@ bool glslCompileShader(
         }
     }
     
-    shaderc::Compiler compiler;
-    shaderc::CompileOptions options;
-
-    options.SetTargetSpirv(shaderc_spirv_version_1_4);
-
-
-
-   options.SetIncluder(std::make_unique<MyIncluderInterface>());
-    // Like -DMY_DEFINE=1
-    for (auto& pair : shaderMacros)
-    {
-        options.AddMacroDefinition(pair.first, pair.second);
-    }
-
-    shaderc_shader_kind kind;
-    switch (shaderModuleInfo.shaderType)
-    {
-    case Ogre::ShaderType::VertexShader:
-        options.AddMacroDefinition("VERTEX_SHADER", "1");
-        kind = shaderc_glsl_vertex_shader;
-        break;
-    case Ogre::ShaderType::PixelShader:
-        options.AddMacroDefinition("FRAGMENT_SHADER", "1");
-        kind = shaderc_glsl_fragment_shader;
-        break;
-    case Ogre::ShaderType::GeometryShader:
-        options.AddMacroDefinition("GEOMETRY_SHADER", "1");
-        kind = shaderc_glsl_geometry_shader;
-        break;
-    case Ogre::ShaderType::ComputeShader:
-        kind = shaderc_glsl_compute_shader;
-        break;
-    case Ogre::ShaderType::RayGenShader:
-        kind = shaderc_glsl_raygen_shader;
-        break;
-    case Ogre::ShaderType::MissShader:
-        kind = shaderc_glsl_miss_shader;
-        break;
-     case Ogre::ShaderType::AnyHitShader:
-         kind = shaderc_glsl_anyhit_shader;
-        break;
-     case Ogre::ShaderType::ClosestHitShader:
-         kind = shaderc_glsl_closesthit_shader;
-         break;
-    default:
-        assert_invariant(false);
-    }
-
-
-    shaderc::SpvCompilationResult module =
-        compiler.CompileGlslToSpv(
-            shaderContent, 
-            kind,
-            shaderName.c_str(), 
-            entryPoint.c_str(),
-            options);
-
-    if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-        std::string aa  = module.GetErrorMessage();
-        assert(false);
-        return false;
-    }
-
-
-    std::vector<uint32_t> aa = { module.cbegin(), module.cend() };
-
     std::string result;
-    result.resize(aa.size() * sizeof(uint32_t));
-    memcpy((void*)result.data(), aa.data(), aa.size() * sizeof(uint32_t));
+    const char* suffix = getSuffix(shaderName);
+    if (strcmp(suffix, ".glsl") == 0)
+    {
+        shaderc::Compiler compiler;
+        shaderc::CompileOptions options;
+
+        options.SetTargetSpirv(shaderc_spirv_version_1_4);
+
+
+
+        options.SetIncluder(std::make_unique<MyIncluderInterface>());
+        // Like -DMY_DEFINE=1
+        for (auto& pair : shaderMacros)
+        {
+            options.AddMacroDefinition(pair.first, pair.second);
+        }
+
+        shaderc_shader_kind kind;
+        switch (shaderModuleInfo.shaderType)
+        {
+        case Ogre::ShaderType::VertexShader:
+            options.AddMacroDefinition("VERTEX_SHADER", "1");
+            kind = shaderc_glsl_vertex_shader;
+            break;
+        case Ogre::ShaderType::PixelShader:
+            options.AddMacroDefinition("FRAGMENT_SHADER", "1");
+            kind = shaderc_glsl_fragment_shader;
+            break;
+        case Ogre::ShaderType::GeometryShader:
+            options.AddMacroDefinition("GEOMETRY_SHADER", "1");
+            kind = shaderc_glsl_geometry_shader;
+            break;
+        case Ogre::ShaderType::ComputeShader:
+            kind = shaderc_glsl_compute_shader;
+            break;
+        case Ogre::ShaderType::RayGenShader:
+            kind = shaderc_glsl_raygen_shader;
+            break;
+        case Ogre::ShaderType::MissShader:
+            kind = shaderc_glsl_miss_shader;
+            break;
+        case Ogre::ShaderType::AnyHitShader:
+            kind = shaderc_glsl_anyhit_shader;
+            break;
+        case Ogre::ShaderType::ClosestHitShader:
+            kind = shaderc_glsl_closesthit_shader;
+            break;
+        default:
+            assert_invariant(false);
+        }
+
+
+        shaderc::SpvCompilationResult module =
+            compiler.CompileGlslToSpv(
+                shaderContent,
+                kind,
+                shaderName.c_str(),
+                entryPoint.c_str(),
+                options);
+
+        if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+            std::string aa = module.GetErrorMessage();
+            assert(false);
+            return false;
+        }
+
+
+        std::vector<uint32_t> aa = { module.cbegin(), module.cend() };
+
+        
+        result.resize(aa.size() * sizeof(uint32_t));
+        memcpy((void*)result.data(), aa.data(), aa.size() * sizeof(uint32_t));
+    }
+    else
+    {
+        //hlsl
+        
+         hlslToSpirv(shaderName, shaderContent, 
+             entryPoint, shaderMacros, shaderModuleInfo.shaderType, result);
+         std::string hlslSource;
+
+         spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
+         std::string glslSource;
+         //spvToGlsl(shaderModuleInfo.shaderType, shaderName, result, glslSource);
+         int kk = 0;
+    }
+
     VkShaderModule shader = VK_NULL_HANDLE;
     if (createModule)
     {
@@ -316,6 +336,39 @@ void spvToHlsl(
     
     // 编译 HLSL 代码
     hlslSource = compiler.compile();
+}
+
+
+void spvToGlsl(
+    Ogre::ShaderType shaderType,
+    const std::string& name,
+    const std::string& code,
+    std::string& glslSource)
+{
+    std::vector<uint32_t> spirv;
+
+    spirv.resize(code.size() / 4);
+
+    memcpy(spirv.data(), code.c_str(), code.size());
+
+    spirv_cross::CompilerGLSL compiler(spirv);
+
+    // 获取着色器反射信息
+    spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+    std::string original_name;
+    for (auto& ub : resources.uniform_buffers)
+    {
+        original_name = compiler.get_name(ub.base_type_id);
+    }
+    // 设置编译选项
+    spirv_cross::CompilerGLSL::Options options;
+
+
+    std::string shortname = getShortFilename(name);
+    
+
+    // 编译 HLSL 代码
+    glslSource = compiler.compile();
 }
 
 bool translateToHlsl(

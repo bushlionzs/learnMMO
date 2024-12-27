@@ -164,10 +164,13 @@ void ShadowMap::base1()
 
 
 	auto shadowSize = 1024;
-
+    TextureProperty texProperty;
+    texProperty._width = shadowSize;
+    texProperty._height = shadowSize;
+    texProperty._tex_format = Ogre::PF_DEPTH32F;
+    texProperty._tex_usage = Ogre::TextureUsage::DEPTH_ATTACHMENT;
 	auto shadowMap = mRenderSystem->createRenderTarget(
-		"shadow", shadowSize, shadowSize, Ogre::PF_DEPTH32F,
-        Ogre::TextureUsage::DEPTH_ATTACHMENT);
+		"shadow", texProperty);
 
     bool useShadow = false;
     RenderPassInput renderInput;
@@ -781,10 +784,13 @@ void ShadowMap::base2()
     auto nearSamplerHandle = rs->createTextureSampler(samplerParams);
 
     auto shadowSize = 2048;
-
+    TextureProperty texProperty;
+    texProperty._width = shadowSize;
+    texProperty._height = shadowSize;
+    texProperty._tex_format = Ogre::PF_DEPTH32F;
+    texProperty._tex_usage = Ogre::TextureUsage::DEPTH_ATTACHMENT;
     esmShadowMap = mRenderSystem->createRenderTarget(
-        "shadow", shadowSize, shadowSize, Ogre::PF_DEPTH32F,
-        Ogre::TextureUsage::DEPTH_ATTACHMENT);
+        "shadow", texProperty);
 
     //draw esm shadow map
     if(1)
@@ -977,9 +983,13 @@ void ShadowMap::base2()
         auto vbBufferPasssAlphaPipelineHandle = rs->createPipeline(rasterState, vbBufferPassAlphaHandle);
         auto width = mRenderWindow->getWidth();
         auto height = mRenderWindow->getHeight();
-
+        TextureProperty texProperty;
+        texProperty._width = width;
+        texProperty._height = height;
+        texProperty._tex_format = Ogre::PixelFormat::PF_A8B8G8R8;
+        texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
         visibilityBufferTarget = rs->createRenderTarget("visibilityBufferTarget",
-            width, height, Ogre::PixelFormat::PF_A8B8G8R8, Ogre::TextureUsage::COLOR_ATTACHMENT);
+            texProperty);
 
         auto subMeshCount = mesh->getSubMeshCount();
 
@@ -1342,9 +1352,12 @@ void ShadowMap::base2()
 
             rs->updateDescriptorSet(firstSet, 8, descriptorData);
         }
-        shadePassTarget = rs->createRenderTarget("shadePassTarget",
-            ogreConfig.width, ogreConfig.height, Ogre::PixelFormat::PF_A8R8G8B8_SRGB,
-            Ogre::TextureUsage::COLOR_ATTACHMENT);
+        TextureProperty texProperty;
+        texProperty._width = ogreConfig.width;
+        texProperty._height = ogreConfig.height;
+        texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+        texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
+        shadePassTarget = rs->createRenderTarget("shadePassTarget", texProperty);
         auto winDepth = mRenderWindow->getDepthTarget();
         RenderPassCallback shadeCallback = [=, this](RenderPassInfo& info) {
             RenderTargetBarrier rtBarriers[] = 

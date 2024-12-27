@@ -144,26 +144,10 @@ namespace dy
     std::wstring acsi_to_widebyte(const std::string& assic)
     {
 #ifdef _WIN32
-        int widesize = MultiByteToWideChar(CP_ACP, 0, assic.c_str(), -1, NULL, 0);
-        if (widesize == ERROR_NO_UNICODE_TRANSLATION)
-        {
-            return std::wstring();
-        }
-        if (widesize == 0)
-        {
-            return std::wstring();
-        }
-
-        std::vector<wchar_t> resultstring(widesize);
-        int convresult = MultiByteToWideChar(CP_ACP, 0, assic.c_str(), -1, &resultstring[0], widesize);
-
-
-        if (convresult != widesize)
-        {
-            return std::wstring();
-        }
-
-        return std::wstring(&resultstring[0]);
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, &assic[0], (int)assic.size(), nullptr, 0);
+        std::wstring wstrTo(size_needed, 0);
+        MultiByteToWideChar(CP_UTF8, 0, &assic[0], (int)assic.size(), &wstrTo[0], size_needed);
+        return wstrTo;
 #endif
     }
 

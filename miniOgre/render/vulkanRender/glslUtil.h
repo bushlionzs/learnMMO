@@ -20,6 +20,18 @@ void  parserGlslInputDesc(
 	const std::string& code,
 	std::vector<GlslInputDesc>& inputDesc);
 
+void spvToHlsl(
+	Ogre::ShaderType shaderType,
+	const std::string& name,
+	const std::string& code,
+	std::string& hlslSource);
+
+void spvToGlsl(
+	Ogre::ShaderType shaderType,
+	const std::string& name,
+	const std::string& code,
+	std::string& glslSource);
+
 bool translateToHlsl(
 	const std::string& shaderName,
 	const std::string& shaderContent,
