@@ -456,6 +456,10 @@ std::vector<ShaderResource> DX12ProgramImpl::parseShaderResource(
     {
         D3D12_SHADER_INPUT_BIND_DESC desc;
         shaderReflection->GetResourceBindingDesc(i, &desc);
+        if (strcmp(desc.Name, "$Globals") == 0)
+        {
+            continue;
+        }
         shaderResourceList.emplace_back();
         auto& back = shaderResourceList.back();
         back.name = desc.Name;

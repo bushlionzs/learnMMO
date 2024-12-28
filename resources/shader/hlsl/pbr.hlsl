@@ -1,4 +1,4 @@
-#include "Common.hlsl"
+#include "common.hlsl"
 
 
 // The MIT License
@@ -38,7 +38,7 @@ struct PBRInfo
     float3 specularColor;           // color contribution from specular lighting
 };
 
-#define  M_PI  3.141592653
+#define  M_PI  3.141592653589793
 float c_MinRoughness = 0.04;
 
 #define  albedoIndex  0
@@ -90,29 +90,72 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
 	return bumpedNormalW;
 }
 
-float4 gDiffuseAlbedo = {1.0,1.0,1.0,1.0};
+float3 getPbrNormal(float3 worldPos, float3 normal, float2 uv)
+{
+    float3 tangentNormal = (normal_pbr.Sample(normalSampler, uv).xyz * 2.0f) - 1.0f.xxx;
+    float3 q1 = ddx(worldPos);
+    float3 q2 = ddy(worldPos);
+    float2 st1 = ddx(uv);
+    float2 st2 = ddy(uv);
+    float3 N = normalize(normal);
+    float3 T = normalize((q1 * st2.y) - (q2 * st1.y));
+    float3 B = -normalize(cross(N, T));
+    float3x3 TBN = float3x3(float3(T), float3(B), float3(N));
+    return normalize(mul(tangentNormal, TBN));
+}
+
+
+float4 SRGBtoLINEAR2(float4 srgbIn)
+{
+    float3 bLess = step(0.040449999272823333740234375f.xxx, srgbIn.xyz);
+    float3 linOut = lerp(srgbIn.xyz / 12.9200000762939453125f.xxx, pow((srgbIn.xyz + 0.054999999701976776123046875f.xxx) / 1.05499994754791259765625f.xxx, 2.400000095367431640625f.xxx), bLess);
+    return float4(linOut, srgbIn.w);
+}
+
+float3 Uncharted2Tonemap(float3 color)
+{
+    float A = 0.1500000059604644775390625f;
+    float B = 0.5f;
+    float C = 0.100000001490116119384765625f;
+    float D = 0.20000000298023223876953125f;
+    float E = 0.0199999995529651641845703125f;
+    float F = 0.300000011920928955078125f;
+    float W = 11.19999980926513671875f;
+    return (((color * ((color * A) + (C * B).xxx)) + (D * E).xxx) / ((color * ((color * A) + B.xxx)) + (D * F).xxx)) - (E / F).xxx;
+}
+
+float4 tonemap(float4 color)
+{
+    float exposure = 4.5f;
+    float gamma = 2.2000000476837158203125f;
+    float3 param = color.xyz * exposure;
+    float3 outcol = Uncharted2Tonemap(param);
+    float3 param_1 = 11.19999980926513671875f.xxx;
+    outcol *= (1.0f.xxx / Uncharted2Tonemap(param_1));
+    return float4(pow(outcol, (1.0f / gamma).xxx), color.w);
+}
+
 #ifdef USE_IBL
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
 float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection)
 {
-    float mipCount = 9.0; // resolution of 512x512
-    float lod = (pbrInputs.perceptualRoughness * mipCount);
-    // retrieve a scale and bias to F0. See [1], Figure 3
-    float3 brdf = SRGBtoLINEAR(gTextureArray[brdfLutIndex].Sample(gsamLinearWrap, float2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
-    float3 diffuseLight = gCubeMap[iblDiffuseIndex].Sample(gsamLinearWrap, n).rgb;
-
-    float3 specularLight = gCubeMap[iblSpecularIndex].Sample(gsamLinearWrap, reflection).rgb;
-
-    float3 diffuse = diffuseLight * pbrInputs.diffuseColor;
-    float3 specular = specularLight * (pbrInputs.specularColor * brdf.x + brdf.y);
-
-    // For presentation, this allows us to disable IBL terms
-    diffuse *= u_ScaleIBLAmbient.x;
+    float mipCount = 4.0f;
+    float lod = pbrInputs.perceptualRoughness * mipCount;
+    float4 param = brdflut_pbr.Sample(brdflutSampler, float2(pbrInputs.NdotV, 1.0f - pbrInputs.perceptualRoughness));
+    float3 brdf = SRGBtoLINEAR2(param).xyz;
+    float4 param_1 = irradianceCube.Sample(irradianceSampler, n);
+    float4 param_2 = tonemap(param_1);
+    float3 diffuseLight = SRGBtoLINEAR2(param_2).xyz;
+    float4 param_3 = prefilteredCube.SampleLevel(prefilteredSampler, reflection, lod);
+    float4 param_4 = tonemap(param_3);
+    float3 specularLight = SRGBtoLINEAR2(param_4).xyz;
+    float3 diffuse_1 = diffuseLight * pbrInputs.diffuseColor;
+    float3 specular = specularLight * ((pbrInputs.specularColor * brdf.x) + brdf.y.xxx);
+    diffuse_1 *= u_ScaleIBLAmbient.x;
     specular *= u_ScaleIBLAmbient.y;
-
-    return diffuse + specular;
+    return (diffuse_1 + specular) * 0.35f;
 }
 #endif
 
@@ -153,25 +196,23 @@ float microfacetDistribution(PBRInfo pbrInputs)
 {
     float roughnessSq = pbrInputs.alphaRoughness * pbrInputs.alphaRoughness;
     float f = (pbrInputs.NdotH * roughnessSq - pbrInputs.NdotH) * pbrInputs.NdotH + 1.0;
-	float a = M_PI * f * f;
-    return roughnessSq / a;
+    return roughnessSq / (M_PI * f * f);
 }
+
+
 
 struct VertexIn
 {
-	float3 PosL    : POSITION;
-    float3 NormalL : NORMAL;
-	float2 TexC    : TEXCOORD;
-	float3 TangentL : TANGENT;
+	VKLOCATION(0) float3 PosL    : POSITION;
+    VKLOCATION(1) float3 NormalL : NORMAL;
+	VKLOCATION(3) float2 TexC    : TEXCOORD;
 };
 
 struct VertexOut
 {
 	float4 PosH    : SV_POSITION;
-	float4 ShadowPosH : POSITION0;
     float3 PosW    : POSITION1;
     float3 NormalW : NORMAL;
-	float3 TangentW : TANGENT;
 	float2 v_UV    : TEXCOORD;
 };
 
@@ -182,12 +223,10 @@ VertexOut VS(VertexIn vIn)
     float4 posW = mul(gWorld, float4(vIn.PosL, 1.0f));
 
     vOut.PosH = mul(gViewProj, posW);
-    vOut.PosW = posW.xyz;
+    vOut.PosW = posW.xyz / posW.w;
     vOut.NormalW = mul((float3x3) gWorld, vIn.NormalL);
-	vOut.TangentW = mul((float3x3)gWorld, vIn.TangentL);
     vOut.v_UV = vIn.TexC;
-	vOut.ShadowPosH = mul(gShadowTransform, posW);
-	
+
     return vOut;
 }
 
@@ -198,94 +237,150 @@ float4 PS(VertexOut pin) : SV_Target
     // Metallic and Roughness material properties are packed together
     // In glTF, these factors can be specified by fixed scalar values
     // or from a metallic-roughness map
-    float perceptualRoughness = u_MetallicRoughnessValues.y;
-    float metallic = u_MetallicRoughnessValues.x;
 #ifdef HAS_METALROUGHNESSMAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    float4 mrSample = gTextureArray[metalRoughnessIndex].Sample(gsamLinearWrap, pin.v_UV);
-    perceptualRoughness = mrSample.g * perceptualRoughness;
-    metallic = mrSample.b * metallic;
+    float4 mrSample = metal_roughness_pbr.Sample(metalRoughnessSampler, pin.v_UV);
+	float metalness = mrSample.b;
+    float roughness = mrSample.g;
+#else
+    float roughness = u_MetallicRoughnessValues.y;
+    float metalness = u_MetallicRoughnessValues.x;
+	roughness = clamp(roughness, c_MinRoughness, 1.0);
+    metalness = clamp(metalness, 0.0, 1.0);
 #endif
-    perceptualRoughness = clamp(perceptualRoughness, c_MinRoughness, 1.0);
-    metallic = clamp(metallic, 0.0, 1.0);
+  
 
-    PBRInfo pbrInputs;
+    #ifdef HAS_METALMAP
+        metalness = metal_roughness_pbr.Sample(metalRoughnessSampler, pin.v_UV).r;
+    #endif
 
-    // Roughness is authored as perceptual roughness; as is convention,
-    // convert to material roughness by squaring the perceptual roughness [2].
-    pbrInputs.alphaRoughness = perceptualRoughness * perceptualRoughness;
+    #ifdef HAS_ROUGHNESSMAP
+        roughness = roughness_pbr.Sample(roughnessSampler, pin.v_UV).r;
+    #endif
 
     // The albedo may be defined from a base texture or a flat color
+	float4 baseColorSource = float4(1.0f, 1.0f, 1.0f, 1.0f);
 #ifdef HAS_BASECOLORMAP
-    float4 baseColorSource = gTextureArray[albedoIndex].Sample(gsamLinearWrap, pin.v_UV);
+    baseColorSource = albedo_pbr.Sample(albedoSampler, pin.v_UV);
     float4 baseColor = SRGBtoLINEAR(baseColorSource) * u_BaseColorFactor;
-#else
-    float4 baseColor = u_BaseColorFactor;
-#endif
-
-    float3 f0 = float3(0.04, 0.04, 0.04);
-    float3 diffuseColor = baseColor.rgb * (float3(1.0, 1.0, 1.0) - f0);
-    diffuseColor *= 1.0 - metallic;
-    float3 specularColor = lerp(f0, baseColor.rgb, metallic);
-
-    // Compute reflectance.
-    float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
-
-    // For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
-    // For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
-    float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
-
-    pbrInputs.reflectance0 = specularColor.rgb;
-    pbrInputs.reflectance90 = float3(1.0, 1.0, 1.0) * reflectance90;
-
-    pbrInputs.perceptualRoughness = perceptualRoughness;
-    pbrInputs.metalness = metallic;
-    pbrInputs.diffuseColor = diffuseColor;
-    pbrInputs.specularColor = specularColor;
-
-    float3 normalColor = gTextureArray[normalMapIndex].Sample(gsamAnisotropicWrap, pin.v_UV);
 	
-    float3 n = NormalSampleToWorldSpace(normalColor, pin.NormalW, pin.TangentW, pin.PosW, pin.v_UV);
-    float3 v = normalize(gEyePosW - pin.PosW);        // Vector from surface point to camera
-	float3 u_LightDirection = {0.739942074, 0.642787576, 0.198266909};
-    float3 l = normalize(u_LightDirection);             // Vector from surface point to light
-    float3 h = normalize(l+v);                          // Half vector between both l and v
-    float3 reflection = -normalize(reflect(v, n));
-    reflection.y *= -1.0;
+	if (alpha_mask > 0)
+	{
+		if (baseColorSource.a < alpha_mask_cutoff)
+		{
+			discard;
+		}
+	}
+#else
+    float4 baseColor = vec4(0.04f, 0.04f, 0.04f, 1.0f);
+#endif
+    float3 f0 = float3(0.04, 0.04, 0.04);
+	
+	float alphaRoughness = roughness * roughness;
+	
+	float3 diffuseColor = baseColor.rgb * (float3(1.0, 1.0, 1.0) - f0);
+	diffuseColor *= 1.0 - metalness;
+	float3 specularColor = lerp(f0, baseColor.rgb, metalness);
+	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+	
+	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+	float3 specularEnvironmentR0 = specularColor.rgb;
+	float3 specularEnvironmentR90 = float3(1.0, 1.0, 1.0) * reflectance90;
+	
+	
+	float3 inWorldPos = pin.PosW;
+	float3 inNormal = pin.NormalW;
+#ifdef HAS_NORMALMAP
+	float3 n = getPbrNormal(inWorldPos, inNormal, pin.v_UV);
+#else
+    float3 n = inNormal;
+#endif
+    //n.y *= -1.0f;
+	
+	float3 v = normalize(gEyePosW - inWorldPos);        // Vector from surface point to camera
+	
+	float3 l = normalize(gDirLights[0].Direction); 
+    
+	float3 h = normalize(l+v);
+	float3 reflection = normalize(reflect(-v, n));
+	
+    float NdotL = clamp(dot(n, l), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
+	float NdotH = clamp(dot(n, h), 0.0, 1.0);
+	float LdotH = clamp(dot(l, h), 0.0, 1.0);
+	float VdotH = clamp(dot(v, h), 0.0, 1.0);
+    PBRInfo pbrInputs = {
+        NdotL,
+        NdotV,
+        NdotH,
+        LdotH,
+        VdotH,
+        roughness,
+        metalness,
+        specularEnvironmentR0,
+        specularEnvironmentR90,
+        alphaRoughness,
+        diffuseColor,
+        specularColor
+    };
 
-    pbrInputs.NdotL = clamp(dot(n, l), 0.001, 1.0);
-    pbrInputs.NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
-    pbrInputs.NdotH = clamp(dot(n, h), 0.0, 1.0);
-    pbrInputs.LdotH = clamp(dot(l, h), 0.0, 1.0);
-    pbrInputs.VdotH = clamp(dot(v, h), 0.0, 1.0);
+	// Calculate the shading terms for the microfacet specular shading model
+	float3 F = specularReflection(pbrInputs);
+	float G = geometricOcclusion(pbrInputs);
+	float D = microfacetDistribution(pbrInputs);
 
-    // Calculate the shading terms for the microfacet specular shading model
-    float3 F = specularReflection(pbrInputs);
-    float G = geometricOcclusion(pbrInputs);
-    float D = microfacetDistribution(pbrInputs);
+	const float3 u_LightColor = float3(1.0, 1.0, 1.0);
 
-    // Calculation of analytical lighting contribution
-    float3 diffuseContrib = (1.0 - F) * diffuse(pbrInputs);
-    float3 specContrib = F * G * D / (4.0 * pbrInputs.NdotL * pbrInputs.NdotV);
-	float3 middle = diffuseContrib + specContrib;
-	float3 u_LightColor = {1.0,1.0,1.0};
-    float3 color = pbrInputs.NdotL *  u_LightColor * middle;
+	// Calculation of analytical lighting contribution
+	float3 diffuseContrib = (1.0 - F) * diffuse(pbrInputs);
+	float3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
+	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
+	float3 directColor = NdotL * u_LightColor * (diffuseContrib + specContrib);
+	
+	float3 color = directColor;
     // Calculate lighting contribution from image based lighting source (IBL)
+	float3 ibl = float3(0.0f, 0.0f, 0.0f);
 #ifdef USE_IBL
-	float3 ibl = getIBLContribution(pbrInputs, n, reflection);
+	ibl = getIBLContribution(pbrInputs, n, reflection);
     color += ibl;
 #endif
     // Apply optional PBR terms for additional (optional) shading
+	float ao = 0.0f;
 #ifdef HAS_OCCLUSIONMAP
-	float ao = gTextureArray[ambientOcclusionIndex].Sample(gsamAnisotropicWrap, pin.v_UV).r;
+	ao = ao_pbr.Sample(aoSampler, pin.v_UV).r;
     color = lerp(color, color * ao, u_OcclusionStrength);
 #endif
 
 #ifdef HAS_EMISSIVEMAP
-	float3 emissive = gTextureArray[emissiveIndex].Sample(gsamAnisotropicWrap, pin.v_UV).rgb * u_EmissiveFactor;
+	float3 emissive = emissive_pbr.Sample(emissiveSampler ,pin.v_UV).rgb * u_EmissiveFactor;
     color += emissive;
 #endif
-    //return float4(color, baseColor.a);
-    return float4(pow(color,float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), baseColor.a);
+    
+	float4 outColor = float4(color, baseColor.a);
+		
+	if(debugRenderMode > 0)
+	{
+        switch (debugRenderMode)
+		{
+		default:
+		case 0: break;
+		case 1: color = baseColorSource.rgb; break;
+		case 2: color =  n; break;
+		case 3: color = float3(roughness, roughness, roughness); break;
+		case 4: color = float3(metalness, metalness, metalness); break;
+		case 5: color = float3(ao, ao, ao); break;
+		case 6: color = n; break;
+		case 7: color = F;break;
+		case 8: color = float3(G, G, G);break;
+		case 9: color = float3(D, D, D);break;
+		}
+		outColor = float4(color, baseColorSource.a);
+		if(debugRenderMode < 6)
+		{
+		    outColor = SRGBtoLINEAR(outColor);
+		}
+	}
+	
+	return outColor;
 }

@@ -196,7 +196,7 @@ float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection)
     float mipCount = 4.0; // resolution of 512x512
     float lod = (pbrInputs.perceptualRoughness * mipCount);
     // retrieve a scale and bias to F0. See [1], Figure 3
-    float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut, brdflutSampler), float2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
+    float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut_pbr, brdflutSampler), float2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
     float3 diffuseLight = SRGBtoLINEAR2(tonemap(texture(samplerCube(irradianceCube, irradianceSampler), n))).rgb;
 
     float3 specularLight = SRGBtoLINEAR2(tonemap(textureLod(samplerCube(prefilteredCube, prefilteredSampler), reflection, lod))).rgb;
@@ -242,7 +242,7 @@ float3 EnvironmentBRDF(float3 N, float3 V, float3 albedo, float roughness, float
 	float3 specular = SRGBtoLINEAR2(tonemap(textureLod(samplerCube(prefilteredCube, prefilteredSampler), reflection, lod))).rgb;
 
 	float2 maxNVRough = float2(max(dot(N, V), 0.0), roughness);
-	float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut, brdflutSampler), maxNVRough)).rgb;
+	float3 brdf = SRGBtoLINEAR2(texture(sampler2D(brdflut_pbr, brdflutSampler), maxNVRough)).rgb;
 	// Id & Is: diffuse & specular illumination
 	float3 Is = specular * (F * brdf.x + brdf.y);	
 	float3 Id = kD * irradiance * albedo;
@@ -375,7 +375,7 @@ void main()
 	float3 ibl = vec3(0.0f);
 #ifdef USE_IBL
 	ibl = getIBLContribution(pbrInputs, n, reflection);
-    color += ibl;
+    //color += ibl;
 #endif
     // Apply optional PBR terms for additional (optional) shading
 	float ao = 0.0f;
@@ -493,7 +493,7 @@ void main1()
 	    ibl += EnvironmentBRDF(n, v, baseColor.rgb, roughness, metalness);
 	}
 	
-    color += ibl;
+    //color += ibl;
 #endif
     // Apply optional PBR terms for additional (optional) shading
 	float ao = 0.0f;

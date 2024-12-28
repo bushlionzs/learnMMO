@@ -360,7 +360,30 @@ struct VulkanShaderProgram : public VulkanProgram, HwProgram {
     
     static constexpr uint8_t const MAX_SHADER_MODULES = 3;
 
-    
+    void updateEntryFunc(
+        const char* vertexShaderFuncName,
+        const char* geomtryShaderFuncName,
+        const char* fragShaderFuncName
+    )
+    {
+        mVertexShaderFuncName = vertexShaderFuncName;
+        mGeomtryShaderFuncName = geomtryShaderFuncName;
+        mFragShaderFuncName = fragShaderFuncName;
+    }
+    const char* getVertexShaderFuncName()
+    {
+        return mVertexShaderFuncName;
+    }
+
+    const char* getGeomtryShaderFuncName()
+    {
+        return mGeomtryShaderFuncName;
+    }
+
+    const char* getFragShaderFuncName()
+    {
+        return mFragShaderFuncName;
+    }
 private:
     VkShaderModule mShaders[MAX_SHADER_MODULES];
     VkPipelineLayout mPipelineLayout;
@@ -368,7 +391,9 @@ private:
     std::vector<VkVertexInputBindingDescription> mVertexInputBindings;
     std::vector<VkVertexInputAttributeDescription> mAttributeDescriptions;
     uint32_t mPushConstantsSize;
-    
+    const char* mVertexShaderFuncName = "main";
+    const char* mGeomtryShaderFuncName = "main";
+    const char* mFragShaderFuncName = "main";
 };
 
 struct VulkanRaytracingProgram : public VulkanProgram, HwRaytracingProgram {

@@ -63,18 +63,18 @@ float microfacetDistribution(PBRInfo pbrInputs)
 	return roughnessSq / (M_PI * f * f);
 }
 
-vec3 getPbrNormal(vec3 worldPos, float3 normal, float2 uv)
+float3 getPbrNormal(vec3 worldPos, float3 normal, float2 uv)
 {
-	vec3 tangentNormal = texture(sampler2D(normal_pbr, normalSampler), uv).xyz * 2.0 - 1.0;
+	float3 tangentNormal = texture(sampler2D(normal_pbr, normalSampler), uv).xyz * 2.0 - 1.0;
 
-	vec3 q1 = dFdx(worldPos);
-	vec3 q2 = dFdy(worldPos);
-	vec2 st1 = dFdx(uv);
-	vec2 st2 = dFdy(uv);
+	float3 q1 = dFdx(worldPos);
+	float3 q2 = dFdy(worldPos);
+	float2 st1 = dFdx(uv);
+	float2 st2 = dFdy(uv);
 
-	vec3 N = normalize(normal);
-	vec3 T = normalize(q1 * st2.t - q2 * st1.t);
-	vec3 B = -normalize(cross(N, T));
+	float3 N = normalize(normal);
+	float3 T = normalize(q1 * st2.t - q2 * st1.t);
+	float3 B = -normalize(cross(N, T));
 	mat3 TBN = mat3(T, B, N);
 
 	return normalize(TBN * tangentNormal);

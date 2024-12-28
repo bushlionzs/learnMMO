@@ -25,32 +25,47 @@ struct Light {
 	float4x4 viewProj;
 };
 
-#ifdef PBR
-Texture2D albedo_pbr: register(t0,space1);
-Texture2D ao_pbr: register(t1,space1);
-Texture2D normal_pbr: register(t2,space1);
-Texture2D emissive_pbr: register(t3,space1);
-Texture2D metal_roughness_pbr: register(t4,space1);
-Texture2D roughness_pbr: register(t5,space1);
-Texture2D brdflut: register(t6,space1);
-TextureCube irradianceCube: register(t7,space1);
-TextureCube prefilteredCube: register(t8,space1);
+#ifdef VULKAN
+#define VKBINDING(r,s) [[vk::binding(r, s)]]
+#define VKLOCATION(l) [[vk::location(l)]]
 #else
-Texture2D first        [[vk::binding(0, 1)]]: register(t0,space1);
-Texture2D second       [[vk::binding(1, 1)]]: register(t1,space1);
-Texture2D third        [[vk::binding(2, 1)]]: register(t2,space1);
-Texture2D gShadowMap   [[vk::binding(3, 1)]]: register(t3,space1);
-TextureCube gCubeMap   [[vk::binding(4, 1)]]: register(t4,space1);
+#define VKBINDING(r,s)
+#define VKLOCATION(l)
+#endif
 
+#ifdef PBR
+Texture2D albedo_pbr           VKBINDING(0, 1): register(t0,space1);
+Texture2D ao_pbr               VKBINDING(1, 1): register(t1,space1);
+Texture2D normal_pbr           VKBINDING(2, 1): register(t2,space1);
+Texture2D emissive_pbr         VKBINDING(3, 1): register(t3,space1);
+Texture2D metal_roughness_pbr  VKBINDING(4, 1): register(t4,space1);
+Texture2D roughness_pbr        VKBINDING(5, 1): register(t5,space1);
+Texture2D brdflut_pbr              VKBINDING(6, 1): register(t6,space1);
+TextureCube irradianceCube     VKBINDING(7, 1): register(t7,space1);
+TextureCube prefilteredCube    VKBINDING(8, 1): register(t8,space1);
+
+SamplerState albedoSampler           VKBINDING(9, 1): register(s0,space1);
+SamplerState aoSampler               VKBINDING(10, 1): register(s1,space1);
+SamplerState normalSampler           VKBINDING(11, 1): register(s2,space1);
+SamplerState emissiveSampler         VKBINDING(12, 1): register(s3,space1);
+SamplerState metalRoughnessSampler   VKBINDING(13, 1): register(s4,space1);
+SamplerState roughnessSampler        VKBINDING(14, 1): register(s5,space1);
+SamplerState brdflutSampler          VKBINDING(15, 1): register(s6,space1);
+SamplerState irradianceSampler       VKBINDING(16, 1): register(s7,space1);
+SamplerState prefilteredSampler      VKBINDING(17, 1): register(s8,space1);
+#else
+Texture2D first        VKBINDING(0, 1): register(t0,space1);
+Texture2D second       VKBINDING(1, 1): register(t1,space1);
+Texture2D third        VKBINDING(2, 1): register(t2,space1);
+Texture2D gShadowMap   VKBINDING(3, 1): register(t3,space1);
+TextureCube gCubeMap   VKBINDING(4, 1): register(t4,space1);
+
+SamplerState firstSampler       VKBINDING(5, 1): register(s0,space1);
+SamplerState secondSampler      VKBINDING(6, 1): register(s1,space1);
+SamplerState thirdSampler       VKBINDING(7, 1): register(s2,space1);
+SamplerState shadowSampler      VKBINDING(8, 1): register(s3,space1);
+SamplerState cubeSampler        VKBINDING(9, 1): register(s4,space1);
 #endif //PBR
-
-
-
-SamplerState firstSampler       [[vk::binding(5, 1)]]: register(s0,space1);
-SamplerState secondSampler      [[vk::binding(6, 1)]]: register(s1,space1);
-SamplerState thirdSampler       [[vk::binding(7, 1)]]: register(s2,space1);
-SamplerState shadowSampler      [[vk::binding(8, 1)]]: register(s3,space1);
-SamplerState cubeSampler        [[vk::binding(9, 1)]]: register(s4,space1);
 
 // Constant data that varies per frame.
 cbuffer cbPerObject : register(b0)
@@ -87,13 +102,15 @@ cbuffer pbrMaterial : register(b2)
     //some constance value;
     float2 u_MetallicRoughnessValues;
 	float u_OcclusionStrength;
-	float pad1;
+	uint alpha_mask;
     float3 u_EmissiveFactor;
-	float pad2;
+	float alpha_mask_cutoff;
 	float4 u_BaseColorFactor;
 	float4 u_ScaleIBLAmbient;
-    float4x4 gTexScale;
-	float4x4 gTexTransform;
+    uint debugRenderMode;
+	uint hasEmissiveMap;
+    uint hasNormalMap;
+    uint hasMetalRoughNessMap;
 };
 #else
 cbuffer cbMaterial : register(b2)

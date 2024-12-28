@@ -194,8 +194,8 @@ bool glslCompileShader(
          hlslToSpirv(shaderName, shaderContent, 
              entryPoint, shaderMacros, shaderModuleInfo.shaderType, result);
          std::string hlslSource;
-
-         spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
+         uint32_t size = result.size();
+         //spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
          std::string glslSource;
          //spvToGlsl(shaderModuleInfo.shaderType, shaderName, result, glslSource);
          int kk = 0;

@@ -125,7 +125,7 @@ layout (set=1, binding = 2) uniform texture2D normal_pbr;
 layout (set=1, binding = 3) uniform texture2D emissive_pbr;
 layout (set=1, binding = 4) uniform texture2D metal_roughness_pbr;
 layout (set=1, binding = 5) uniform texture2D roughness_pbr;
-layout (set=1, binding = 6) uniform texture2D brdflut;
+layout (set=1, binding = 6) uniform texture2D brdflut_pbr;
 
 layout (set=1, binding = 7) uniform textureCube irradianceCube;
 layout (set=1, binding = 8) uniform textureCube prefilteredCube;

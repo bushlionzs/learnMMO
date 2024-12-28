@@ -89,15 +89,15 @@ using namespace bluevk;
         shaderStages[0] = VkPipelineShaderStageCreateInfo{};
         shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        shaderStages[0].pName = "VS";
+        shaderStages[0].pName = mVertexShaderFuncName;
         shaderStages[1] = VkPipelineShaderStageCreateInfo{};
         shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shaderStages[1].pName = "PS";
+        shaderStages[1].pName = mFragShaderFuncName;
         shaderStages[2] = VkPipelineShaderStageCreateInfo{};
         shaderStages[2].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStages[2].stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-        shaderStages[2].pName = "main";
+        shaderStages[2].pName = mGeomtryShaderFuncName;
 
         VkPipelineColorBlendAttachmentState colorBlendAttachments[MRT::MAX_SUPPORTED_RENDER_TARGET_COUNT];
         VkPipelineColorBlendStateCreateInfo colorBlendState;
@@ -273,6 +273,17 @@ using namespace bluevk;
         mPipelineRequirements.shaders[0] = vertexShader;
         mPipelineRequirements.shaders[1] = fragShader;
         mPipelineRequirements.shaders[2] = geomtryShader;
+    }
+
+    void VulkanPipelineCache::updateEntryFunc(
+        const char* vertexShaderFuncName,
+        const char* geomtryShaderFuncName,
+        const char* fragShaderFuncName
+    )noexcept
+    {
+        mVertexShaderFuncName = vertexShaderFuncName;
+        mGeomtryShaderFuncName = geomtryShaderFuncName;
+        mFragShaderFuncName = fragShaderFuncName;
     }
 
     void VulkanPipelineCache::bindRasterState(const RasterState& rasterState) noexcept {

@@ -188,7 +188,7 @@ namespace Ogre {
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
-                        pName = "brdflut";
+                        pName = "brdflut_pbr";
                         samplerName = "brdflutSampler";
                         break;
                     case TextureTypePbr_IBL_Diffuse:
@@ -406,7 +406,7 @@ namespace Ogre {
                         break;
                     case TextureTypePbr_BRDF_LUT:
                         texIndex = 6;
-                        pName = "brdflut";
+                        pName = "brdflut_pbr";
                         samplerName = "brdflutSampler";
                         break;
                     case TextureTypePbr_IBL_Diffuse:

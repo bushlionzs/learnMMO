@@ -1,15 +1,15 @@
 #include "common.hlsl"
 struct VertexIn
 {
-	[[vk::location(0)]]float3 PosL    : POSITION;
-    [[vk::location(1)]]float3 NormalL : NORMAL;
+	VKLOCATION(0) float3 PosL    : POSITION;
+    VKLOCATION(1) float3 NormalL : NORMAL;
 #ifdef USETANGENT
 	float3 TangentL : TANGENT;
 #endif
-	[[vk::location(3)]]float2 TexC    : TEXCOORD;
+	VKLOCATION(3) float2 TexC    : TEXCOORD;
 #ifdef SKINNED
-    [[vk::location(6)]]float4 BoneWeights : BLENDWEIGHT;
-    [[vk::location(5)]]uint4 BoneIndices  : BLENDINDICES;
+    VKLOCATION(6) float4 BoneWeights : BLENDWEIGHT;
+    VKLOCATION(5) uint4 BoneIndices  : BLENDINDICES;
 #endif
 };
 

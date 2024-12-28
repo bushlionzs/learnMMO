@@ -111,6 +111,12 @@
             VkShaderModule vertexShader, 
             VkShaderModule geomtryShader,
             VkShaderModule fragShader) noexcept;
+
+        void updateEntryFunc(
+            const char* vertexShaderFuncName,
+            const char* geomtryShaderFuncName,
+            const char* fragShaderFuncName
+        )noexcept;
         void bindRasterState(const RasterState& rasterState) noexcept;
         void bindFormat(VkFormat colorFormat, VkFormat depthFormat);
         void bindPrimitiveTopology(VkPrimitiveTopology topology) noexcept;
@@ -255,6 +261,10 @@
 
         // Current state for scissoring.
         VkRect2D mCurrentScissor = {};
+
+        const char* mVertexShaderFuncName = "main";
+        const char* mGeomtryShaderFuncName = "main";
+        const char* mFragShaderFuncName = "main";
     };
 
 

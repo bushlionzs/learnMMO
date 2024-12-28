@@ -107,8 +107,8 @@ bool hlslToSpirv(
 	dxcBuffer.Size = shaderContent.size();
 	dxcBuffer.Encoding = CP_UTF8;
 	std::vector<LPCWSTR> arguments = {
-	//L"-T", L"vs_5_1", // 目标着色器模型
-	//L"-E", L"VS",   // 入口点名称
+	L"-Zi",
+	L"-Od",
 	L"-spirv"         // 编译为目标SPIR-V
 	};
 	
@@ -133,18 +133,21 @@ bool hlslToSpirv(
 	}
 
 	wchar_t buffer[256];
-
-	
+	std::vector<std::wstring> pool;
+	pool.reserve(shaderMacros.size());
 	for (auto& obj : shaderMacros)
 	{
 		std::wstring aa = dy::acsi_to_widebyte(obj.first);
 		std::wstring bb = dy::acsi_to_widebyte(obj.second);
 		swprintf_s(buffer, L"%s=%s", aa.c_str(), bb.c_str());
+		pool.push_back(buffer);
 		arguments.push_back(L"-D");
-		arguments.push_back(buffer);
+		arguments.push_back(pool.back().c_str());
 	}
 
-	
+	arguments.push_back(L"-D");
+	arguments.push_back(L"VULKAN");
+
 	CustomDxcInclude includer;
 	IDxcResult* pResult = nullptr;
 	IDxcCompilerArgs;

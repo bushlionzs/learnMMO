@@ -653,6 +653,10 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
 
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Vulkan);
+    vulkanProgram->updateEntryFunc(
+        privateInfo->vertexShaderEntryPoint.c_str(),
+        privateInfo->geometryShaderEntryPoint.c_str(),
+        privateInfo->fragShaderEntryPoint.c_str());
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
 
@@ -1052,7 +1056,10 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
         attributeDescriptions.size(),
         vertexInputBindings.data(),
         vertexInputBindings.size());
-
+    mPipelineCache->updateEntryFunc(
+        vulkanProgram->getVertexShaderFuncName(),
+        vulkanProgram->getGeomtryShaderFuncName(),
+        vulkanProgram->getFragShaderFuncName());
     VkPipeline pipeline = mPipelineCache->getPipeline();
 
     mPipelineCache->bindProgram(vulkanProgram->getVertexShader(), nullptr, nullptr);
