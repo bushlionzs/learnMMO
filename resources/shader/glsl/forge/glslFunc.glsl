@@ -1,4 +1,4 @@
-const float PI = 3.1415926535897932384626422832795028841971f;
+#define  M_PI  3.1415926535897932384626422832795028841971f
 float2 octWrap_float2(float2 v)
 {
     return (float2(1.f, 1.f) - float2(abs(v.y), abs(v.x))) * float2(v.x >= 0.f ? 1.f : -1.f, v.y >= 0.f ? 1.f : -1.f);
@@ -213,7 +213,7 @@ float3 perturb_normal(float3 normalMap, float3 normalVertex, DerivativesOutput d
 float D_GGX(float a2, float NoH)
 {
 	float d = (NoH * a2 - NoH) * NoH + 1.0f;
-	return a2 / (PI*d*d);
+	return a2 / (M_PI*d*d);
 }
 
 

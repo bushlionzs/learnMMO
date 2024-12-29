@@ -116,16 +116,23 @@ bool hlslToSpirv(
 	if (shaderType == VertexShader)
 	{
 		arguments.push_back(L"-T");
-		arguments.push_back(L"vs_5_1");
+		arguments.push_back(L"vs_6_0");
 		arguments.push_back(L"-E");
 		arguments.push_back(L"VS");
 	}
 	else if (shaderType == PixelShader)
 	{
 		arguments.push_back(L"-T");
-		arguments.push_back(L"ps_5_1");
+		arguments.push_back(L"ps_6_0");
 		arguments.push_back(L"-E");
 		arguments.push_back(L"PS");
+	}
+	else if(shaderType == ComputeShader)
+	{
+		arguments.push_back(L"-T");
+		arguments.push_back(L"cs_6_0");
+		arguments.push_back(L"-E");
+		arguments.push_back(L"CS");
 	}
 	else
 	{
@@ -148,6 +155,9 @@ bool hlslToSpirv(
 	arguments.push_back(L"-D");
 	arguments.push_back(L"VULKAN");
 
+	arguments.push_back(L"-D");
+	arguments.push_back(L"DIRECT3D12");
+
 	CustomDxcInclude includer;
 	IDxcResult* pResult = nullptr;
 	IDxcCompilerArgs;
@@ -168,6 +178,25 @@ bool hlslToSpirv(
 	pResult->GetResult(&pShaderBlob);
 	const char* data = (const char*)pShaderBlob->GetBufferPointer();
 	uint32_t size = pShaderBlob->GetBufferSize();
+	if (size == 0)
+	{
+		hr = pResult->GetStatus(nullptr);
+		if (FAILED(hr))
+		{
+			// 如果编译失败，尝试获取错误信息
+			ComPtr<IDxcBlobEncoding> pErrorBlob;
+			ComPtr<IDxcBlobWide> pErrorName;
+			pResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrorBlob), &pErrorName);
+			
+			if (pErrorBlob && pErrorBlob->GetBufferSize() > 0)
+			{
+				// 打印或记录错误信息
+				OutputDebugStringA((char*)pErrorBlob->GetBufferPointer());
+			}
+			
+			return false;
+		}
+	}
 	spv.assign(data, size);
 	pResult->Release();
 	return true;

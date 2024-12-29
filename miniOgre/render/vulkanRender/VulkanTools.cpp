@@ -816,6 +816,7 @@ namespace vks
 			{
 				auto& input = uniforms[i];
 				const std::string& name = glsl.get_name(input.id);
+				
 
 				auto set = glsl.get_decoration(input.id, spv::DecorationDescriptorSet);
 				auto binding = glsl.get_decoration(input.id, spv::DecorationBinding);
@@ -830,6 +831,11 @@ namespace vks
 					strncpy(descriptorInfo.name, name.c_str(), sizeof(descriptorInfo.name));
 				}
 				
+				if (strcmp(descriptorInfo.name, "$Globals") == 0)
+				{
+					//不要使用全局变量，hlsl编译成spirv时，如果有全局变量，会产生一个叫$Globals的uniform buffer
+					assert(false);
+				}
 				if (type.array.size())
 					layout.descriptorCount = type.array[0];
 				else

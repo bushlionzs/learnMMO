@@ -524,6 +524,7 @@ Handle<HwComputeProgram> Dx12RenderSystemBase::createComputeProgram(
     Handle<HwComputeProgram> program = mResourceAllocator.allocHandle<DX12ComputeProgram>();
     DX12ComputeProgram* computeProgram = mResourceAllocator.construct<DX12ComputeProgram>(program, shaderInfo);
 
+
     return program;
 }
 

@@ -350,7 +350,13 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         base->pNext = (VkBaseOutStructure*)&enabledDynamicRenderingFeaturesKHR;
         base = (VkBaseOutStructure*)base->pNext;
     }
-
+    VkPhysicalDeviceVulkan12Features vulkan12Features{};
+    vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    {
+        base->pNext = (VkBaseOutStructure*) & vulkan12Features;
+        base = (VkBaseOutStructure*)base->pNext;
+    }
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES
     };

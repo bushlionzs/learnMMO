@@ -977,7 +977,7 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
     stage.flags = 0;
     stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     stage.module = moduleInfo.shaderModule;
-    stage.pName = "main";
+    stage.pName = privateInfo->computeShaderEntryPoint.c_str();
     stage.pSpecializationInfo = nullptr;
 
     VkComputePipelineCreateInfo create_info{};

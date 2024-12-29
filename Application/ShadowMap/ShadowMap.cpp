@@ -1035,39 +1035,30 @@ void ShadowMap::base2()
             frameData.firstDescrSetOfVbPassAlpha = firstDescrSetOfVbPassAlpha;
             frameData.thirdDescrSetOfVbPassAlpha = thirdDescrSetOfVbPassAlpha;
 
-            descriptorData[0].pName = "VBConstantBuffer";
+            descriptorData[0].pName = "vertexDataBuffer";
             descriptorData[0].mCount = 1;
             descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-            descriptorData[0].ppBuffers = &vbConstantsBuffer;
+            descriptorData[0].ppBuffers = &vertexDataHandle;
 
-            descriptorData[1].pName = "vertexDataBuffer";
+            descriptorData[1].pName = "nearClampSampler";
             descriptorData[1].mCount = 1;
-            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-            descriptorData[1].ppBuffers = &vertexDataHandle;
+            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+            descriptorData[1].ppSamplers = &nearSamplerHandle;
 
-            descriptorData[2].pName = "nearClampSampler";
-            descriptorData[2].mCount = 1;
-            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-            descriptorData[2].ppSamplers = &nearSamplerHandle;
+            descriptorData[2].pName = "diffuseMaps";
+            descriptorData[2].mCount = diffuseList.size();
+            descriptorData[2].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+            descriptorData[2].ppTextures = (const OgreTexture**)diffuseList.data();
 
-            descriptorData[3].pName = "diffuseMaps";
-            descriptorData[3].mCount = diffuseList.size();
-            descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-            descriptorData[3].ppTextures = (const OgreTexture**)diffuseList.data();
-
-            rs->updateDescriptorSet(zeroDescrSetOfVbPassAlpha, 4, descriptorData);
+            rs->updateDescriptorSet(zeroDescrSetOfVbPassAlpha, 3, descriptorData);
 
             descriptorData[0].pName = "indirectDataBuffer";
             descriptorData[0].mCount = 1;
             descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
             descriptorData[0].ppBuffers = &frameData.indirectDataBuffer;
 
-            descriptorData[1].pName = "PerFrameVBConstants";
-            descriptorData[1].mCount = 1;
-            descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-            descriptorData[1].ppBuffers = &frameData.perFrameConstantsBuffer;
 
-            rs->updateDescriptorSet(firstDescrSetOfVbPassAlpha, 2, descriptorData);
+            rs->updateDescriptorSet(firstDescrSetOfVbPassAlpha, 1, descriptorData);
 
             descriptorData[0].pName = "objectUniformBlock";
             descriptorData[0].mCount = 1;
