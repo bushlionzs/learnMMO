@@ -394,7 +394,38 @@ void Dx12RenderSystemBase::drawIndexedIndirect(
 void Dx12RenderSystemBase::beginComputePass(
     ComputePassInfo& computePassInfo)
 {
+    ID3D12GraphicsCommandList* cl = mCommands->get();
 
+    DX12ComputeProgram* program = 
+        mResourceAllocator.handle_cast<DX12ComputeProgram*>(computePassInfo.programHandle);
+
+    cl->SetPipelineState(program->getPSO());
+    cl->SetComputeRootSignature(program->getProgramImpl()->getRootSignature());
+    for (auto& ds : computePassInfo.descSets)
+    {
+        DX12DescriptorSet* dset = mResourceAllocator.handle_cast<DX12DescriptorSet*>(ds);
+        std::vector<const DescriptorInfo*> descriptorInfos = dset->getDescriptorInfos();
+        auto cbvSrvUavHandle = dset->getCbvSrvUavHandle();
+        auto samplerHandle = dset->getSamplerHandle();
+        for (auto descriptorInfo : descriptorInfos)
+        {
+            if (descriptorInfo->mType == D3D_SIT_SAMPLER)
+            {
+                auto gpuHandle = descriptor_id_to_gpu_handle(
+                    mDescriptorHeapContext.pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
+                cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+            }
+            else
+            {
+                auto gpuHandle = descriptor_id_to_gpu_handle(
+                    mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
+                cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+            }
+        }
+    }
+
+    cl->Dispatch(computePassInfo.computeGroup.x, 
+        computePassInfo.computeGroup.y, computePassInfo.computeGroup.z);
 }
 
 void Dx12RenderSystemBase::endComputePass()
@@ -523,8 +554,15 @@ Handle<HwComputeProgram> Dx12RenderSystemBase::createComputeProgram(
 {
     Handle<HwComputeProgram> program = mResourceAllocator.allocHandle<DX12ComputeProgram>();
     DX12ComputeProgram* computeProgram = mResourceAllocator.construct<DX12ComputeProgram>(program, shaderInfo);
-
-
+    DX12ProgramImpl* pImpl = computeProgram->getProgramImpl();
+    D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.pRootSignature = pImpl->getRootSignature();
+    const auto& blob = pImpl->getComputeBlob();
+    psoDesc.CS = { reinterpret_cast<const BYTE*>(blob.c_str()), blob.size()};
+    ID3D12PipelineState* pipelineState;
+    auto hr = mDevice->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
+    assert_invariant(hr == S_OK);
+    computeProgram->updatePSO(pipelineState);
     return program;
 }
 
@@ -598,10 +636,14 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
 
     DXGI_FORMAT colorFormat = D3D12Mappings::_getPF(format);
     mDX12PipelineCache.bindFormat(colorFormat, DXGI_FORMAT_D32_FLOAT);
+
+    const std::string& vsCode = dx12ProgramImpl->getVsBlob();
+    const std::string& gsCode = dx12ProgramImpl->getGsBlob();
+    const std::string& psCode = dx12ProgramImpl->getPsBlob();
     mDX12PipelineCache.bindProgram(
-        dx12ProgramImpl->getVsBlob(),
-        dx12ProgramImpl->getGsBlob(),
-        dx12ProgramImpl->getPsBlob());
+        &vsCode,
+        &gsCode,
+        &psCode);
     mDX12PipelineCache.bindRasterState(dx12RasterState);
     mDX12PipelineCache.bindPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 

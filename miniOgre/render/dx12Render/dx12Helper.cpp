@@ -1,4 +1,5 @@
 #include "OgreHeader.h"
+#include <dxcapi.h>
 #include "OgreVertexDeclaration.h"
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
@@ -174,6 +175,94 @@ uint32_t DX12Helper::getMsaaQuality()
 	return m4xMsaaQuality;
 }
 
+std::vector<ShaderResource> DX12Helper::parseShaderResource(
+	ShaderStageFlags stageFlags,
+	const char* byteCode,
+	uint32_t byteCodeSize)
+{
+	std::vector<ShaderResource> resourceList;
+
+	IDxcLibrary* pLibrary = NULL;
+	DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&pLibrary));
+	IDxcBlobEncoding* pBlob = NULL;
+	pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)byteCode, byteCodeSize, 0, &pBlob);
+
+	IDxcContainerReflection* pReflection;
+	DxcCreateInstance(CLSID_DxcContainerReflection, IID_PPV_ARGS(&pReflection));
+
+	pReflection->Load(pBlob);
+
+#define DXIL_FOURCC(ch0, ch1, ch2, ch3) \
+    ((uint32_t)(uint8_t)(ch0) | (uint32_t)(uint8_t)(ch1) << 8 | (uint32_t)(uint8_t)(ch2) << 16 | (uint32_t)(uint8_t)(ch3) << 24)
+	UINT32                   shaderIdx;
+	(pReflection->FindFirstPartKind(DXIL_FOURCC('D', 'X', 'I', 'L'), &shaderIdx));
+	ID3D12ShaderReflection* d3d12reflection = NULL;
+	pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&d3d12reflection));
+	D3D12_SHADER_DESC shaderDesc;
+	HRESULT hr = d3d12reflection->GetDesc(&shaderDesc);
+	for (auto i = 0; i < shaderDesc.BoundResources; i++)
+	{
+		D3D12_SHADER_INPUT_BIND_DESC desc;
+		d3d12reflection->GetResourceBindingDesc(i, &desc);
+		if (strcmp(desc.Name, "$Globals") == 0)
+		{
+			assert(false);
+		}
+		resourceList.emplace_back();
+		auto& back = resourceList.back();
+		back.name = desc.Name;
+		back.reg = desc.BindPoint;
+		back.size = desc.BindCount;
+		back.type = desc.Type;
+		back.set = desc.Space;
+		back.used_stages = (uint8_t)stageFlags;
+	}
+	pBlob->Release();
+	pLibrary->Release();
+	pReflection->Release();
+	d3d12reflection->Release();
+	return resourceList;
+}
+
+
+void DX12Helper::parseInputParams(
+	const char* byteCode,
+	uint32_t byteCodeSize,
+	D3d12ShaderParameters& shaderInputParameters)
+{
+	IDxcLibrary* pLibrary = NULL;
+	DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&pLibrary));
+	IDxcBlobEncoding* pBlob = NULL;
+	pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)byteCode, byteCodeSize, 0, &pBlob);
+
+	IDxcContainerReflection* pReflection;
+	DxcCreateInstance(CLSID_DxcContainerReflection, IID_PPV_ARGS(&pReflection));
+
+	pReflection->Load(pBlob);
+
+#define DXIL_FOURCC(ch0, ch1, ch2, ch3) \
+    ((uint32_t)(uint8_t)(ch0) | (uint32_t)(uint8_t)(ch1) << 8 | (uint32_t)(uint8_t)(ch2) << 16 | (uint32_t)(uint8_t)(ch3) << 24)
+	UINT32                   shaderIdx;
+	(pReflection->FindFirstPartKind(DXIL_FOURCC('D', 'X', 'I', 'L'), &shaderIdx));
+	ID3D12ShaderReflection* d3d12reflection = NULL;
+	pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&d3d12reflection));
+	D3D12_SHADER_DESC shaderDesc;
+	HRESULT hr = d3d12reflection->GetDesc(&shaderDesc);
+	shaderInputParameters.resize(shaderDesc.InputParameters);
+	D3D12_SIGNATURE_PARAMETER_DESC curParam;
+	for (auto i = 0; i < shaderDesc.InputParameters; i++)
+	{
+		d3d12reflection->GetInputParameterDesc(i, &curParam);
+		D3D12ParamDesc& desc = shaderInputParameters[i];
+		strncpy(desc.name, curParam.SemanticName, sizeof(desc.name));
+		desc.semanticIndex = curParam.SemanticIndex;
+	}
+	pBlob->Release();
+	pLibrary->Release();
+	pReflection->Release();
+	d3d12reflection->Release();
+
+}
 
 DxDescriptorID DX12Helper::getSampler(
 	const filament::backend::SamplerParams& params, 

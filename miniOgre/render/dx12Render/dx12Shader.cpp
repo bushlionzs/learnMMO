@@ -56,7 +56,7 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 
 bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
 {
-    Ogre::ShaderPrivateInfo* privateInfo =
+    /*Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
@@ -116,7 +116,8 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
             Ogre::ShaderType::ComputeShader,
             "cs_5_1",
             res->_fullname);
-    }
+    }*/
+    assert(false);
     return true;
 }
 bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
@@ -124,72 +125,40 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
 
-    const D3D_SHADER_MACRO* macro = nullptr;
-
-    std::vector<D3D_SHADER_MACRO> macros;
-
-    for (auto& o : shaderInfo.shaderMacros)
-    {
-        macros.emplace_back();
-        macros.back().Name = o.first.c_str();
-        macros.back().Definition = o.second.c_str();
-    }
-
-    macros.emplace_back();
-    macros.back().Name = NULL;
-    macros.back().Definition = NULL;
-
-
-    macro = macros.data();
-
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
-
+    
     if (res)
     {
-        String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
-        mVertexByteCode = d3dUtil::CompileShader(
-            *vertexContent,
-            macro,
-            privateInfo->vertexShaderEntryPoint.c_str(),
-            "vs_5_1",
-            res->_fullname);
+        String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
+        hlslToBin(shaderInfo.shaderName, *content, privateInfo->vertexShaderEntryPoint,
+            shaderInfo.shaderMacros, Ogre::VertexShader, mVertexByteCode, false);
+        const char* data = mVertexByteCode.c_str();
+        int kk = 0;
     }
     
     res = ResourceManager::getSingleton().getResource(privateInfo->fragShaderName);
     if (res)
     {
-        String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
-        mFragByteCode = d3dUtil::CompileShader(
-            *fragContent,
-            macro,
-            privateInfo->fragShaderEntryPoint.c_str(),
-            "ps_5_1",
-            res->_fullname);
+        String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
+        hlslToBin(shaderInfo.shaderName, *content, privateInfo->fragShaderEntryPoint,
+            shaderInfo.shaderMacros, Ogre::PixelShader, mFragByteCode, false);
     }
    
 
     res = ResourceManager::getSingleton().getResource(privateInfo->geometryShaderName);
     if (res)
     {
-        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
-        mGeometryByteCode = d3dUtil::CompileShader(
-            *Content,
-            macro,
-            privateInfo->geometryShaderEntryPoint.c_str(),
-            "ps_5_1",
-            res->_fullname);
+        String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
+        hlslToBin(shaderInfo.shaderName, *content, privateInfo->geometryShaderEntryPoint,
+            shaderInfo.shaderMacros, Ogre::GeometryShader, mGeometryByteCode, false);
     }
 
     res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
     if (res)
     {
-        String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
-        mComputeByteCode = d3dUtil::CompileShader(
-            *Content,
-            macro,
-            privateInfo->computeShaderEntryPoint.c_str(),
-            "ps_5_1",
-            res->_fullname);
+        String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
+        hlslToBin(shaderInfo.shaderName, *content, privateInfo->computeShaderEntryPoint,
+            shaderInfo.shaderMacros, Ogre::ComputeShader, mComputeByteCode, false);
     }
     return true;
 }
@@ -220,41 +189,38 @@ auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
 void DX12ProgramImpl::parseShaderInfo()
 {
     {
-        ID3DBlob* blob = mVertexByteCode;
-        if (blob)
+        if (!mVertexByteCode.empty())
         {
-            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::VERTEX,
-                blob->GetBufferPointer(), blob->GetBufferSize());
+            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::VERTEX,
+                mVertexByteCode.c_str(), mVertexByteCode.size());
             updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::VERTEX);
         }
     }
 
     {
-        ID3DBlob* blob = mGeometryByteCode;
-        if (blob)
+
+        if (!mGeometryByteCode.empty())
         {
-            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::GEOMETRY,
-                blob->GetBufferPointer(), blob->GetBufferSize());
+            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::GEOMETRY,
+                mGeometryByteCode.c_str(), mGeometryByteCode.size());
             updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::GEOMETRY);
         }
     }
 
     {
-        ID3DBlob* blob = mFragByteCode;
-        if (blob)
+        if (!mFragByteCode.empty())
         {
-            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::FRAGMENT,
-                blob->GetBufferPointer(), blob->GetBufferSize());
+            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::FRAGMENT,
+                mFragByteCode.c_str(), mFragByteCode.size());
             updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::FRAGMENT);
         }
     }
 
     {
-        ID3DBlob* blob = mComputeByteCode;
-        if (blob)
+        if (!mComputeByteCode.empty())
         {
-            auto resourceList = DX12ProgramImpl::parseShaderResource(ShaderStageFlags::COMPUTE,
-                blob->GetBufferPointer(), blob->GetBufferSize());
+            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::COMPUTE,
+                mComputeByteCode.c_str(), mComputeByteCode.size());
             updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::COMPUTE);
         }
     }
@@ -298,7 +264,8 @@ void DX12ProgramImpl::parseShaderInfo()
         if (shaderResource.type == D3D_SIT_TEXTURE ||
             shaderResource.type == D3D_SIT_CBUFFER ||
             shaderResource.type == D3D_SIT_SAMPLER ||
-            shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS)
+            shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS||
+            shaderResource.type == D3D_SIT_UAV_RWSTRUCTURED)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,
                 &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
@@ -321,11 +288,11 @@ void DX12ProgramImpl::parseShaderInfo()
 
     D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
     rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    if (mVertexByteCode == nullptr)
+    if (mVertexByteCode.empty())
     {
         rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
     }
-    if (mFragByteCode == nullptr)
+    if (mFragByteCode.empty())
     {
         rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
     }
@@ -372,33 +339,18 @@ void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
     }
     const VertexDeclaration::VertexElementList& elementList = vDeclaration->getElementList();
 
-    D3d12ShaderParameters shaderInputParameters;
-    ID3D12ShaderReflection* shaderReflection = nullptr;
-    void* byteCode = mVertexByteCode->GetBufferPointer();
-    uint32_t byteCodeSize = mVertexByteCode->GetBufferSize();
-    HRESULT hr = D3DReflect(byteCode, byteCodeSize,
-        IID_ID3D11ShaderReflection, (void**)&shaderReflection);
-
-    D3D12_SHADER_DESC shaderDesc;
-    hr = shaderReflection->GetDesc(&shaderDesc);
-
-    shaderInputParameters.resize(shaderDesc.InputParameters);
-
-    for (auto i = 0; i < shaderDesc.InputParameters; i++)
-    {
-        D3D12_SIGNATURE_PARAMETER_DESC& curParam = shaderInputParameters[i];
-        shaderReflection->GetInputParameterDesc(i, &curParam);
-    }
+    DX12Helper::getSingleton().parseInputParams(mVertexByteCode.c_str(), mVertexByteCode.size(), mShaderInputParameters);
+    
 
     
     uint32_t index = 0;
-    for (auto& it : shaderInputParameters)
+    for (auto& it : mShaderInputParameters)
     {
         D3D12_INPUT_ELEMENT_DESC elem = {};
         for (const auto& e : elementList)
         {
             LPCSTR semanticName = D3D12Mappings::getSemanticName(e.getSemantic());
-            if (strcmp(semanticName, it.SemanticName) == 0 && e.getIndex() == it.SemanticIndex)
+            if (strcmp(semanticName, it.name) == 0 && e.getIndex() == it.semanticIndex)
             {
                 elem.Format = D3D12Mappings::dx12GetType(e.getType());
                 elem.InputSlot = e.getSource();
@@ -410,26 +362,15 @@ void DX12ProgramImpl::updateInputDesc(VertexDeclaration* vDeclaration)
         if (elem.Format == DXGI_FORMAT_UNKNOWN)
         {
             assert(false);
-        }
-
-        uint32_t  semanticSize = strlen(it.SemanticName);
-        char* data = (char*)malloc(semanticSize + 1);
-        if (data)
-        {
-            memcpy((void*)data, it.SemanticName, semanticSize);
-            data[semanticSize] = 0;
-        }
-        
-        elem.SemanticName = data;
-        elem.SemanticIndex = it.SemanticIndex;
+        } 
+        elem.SemanticName = it.name;
+        elem.SemanticIndex = it.semanticIndex;
         elem.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         elem.InstanceDataStepRate = 0;
         mInputDesc.push_back(elem);
         index++;
     }
     mInputSize = index;
-
-    ReleaseCOM(shaderReflection);
 }
 
 std::vector<ShaderResource> DX12ProgramImpl::parseShaderResource(

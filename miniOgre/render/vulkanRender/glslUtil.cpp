@@ -191,14 +191,14 @@ bool glslCompileShader(
     {
         //hlsl
         
-         hlslToSpirv(shaderName, shaderContent, 
+         hlslToBin(shaderName, shaderContent, 
              entryPoint, shaderMacros, shaderModuleInfo.shaderType, result);
-         std::string hlslSource;
-         uint32_t size = result.size();
-         spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
-         std::string glslSource;
-         //spvToGlsl(shaderModuleInfo.shaderType, shaderName, result, glslSource);
-         int kk = 0;
+         //std::string hlslSource;
+         //uint32_t size = result.size();
+         //spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
+         //std::string glslSource;
+         ////spvToGlsl(shaderModuleInfo.shaderType, shaderName, result, glslSource);
+         //int kk = 0;
     }
 
     VkShaderModule shader = VK_NULL_HANDLE;

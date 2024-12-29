@@ -105,8 +105,20 @@ public:
     {
         return mProgramImpl;
     }
+
+    void updatePSO(ID3D12PipelineState* pso)
+    {
+        mPSO = pso;
+    }
+
+    ID3D12PipelineState* getPSO()
+    {
+        return mPSO;
+    }
+
 private:
     DX12ProgramImpl* mProgramImpl;
+    ID3D12PipelineState* mPSO;
 };
 
 struct DX12Sampler : public HwSampler

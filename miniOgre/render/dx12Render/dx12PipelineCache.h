@@ -41,9 +41,9 @@ public:
 
     // Each of the following methods are fast and do not make Vulkan calls.
     void bindProgram(
-        ID3DBlob* vertexShader,
-        ID3DBlob* geomtryShader,
-        ID3DBlob* fragShader) noexcept;
+        const std::string* vertexShader,
+        const std::string* geomtryShader,
+        const std::string* fragShader) noexcept;
     void bindRasterState(const RasterState& rasterState) noexcept;
     void bindFormat(DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat);
     void bindPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE topology) noexcept;
@@ -58,7 +58,7 @@ public:
     };
 
     struct DX12PipelineKey {                                                          // size : offset
-        ID3DBlob* shaders[SHADER_MODULE_COUNT];                              //  24  : 0
+        const std::string* shaders[SHADER_MODULE_COUNT];                              //  24  : 0
         DXGI_FORMAT depthFormat;                                                     //  4   : 16
         DXGI_FORMAT colorFormat;                                                     //  4   : 20
         uint16_t topology;                                                        //  2   : 24

@@ -90,13 +90,14 @@ private:
 	std::string content;
 };
 
-bool hlslToSpirv(
+bool hlslToBin(
 	const std::string& shaderName,
 	const std::string& shaderContent,
 	const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
 	Ogre::ShaderType shaderType,
-	std::string& spv
+	std::string& spv,
+	bool vulkan
 )
 {
 	hlslInit();
@@ -108,8 +109,7 @@ bool hlslToSpirv(
 	dxcBuffer.Encoding = CP_UTF8;
 	std::vector<LPCWSTR> arguments = {
 	L"-Zi",
-	L"-Od",
-	L"-spirv"         // ±àÒëÎªÄ¿±êSPIR-V
+	L"-Od"
 	};
 	
 
@@ -152,8 +152,13 @@ bool hlslToSpirv(
 		arguments.push_back(pool.back().c_str());
 	}
 
-	arguments.push_back(L"-D");
-	arguments.push_back(L"VULKAN");
+	if (vulkan)
+	{
+		arguments.push_back(L"-D");
+		arguments.push_back(L"VULKAN");
+		arguments.push_back(L"-spirv");
+	}
+	
 
 	arguments.push_back(L"-D");
 	arguments.push_back(L"DIRECT3D12");

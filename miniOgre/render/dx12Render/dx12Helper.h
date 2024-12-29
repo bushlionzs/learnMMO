@@ -10,6 +10,7 @@ class Dx12Shader;
 struct DX12Sampler;
 class Dx12Texture;
 
+
 class DX12Helper : public Ogre::Singleton<DX12Helper>
 {
 public:
@@ -41,6 +42,17 @@ public:
 	{
 		return mDx12RenderSystem;
 	}
+
+
+	std::vector<ShaderResource> parseShaderResource(
+		ShaderStageFlags stageFlags,
+		const char* byteCode,
+		uint32_t byteCodeSize);
+
+	void parseInputParams(const char* byteCode,
+		uint32_t byteCodeSize,
+		D3d12ShaderParameters& parameters);
+
 
 	DxDescriptorID getSampler(
 		const filament::backend::SamplerParams& params,

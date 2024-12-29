@@ -13,28 +13,28 @@ class VertexDeclaration;
 class DX12ProgramImpl
 {
 public:
-    typedef std::vector<D3D12_SIGNATURE_PARAMETER_DESC> D3d12ShaderParameters;
+    
 public:
     DX12ProgramImpl(const ShaderInfo& info, VertexDeclaration* decl);
     ~DX12ProgramImpl();
 
     
 
-    ID3DBlob* getVsBlob()
+    const std::string& getVsBlob()
     {
         return mVertexByteCode;
     }
 
-    ID3DBlob* getGsBlob()
+    const std::string& getGsBlob()
     {
         return mGeometryByteCode;
     }
-    ID3DBlob* getPsBlob()
+    const std::string& getPsBlob()
     {
         return mFragByteCode;
     }
 
-    ID3DBlob* getComputeBlob()
+    const std::string& getComputeBlob()
     {
         return mComputeByteCode;
     }
@@ -77,12 +77,13 @@ private:
     std::vector<D3D12_INPUT_ELEMENT_DESC> mInputDesc;
     std::vector <ShaderResource> mProgramResourceList;
     uint32_t mInputSize = 0;
-    
-    ID3DBlob* mVertexByteCode = nullptr;
-    ID3DBlob* mGeometryByteCode = nullptr;
-    ID3DBlob* mFragByteCode = nullptr;
+    std::string mVertexByteCode;
+    std::string mGeometryByteCode;
+    std::string mFragByteCode;
+    std::string mComputeByteCode;
 
-    ID3DBlob* mComputeByteCode = nullptr;
     ID3D12RootSignature* mRootSignature;
     std::map<std::string, DescriptorInfo> mDescriptorInfoMap;
+
+    D3d12ShaderParameters mShaderInputParameters;
 };

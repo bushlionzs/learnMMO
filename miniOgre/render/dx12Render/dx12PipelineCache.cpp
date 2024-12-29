@@ -29,9 +29,9 @@ void DX12PipelineCache::bindPipeline(
 
 // Each of the following methods are fast and do not make Vulkan calls.
 void DX12PipelineCache::bindProgram(
-    ID3DBlob* vertexShader,
-    ID3DBlob* geomtryShader,
-    ID3DBlob* fragShader) noexcept
+    const std::string* vertexShader,
+    const std::string* geomtryShader,
+    const std::string* fragShader) noexcept
 {
     mPipelineRequirements.shaders[0] = vertexShader;
     mPipelineRequirements.shaders[1] = geomtryShader;
@@ -95,18 +95,18 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     };
     psoDesc.pRootSignature = mPipelineRequirements.rootSignature;
 
-    ID3DBlob* vsblob = mPipelineRequirements.shaders[0];
+    const std::string* vsblob = mPipelineRequirements.shaders[0];
     psoDesc.VS =
     {
-        reinterpret_cast<BYTE*>(vsblob->GetBufferPointer()),
-        vsblob->GetBufferSize()
+        reinterpret_cast<const BYTE*>(vsblob->c_str()),
+        vsblob->size()
     };
 
-    ID3DBlob* psblob = mPipelineRequirements.shaders[2];
+    const std::string* psblob = mPipelineRequirements.shaders[2];
     psoDesc.PS =
     {
-        reinterpret_cast<BYTE*>(psblob->GetBufferPointer()),
-        psblob->GetBufferSize()
+        reinterpret_cast<const BYTE*>(psblob->c_str()),
+        psblob->size()
     };
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 

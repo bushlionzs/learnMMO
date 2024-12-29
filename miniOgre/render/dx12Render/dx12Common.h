@@ -118,6 +118,12 @@ struct DescriptorHeapContext
     struct DescriptorHeap** pSamplerHeaps;
 };
 
+struct D3D12ParamDesc
+{
+    char name[128];
+    uint32_t semanticIndex;
+};
+typedef std::vector<D3D12ParamDesc> D3d12ShaderParameters;
 std::wstring AnsiToWString(const std::string& str);
 std::wstring AnsiToWString(const char* str);
 
