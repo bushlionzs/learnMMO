@@ -367,16 +367,18 @@ void ShadowMap::base2()
     Handle<HwBufferObject> vertexDataHandle = vertexData->getBuffer(0); 
     IndexData* indexData = mesh->getIndexData();
     Handle<HwBufferObject> indexDataHandle = indexData->getHandle();
-    
-    uint32_t meshConstantsBufferSize = subMeshCount * sizeof(MeshConstants);
-    meshConstantsBuffer =
-        rs->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Storge,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0,
-            meshConstantsBufferSize,
-            "meshConstantsBuffer");
 
+    BufferDesc desc{};
+    desc.mBindingType = BufferObjectBinding_Buffer;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = subMeshCount;
+    desc.mStructStride = sizeof(MeshConstants);
+    desc.mSize = desc.mElementCount * desc.mStructStride;
+    desc.pName = "meshConstantsBuffer";
+    meshConstantsBuffer = rs->createBufferObject(desc);
+
+    auto meshConstantsBufferSize = desc.mSize;
     // Calculate mesh constants and filter containers
     for (auto i = 0; i < subMeshCount; i++)
     {
@@ -408,18 +410,20 @@ void ShadowMap::base2()
 
     for (auto i = 0; i < NUM_CULLING_VIEWPORTS; i++)
     {
-        filteredIndexBuffer[i] =
-            rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Index,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                maxIndices * sizeof(uint32_t));
+        desc.mBindingType = BufferObjectBinding_Storge;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = maxIndices;
+        desc.mStructStride = sizeof(uint32_t);
+        desc.mSize = desc.mElementCount * desc.mStructStride;
+        desc.pName = "filteredIndexBuffer";
+        filteredIndexBuffer[i] = rs->createBufferObject(desc);
     }
     uint32_t computeThread = 256;
 
     auto maxFilterBatches = (maxIndices / 3) / (computeThread >> 1);
 
-    uint32_t filterDispatchGroupSize = maxFilterBatches * sizeof(FilterDispatchGroupData);
+    //uint32_t filterDispatchGroupSize = maxFilterBatches * sizeof(FilterDispatchGroupData);
 
     uint32_t dispatchGroupCount = 0;
 
@@ -427,12 +431,14 @@ void ShadowMap::base2()
 
     
     dispatchGroupCount = 0;
-    filterDispatchGroupDataBuffer =
-        rs->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Storge,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0,
-            filterDispatchGroupSize);
+    desc.mBindingType = BufferObjectBinding_Buffer;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = maxFilterBatches;
+    desc.mStructStride = sizeof(FilterDispatchGroupData);
+    desc.mSize = desc.mElementCount * desc.mStructStride;
+    desc.pName = "filterDispatchGroupDataBuffer";
+    filterDispatchGroupDataBuffer = rs->createBufferObject(desc);
     BufferHandleLockGuard lockGuard(filterDispatchGroupDataBuffer);
 
     FilterDispatchGroupData* dispatchGroupData = (FilterDispatchGroupData*)lockGuard.data();
@@ -479,112 +485,134 @@ void ShadowMap::base2()
         constants[geomSet].indexOffset = indexOffset;
         indexOffset += visibilityBufferFilteredIndexCount[geomSet];
     }
-
-    vbConstantsBuffer =
-        mRenderSystem->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Uniform, 
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0, sizeof(VBConstants) * 2);
+    desc.mBindingType = BufferObjectBinding_Uniform;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = 0;
+    desc.mStructStride = 0;
+    desc.mSize = sizeof(VBConstants) * 2;
+    desc.pName = "vbConstantsBuffer";
+    vbConstantsBuffer = mRenderSystem->createBufferObject(desc);
 
     rs->updateBufferObject(vbConstantsBuffer, (const char*)&constants[0], sizeof(VBConstants) * 2);
-
-    renderSettingsUniformHandle = rs->createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Uniform,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        0,
-        sizeof(renderSetting)
-    );
+    desc.mBindingType = BufferObjectBinding_Uniform;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = 0;
+    desc.mStructStride = 0;
+    desc.mSize = sizeof(renderSetting);
+    desc.pName = "renderSettingsBuffer";
+    renderSettingsUniformHandle = rs->createBufferObject(desc);
 
     rs->updateBufferObject(renderSettingsUniformHandle,
         (const char*)&renderSetting, sizeof(renderSetting));
-
-    esmInputConstantsHandle = rs->createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Uniform,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        0,
-        sizeof(ESMInputConstants)
-    );
+    desc.mBindingType = BufferObjectBinding_Uniform;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = 0;
+    desc.mStructStride = 0;
+    desc.mSize = sizeof(ESMInputConstants);
+    desc.pName = "esmInputConstantsBuffer";
+    esmInputConstantsHandle = rs->createBufferObject(desc);
 
     rs->updateBufferObject(esmInputConstantsHandle,
         (const char*)&esmConstants, sizeof(esmConstants));
-    sssEnabledHandle = rs->createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Uniform,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        0,
-        sizeof(uint32_t)
-    );
+
+    desc.mBindingType = BufferObjectBinding_Uniform;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = 0;
+    desc.mElementCount = 0;
+    desc.mStructStride = 0;
+    desc.mSize = sizeof(uint32_t);
+    desc.pName = "sssEnabledBuffer";
+
+    sssEnabledHandle = rs->createBufferObject(desc);
     rs->updateBufferObject(sssEnabledHandle, (const char*)&sssEnabled, sizeof(sssEnabled));
-
-    uint32_t indirectDrawArgBufferSize = NUM_GEOMETRY_SETS * NUM_CULLING_VIEWPORTS * 8 * sizeof(uint32_t);
-
-    
 
     for (auto i = 0; i < numFrame; i++)
     {
         auto& frameData = mFrameData[i];
+
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(FrameConstantBuffer);
+        desc.pName = "FrameConstantBuffer";
+
         frameData.frameBufferObject =
-            mRenderSystem->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Uniform,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0, sizeof(FrameConstantBuffer));
-
+            mRenderSystem->createBufferObject(desc);
+        desc.mBindingType = BufferObjectBinding_Storge;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = NUM_GEOMETRY_SETS * NUM_CULLING_VIEWPORTS * 8;
+        desc.mStructStride = sizeof(uint32_t);
+        desc.mSize = desc.mElementCount * desc.mStructStride;
+        desc.pName = "indirectDrawArgBuffer";
         frameData.indirectDrawArgBuffer =
-            mRenderSystem->createBufferObject(
-                BufferObjectBinding_InDirectBuffer,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                indirectDrawArgBufferSize);
-
+            mRenderSystem->createBufferObject(desc);
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(MeshInfoUniformBlock);
+        desc.pName = "objectUniformBlockBuffer";
         frameData.objectUniformBlockHandle =
-            rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Uniform,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                sizeof(MeshInfoUniformBlock),
-                "objectUniformBlock Buffer");
-
+            rs->createBufferObject(desc);
+        desc.mBindingType = BufferObjectBinding_Storge;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = maxIndices;
+        desc.mStructStride = sizeof(uint32_t);
+        desc.mSize = desc.mElementCount * desc.mStructStride;
+        desc.pName = "indirectDataBuffer";
         frameData.indirectDataBuffer =
-            rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Storge,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                maxIndices * sizeof(uint32_t));
-
+            rs->createBufferObject(desc);
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(PerFrameVBConstants);
+        desc.pName = "PerFrameVBConstantsBuffer";
         frameData.perFrameConstantsBuffer =
-            rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Uniform,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                sizeof(PerFrameVBConstants),
-                "PerFrameVBConstants Buffer Desc");
+            rs->createBufferObject(desc);
 
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(MeshInfoUniformBlock);
+        desc.pName = "esmUniformBlockBuffer";
         frameData.esmUniformBlockHandle =
-            rs->createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Uniform,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                0,
-                sizeof(MeshInfoUniformBlock),
-                "esmUniformBlock Buffer");
+            rs->createBufferObject(desc);
 
-        frameData.cameraUniformHandle = rs->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Uniform,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0,
-            sizeof(cameraUniform)
-        );
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(cameraUniform);
+        desc.pName = "cameraUniformBuffer";
 
-        frameData.lightUniformHandle = rs->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Uniform,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0,
-            sizeof(lightUniformBlock)
-        );
+        frameData.cameraUniformHandle = rs->createBufferObject(desc);
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mElementCount = 0;
+        desc.mStructStride = 0;
+        desc.mSize = sizeof(lightUniformBlock);
+        desc.pName = "lightUniformBlockBuffer";
+        frameData.lightUniformHandle = rs->createBufferObject(desc);
     }
     
     //clear buffer pass
-    bool visibity = true;
+    bool visibity = false;
     DescriptorData descriptorData[16];
-    if(visibity)
+    if(1)
     {
         ShaderInfo shaderInfo;
         shaderInfo.shaderName = "clearBuffer";
@@ -647,7 +675,7 @@ void ShadowMap::base2()
     }
     
     //filter triangles pass
-    if(visibity)
+    if(1)
     {
         ShaderInfo shaderInfo;
         shaderInfo.shaderName = "filterTriangles";
@@ -789,8 +817,7 @@ void ShadowMap::base2()
     texProperty._height = shadowSize;
     texProperty._tex_format = Ogre::PF_DEPTH32F;
     texProperty._tex_usage = Ogre::TextureUsage::DEPTH_ATTACHMENT;
-    esmShadowMap = mRenderSystem->createRenderTarget(
-        "shadow", texProperty);
+    esmShadowMap = mRenderSystem->createRenderTarget("shadow", texProperty);
 
     //draw esm shadow map
     if(1)
@@ -937,7 +964,7 @@ void ShadowMap::base2()
                 GET_INDIRECT_DRAW_ELEM_INDEX(target, 0, 0) * sizeof(uint32_t);
 
             rs->drawIndexedIndirect(frameData->indirectDrawArgBuffer, indirectBufferByteOffset, 1, 32);
-            if (1)
+            if (alpha)
             {
                 tmp[0] = frameData->zeroDescrSetOfShadowPassAlpha;
                 tmp[1] = frameData->firstDescrSetOfShadowPassAlpha;
@@ -1021,14 +1048,14 @@ void ShadowMap::base2()
             rs->updateDescriptorSet(frameData.zeroDescrSetOfVbPass, 1, descriptorData);
 
             frameData.thirdDescrSetOfVbPass = rs->createDescriptorSet(vbBufferPassHandle, 3);
-            
+
             descriptorData[0].pName = "objectUniformBlock";
             descriptorData[0].mCount = 1;
             descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
             descriptorData[0].ppBuffers = &frameData.objectUniformBlockHandle;
             rs->updateDescriptorSet(frameData.thirdDescrSetOfVbPass, 1, descriptorData);
             ///
-            auto zeroDescrSetOfVbPassAlpha  = rs->createDescriptorSet(vbBufferPassAlphaHandle, 0);
+            auto zeroDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 0);
             auto firstDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 1);
             auto thirdDescrSetOfVbPassAlpha = rs->createDescriptorSet(vbBufferPassAlphaHandle, 3);
             frameData.zeroDescrSetOfVbPassAlpha = zeroDescrSetOfVbPassAlpha;
@@ -1066,13 +1093,13 @@ void ShadowMap::base2()
             descriptorData[0].ppBuffers = &frameData.objectUniformBlockHandle;
             rs->updateDescriptorSet(thirdDescrSetOfVbPassAlpha, 1, descriptorData);
         }
-        
+
         auto winDepth = mRenderWindow->getDepthTarget();
         RenderPassCallback visibilityBufferCallback = [=, this](RenderPassInfo& info) {
             auto* rs = Ogre::Root::getSingleton().getRenderSystem();
             auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
             info.renderTargetCount = 1;
-            info.renderTargets[0].renderTarget =  visibilityBufferTarget;
+            info.renderTargets[0].renderTarget = visibilityBufferTarget;
             info.renderTargets[0].clearColour = { 1.0f, 1.0f, 1.0f, 1.000000000f };
             info.depthTarget.depthStencil = winDepth;
             info.depthTarget.clearValue = { 0.0f, 0.0f };
@@ -1091,8 +1118,8 @@ void ShadowMap::base2()
             rs->bindPipeline(vbBufferPassHandle, vbBufferPasssPipelineHandle, &tmp[0], 4);
             uint64_t indirectBufferByteOffset =
                 GET_INDIRECT_DRAW_ELEM_INDEX(VIEW_CAMERA, 0, 0) * sizeof(uint32_t);
-            
-            
+
+
             rs->drawIndexedIndirect(frameData->indirectDrawArgBuffer, indirectBufferByteOffset, 1, 32);
 
             tmp[0] = frameData->zeroDescrSetOfVbPassAlpha;
@@ -1114,9 +1141,18 @@ void ShadowMap::base2()
         auto vbPass = createUserDefineRenderPass(visibilityBufferCallback, vbUpdateCallback);
         mRenderPipeline->addRenderPass(vbPass);
     }
-    
+
 
     //visibility shade pass
+    {
+        Ogre::TextureProperty texProperty;
+        texProperty._width = ogreConfig.width;
+        texProperty._height = ogreConfig.height;
+        texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+        texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
+        shadePassTarget = rs->createRenderTarget("shadePassTarget", texProperty);
+    }
+    
     if(1)
     {
         ShaderInfo shaderInfo;
@@ -1343,12 +1379,7 @@ void ShadowMap::base2()
 
             rs->updateDescriptorSet(firstSet, 8, descriptorData);
         }
-        TextureProperty texProperty;
-        texProperty._width = ogreConfig.width;
-        texProperty._height = ogreConfig.height;
-        texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
-        texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
-        shadePassTarget = rs->createRenderTarget("shadePassTarget", texProperty);
+        
         auto winDepth = mRenderWindow->getDepthTarget();
         RenderPassCallback shadeCallback = [=, this](RenderPassInfo& info) {
             RenderTargetBarrier rtBarriers[] = 
@@ -1463,13 +1494,19 @@ void ShadowMap::base2()
             rs->draw(3, 0);
             rs->endRenderPass(info);
             rs->popGroupMarker();
-            rtBarriers[0] =
             {
-                mRenderWindow->getColorTarget(),
-                RESOURCE_STATE_RENDER_TARGET,
-                RESOURCE_STATE_PRESENT
-            };
-            rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+                RenderTargetBarrier rtBarriers[] =
+                {
+                    {
+                        shadePassTarget,
+                        RESOURCE_STATE_SHADER_RESOURCE,
+                        RESOURCE_STATE_RENDER_TARGET
+                    }
+                };
+                rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+            }
+
+            
             };
         UpdatePassCallback updateCallback = [](float delta) {
             };

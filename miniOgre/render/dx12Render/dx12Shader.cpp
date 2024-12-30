@@ -56,7 +56,7 @@ bool DX12ProgramImpl::load(const ShaderInfo& shaderInfo)
 
 bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
 {
-    /*Ogre::ShaderPrivateInfo* privateInfo =
+    Ogre::ShaderPrivateInfo* privateInfo =
         ShaderManager::getSingleton().getShader(shaderInfo.shaderName, EngineType_Dx12);
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->vertexShaderName);
@@ -64,15 +64,14 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
     if (res)
     {
         String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
-        mVertexByteCode = d3dUtil::CompileGlslShader(
+        mVertexByteCode.clear();
+        d3dUtil::CompileGlslShader(
             *vertexContent,
             shaderInfo.shaderMacros,
             privateInfo->vertexShaderEntryPoint,
             Ogre::ShaderType::VertexShader,
-            "vs_5_1",
-            res->_fullname);
-
-        
+            res->_fullname,
+            mVertexByteCode);
     }
     
 
@@ -81,13 +80,14 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
     if (res)
     {
         String* fragContent = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
-        mFragByteCode = d3dUtil::CompileGlslShader(
+        mFragByteCode.clear();
+        d3dUtil::CompileGlslShader(
             *fragContent,
             shaderInfo.shaderMacros,
             privateInfo->fragShaderEntryPoint,
             Ogre::ShaderType::PixelShader,
-            "ps_5_1",
-            res->_fullname);
+            res->_fullname,
+            mFragByteCode);
     }
     
     res = ResourceManager::getSingleton().getResource(privateInfo->geometryShaderName);
@@ -95,13 +95,14 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
     if (res)
     {
         String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
-        mGeometryByteCode = d3dUtil::CompileGlslShader(
+        mGeometryByteCode.clear();
+        d3dUtil::CompileGlslShader(
             *Content,
             shaderInfo.shaderMacros,
             privateInfo->geometryShaderEntryPoint,
             Ogre::ShaderType::GeometryShader,
-            "gs_5_1",
-            res->_fullname);
+            res->_fullname,
+            mGeometryByteCode);
     }
 
     res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
@@ -109,15 +110,16 @@ bool DX12ProgramImpl::loadglsl(const ShaderInfo& shaderInfo)
     if (res)
     {
         String* Content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
-        mComputeByteCode = d3dUtil::CompileGlslShader(
+        mComputeByteCode.clear();
+        d3dUtil::CompileGlslShader(
             *Content,
             shaderInfo.shaderMacros,
             privateInfo->computeShaderEntryPoint,
             Ogre::ShaderType::ComputeShader,
-            "cs_5_1",
-            res->_fullname);
-    }*/
-    assert(false);
+            res->_fullname,
+            mComputeByteCode);
+    }
+
     return true;
 }
 bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
@@ -246,6 +248,10 @@ void DX12ProgramImpl::parseShaderInfo()
                 else
                 {
                     shaderSource.set_index = index;
+                    if (shaderSource.size == 5)
+                    {
+                        int kk = 0;
+                    }
                     index += shaderSource.size;
                 }
                 
@@ -289,10 +295,14 @@ void DX12ProgramImpl::parseShaderInfo()
     }
 
     D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    
     if (mVertexByteCode.empty())
     {
         rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+    }
+    else
+    {
+        rootSignatureFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     }
     if (mFragByteCode.empty())
     {

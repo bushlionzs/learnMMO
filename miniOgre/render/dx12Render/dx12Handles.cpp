@@ -57,9 +57,15 @@ DX12BufferObject::DX12BufferObject(
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         srvDesc.Format = DXGI_FORMAT_UNKNOWN;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Buffer.NumElements = mByteCount;
-        srvDesc.Buffer.StructureByteStride = 1;
+        srvDesc.Buffer.NumElements = desc.mElementCount;
+        srvDesc.Buffer.StructureByteStride = desc.mStructStride;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        if (desc.raw)
+        {
+            srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            srvDesc.Buffer.StructureByteStride = 0;
+            srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
+        }
         dx12Device->CreateShaderResourceView(BufferGPU.Get(), &srvDesc, cpuHandle);
     }
     break;
@@ -108,9 +114,7 @@ void DX12BufferObject::copyData(
     memcpy(mapData, data, size);
     unlock(cmdList);
 
-    auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
-        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-    cmdList->ResourceBarrier(1, &dstBarrier);
+    
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS DX12BufferObject::getGPUVirtualAddress()
@@ -134,9 +138,15 @@ void DX12BufferObject::unlock(ID3D12GraphicsCommandList* cmdList)
 {
     BufferUploader->Unmap(0, &mRange);
     uint32_t size = mRange.End - mRange.Begin;
+    auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
+        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+    cmdList->ResourceBarrier(1, &dstBarrier);
+
     cmdList->CopyBufferRegion(
         BufferGPU.Get(), 0, BufferUploader.Get(), mRange.Begin, size);
- 
+    dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+    cmdList->ResourceBarrier(1, &dstBarrier);
 }
 
 DX12Program::DX12Program(const ShaderInfo& info, VertexDeclaration* decl)

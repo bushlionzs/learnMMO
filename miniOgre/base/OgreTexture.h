@@ -69,6 +69,7 @@ namespace Ogre {
         filament::backend::SamplerParams _samplerParams;
         TextureProperty();
         bool isRenderTarget();
+        bool haveImageFile();
         void gltfSampler();
     };
 

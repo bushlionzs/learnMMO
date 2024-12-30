@@ -109,7 +109,8 @@ bool hlslToBin(
 	dxcBuffer.Encoding = CP_UTF8;
 	std::vector<LPCWSTR> arguments = {
 	L"-Zi",
-	L"-Od"
+	L"-Od",
+	L"-Qembed_debug"
 	};
 	
 
@@ -117,28 +118,24 @@ bool hlslToBin(
 	{
 		arguments.push_back(L"-T");
 		arguments.push_back(L"vs_6_0");
-		arguments.push_back(L"-E");
-		arguments.push_back(L"VS");
 	}
 	else if (shaderType == PixelShader)
 	{
 		arguments.push_back(L"-T");
 		arguments.push_back(L"ps_6_0");
-		arguments.push_back(L"-E");
-		arguments.push_back(L"PS");
 	}
 	else if(shaderType == ComputeShader)
 	{
 		arguments.push_back(L"-T");
 		arguments.push_back(L"cs_6_0");
-		arguments.push_back(L"-E");
-		arguments.push_back(L"CS");
 	}
 	else
 	{
 		assert(false);
 	}
-
+	std::wstring wEntryPoint = dy::acsi_to_widebyte(entryPoint);
+	arguments.push_back(L"-E");
+	arguments.push_back(wEntryPoint.c_str());
 	wchar_t buffer[256];
 	std::vector<std::wstring> pool;
 	pool.reserve(shaderMacros.size());

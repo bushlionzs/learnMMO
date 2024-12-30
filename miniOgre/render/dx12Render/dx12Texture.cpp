@@ -134,24 +134,25 @@ void Dx12Texture::_create2DTex()
 
     D3D12_CLEAR_VALUE* pvalue = nullptr;
     D3D12_CLEAR_VALUE ClearValue = {};
+
     if (mTextureProperty.isRenderTarget())
     {
         auto& backColor = mTextureProperty._backgroudColor;
         
         ClearValue.Format = D3D12Mappings::_getPF(mTextureProperty._tex_format);
         
-        pvalue = &ClearValue;
-
         if (mTextureProperty._tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
         {
             memcpy(ClearValue.Color, &backColor, sizeof(float) * 4);
             texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            pvalue = &ClearValue;
         }
         else if (mTextureProperty._tex_usage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
         {
             ClearValue.DepthStencil.Depth = 1.0f;
             ClearValue.DepthStencil.Stencil = 0.0f;
             texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            pvalue = &ClearValue;
         }
 
         states = D3D12_RESOURCE_STATE_GENERIC_READ;
@@ -164,7 +165,7 @@ void Dx12Texture::_create2DTex()
         texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
     }
 
-        
+    
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     auto hr = device->CreateCommittedResource(
         &heapProperties,
@@ -187,73 +188,18 @@ void Dx12Texture::_create2DTex()
         return;
     }
 
-    
-    const UINT num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
-
-    uint32_t mysize = 0;
+   
+    for (uint32_t face = 0; face < mFace; face++)
     {
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts;
-        if (width > 1)
+        auto width = mTextureProperty._width;
+        auto height = mTextureProperty._height;
+        for (uint32_t mip = 0; mip < texDesc.MipLevels; mip++)
         {
-            
-            {
-                UINT64 RequiredSize = 0;
-                UINT64 MemToAlloc = static_cast<UINT64>(sizeof(D3D12_PLACED_SUBRESOURCE_FOOTPRINT) + sizeof(UINT) + sizeof(UINT64)) * num2DSubresources;
-                if (MemToAlloc > SIZE_MAX)
-                {
-                    return;
-                }
-                void* pMem = HeapAlloc(GetProcessHeap(), 0, static_cast<SIZE_T>(MemToAlloc));
-                if (pMem == NULL)
-                {
-                    return;
-                }
-                pLayouts = reinterpret_cast<D3D12_PLACED_SUBRESOURCE_FOOTPRINT*>(pMem);
-                UINT64* pRowSizesInBytes = reinterpret_cast<UINT64*>(pLayouts + num2DSubresources);
-                UINT* pNumRows = reinterpret_cast<UINT*>(pRowSizesInBytes + num2DSubresources);
-
-                D3D12_RESOURCE_DESC Desc = mTex->GetDesc();
-                ID3D12Device* pDevice;
-                mTex->GetDevice(__uuidof(*pDevice), reinterpret_cast<void**>(&pDevice));
-                pDevice->GetCopyableFootprints(&Desc, 0, num2DSubresources, 0, pLayouts, pNumRows, pRowSizesInBytes, &RequiredSize);
-                pDevice->Release();
-            }
-            auto bytePerPixel = PixelUtil::getNumElemBytes(mFormat);
-            for (uint32_t face = 0; face < mFace; face++)
-            {
-                auto width = mTextureProperty._width;
-                auto height = mTextureProperty._height;
-                for (uint32_t mip = 0; mip < texDesc.MipLevels; mip++)
-                {
-                    uint32_t rowPitch = (width * bytePerPixel + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1) & ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1);
-                    uint32_t aa = rowPitch * height;
-                    uint32_t bb = PixelUtil::getMemorySize(width, height, 1, mFormat);
-                    //mysize += rowPitch * height;
-                    if (mip == 5)
-                    {
-                        int kk = 0;
-                    }
-                    mysize += bb;
-                    if (width > 4)
-                    {
-                        width /= 2;
-                    }
-                    else
-                    {
-                        int kk = 0;
-                    }
-
-                    if (height > 4)
-                    {
-                        height /= 2;
-                    }
-                }
-            }
-
-            int kk = 0;
+            uint32_t bb = PixelUtil::getMemorySize(width, height, 1, mFormat);   
         }
-        
     }
+
+    const UINT num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
     const UINT64 uploadBufferSize = GetRequiredIntermediateSize(mTex.Get(), 0, num2DSubresources);
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
@@ -287,37 +233,113 @@ void Dx12Texture::updateTexture(const std::vector<const CImage*>& images)
 
     uint32_t mips = this->getNumMipmaps();
     uint32_t num2DSubresources = mFace * mips;
-
-    for (uint32 face = 0; face < mFace; ++face)
+    
+    PixelFormat imageFormat = images[0]->getFormat();
+    if (mFormat == imageFormat)
     {
-        for (uint32 mip = 0; mip < mips; ++mip)
+        for (uint32 face = 0; face < mFace; ++face)
         {
-            uint32_t i = face * mips + mip;
-            PixelBox src;
-            src = images[0]->getPixelBox(face, mip);
-            D3D12_SUBRESOURCE_DATA srcData;
-            srcData.pData = src.data;
-            srcData.RowPitch = PixelUtil::getMemorySize(
-                src.getWidth(),
-                1,
-                1,
-                mFormat);
-            srcData.SlicePitch = PixelUtil::getMemorySize(
-                src.getWidth(),
-                src.getHeight(),
-                1,
-                mFormat);
-            D3D12_MEMCPY_DEST DestData = { pData + pLayouts[i].Offset, pLayouts[i].Footprint.RowPitch, pLayouts[i].Footprint.RowPitch * pNumRows[i] };
-            MemcpySubresource(&DestData, &srcData, (SIZE_T)pRowSizesInBytes[i], pNumRows[i], pLayouts[i].Footprint.Depth);
+            for (uint32 mip = 0; mip < mips; ++mip)
+            {
+                uint32_t i = face * mips + mip;
+                PixelBox src;
+                src = images[0]->getPixelBox(face, mip);
+                D3D12_SUBRESOURCE_DATA srcData;
+                srcData.pData = src.data;
+                srcData.RowPitch = PixelUtil::getMemorySize(
+                    src.getWidth(),
+                    1,
+                    1,
+                    mFormat);
+                srcData.SlicePitch = PixelUtil::getMemorySize(
+                    src.getWidth(),
+                    src.getHeight(),
+                    1,
+                    mFormat);
+                D3D12_MEMCPY_DEST DestData = { pData + pLayouts[i].Offset, pLayouts[i].Footprint.RowPitch, pLayouts[i].Footprint.RowPitch * pNumRows[i] };
+                MemcpySubresource(&DestData, &srcData, (SIZE_T)pRowSizesInBytes[i], pNumRows[i], pLayouts[i].Footprint.Depth);
+            }
         }
     }
+    else
+    {
+        uint32_t memSize = 0;
+        for (uint32 face = 0; face < mFace; ++face)
+        {
+            uint32_t width = mTextureProperty._width;
+            uint32_t height = mTextureProperty._height;
+            for (uint32 mip = 0; mip < mips; ++mip)
+            {
+                memSize += PixelUtil::getMemorySize(width, height, 1, mFormat);
+
+                if (width > 1)
+                    width /= 2;
+                if (height > 1)
+                    height /= 2;
+            }
+        }
+
+        std::string mem;
+        mem.resize(memSize);
+
+        for (uint32 face = 0; face < mFace; ++face)
+        {
+            uint32_t width = mTextureProperty._width;
+            uint32_t height = mTextureProperty._height;
+            for (uint32 mip = 0; mip < mips; ++mip)
+            {
+                Vector3i srcSize(width, height, 1);
+                Vector3i dstSize(width, height, 1);
+
+                PixelBox dstBox = PixelBox(width, height, 1, mFormat, mem.data());
+                PixelBox src = images[0]->getPixelBox(face, mip);
+                PixelUtil::bulkPixelConversion(src, dstBox);
+
+                if (width > 1)
+                    width /= 2;
+                if (height > 1)
+                    height /= 2;
+            }
+        }
+        
+        for (uint32 face = 0; face < mFace; ++face)
+        {
+            uint32_t width = mTextureProperty._width;
+            uint32_t height = mTextureProperty._height;
+            for (uint32 mip = 0; mip < mips; ++mip)
+            {
+                uint32_t i = face * mips + mip;
+
+                D3D12_SUBRESOURCE_DATA srcData;
+                srcData.pData = mem.data() + offset;
+                srcData.RowPitch = PixelUtil::getMemorySize(
+                    width,
+                    1,
+                    1,
+                    mFormat);
+                srcData.SlicePitch = PixelUtil::getMemorySize(
+                    width,
+                    height,
+                    1,
+                    mFormat);
+                D3D12_MEMCPY_DEST DestData = { pData + pLayouts[i].Offset, pLayouts[i].Footprint.RowPitch, pLayouts[i].Footprint.RowPitch * pNumRows[i] };
+                MemcpySubresource(&DestData, &srcData, (SIZE_T)pRowSizesInBytes[i], pNumRows[i], pLayouts[i].Footprint.Depth);
+                offset += PixelUtil::getMemorySize(width, height, 1, mFormat);
+                if (width > 1)
+                    width /= 2;
+                if (height > 1)
+                    height /= 2;
+            }
+        }
+    }
+    
 
     mTexUpload->Unmap(0, nullptr);
 }
 
 void Dx12Texture::postLoad()
 {
-    if (mTextureProperty.isRenderTarget())
+    if (!mTextureProperty.haveImageFile())
     {
         return;
     }
@@ -418,14 +440,21 @@ void Dx12Texture::blitFromMemory(
         OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR, "invalid size");
     }
 
-    BYTE* pData;
-    HRESULT hr = mTexUpload->Map(0, NULL, reinterpret_cast<void**>(&pData));
+    if (src.format == mFormat)
+    {
+        BYTE* pData;
+        HRESULT hr = mTexUpload->Map(0, NULL, reinterpret_cast<void**>(&pData));
 
-    assert_invariant(hr == S_OK);
-    PixelBox dstBox = PixelBox(src.getWidth(), src.getHeight(),
-        src.getDepth(), mFormat, pData);
-    PixelUtil::bulkPixelConversion(src, dstBox);
-    mTexUpload->Unmap(0, nullptr);
+        assert_invariant(hr == S_OK);
+        PixelBox dstBox = PixelBox(src.getWidth(), src.getHeight(),
+            src.getDepth(), mFormat, pData);
+        PixelUtil::bulkPixelConversion(src, dstBox);
+        mTexUpload->Unmap(0, nullptr);
+    }
+    else
+    {
+        assert(false);
+    }
 }
 
 void Dx12Texture::uploadData()
@@ -435,6 +464,9 @@ void Dx12Texture::uploadData()
     uint32_t numSubresources = mFace * mips;
 
     uint32_t bytePerPixel = PixelUtil::getNumElemBytes(mFormat);
+
+    updateLayoutInfos();
+
     for (uint32_t face = 0; face < mFace; face++)
     {
 
@@ -474,6 +506,11 @@ void Dx12Texture::uploadData()
             }
         }
     }
+
+
+    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(mTex.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+    cl->ResourceBarrier(1, &barrier);
 }
 
 bool Dx12Texture::need_midmap()
@@ -493,6 +530,10 @@ bool Dx12Texture::need_midmap()
 
 void Dx12Texture::updateLayoutInfos()
 {
+    if (pLayouts)
+    {
+        return;
+    }
     uint32_t num2DSubresources = mFace * getNumMipmaps();
 
     {

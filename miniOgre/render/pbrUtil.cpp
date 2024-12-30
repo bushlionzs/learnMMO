@@ -267,7 +267,7 @@ namespace Ogre
         renderPassInfo.renderTargetCount = 1;
         renderPassInfo.renderTargets[0].renderTarget = rt;
         renderPassInfo.depthTarget.depthStencil = nullptr;
-        renderPassInfo.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+        renderPassInfo.renderTargets[0].clearColour = { 0.0f, 0.0f, 0.0f, 1.000000000f };
         rs->beginCmd();
 
         RenderTargetBarrier uavBarriers[] = {

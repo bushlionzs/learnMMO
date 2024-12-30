@@ -50,8 +50,7 @@ public:
 		info.renderTargetCount = 1;
 		info.renderTargets[0].renderTarget = mPassInput.color;
 		info.depthTarget.depthStencil = mPassInput.depth;
-		info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
-		//info.renderTargets[0].clearColour = { 0.678431f, 0, 0, 1.000000000f };
+		info.renderTargets[0].clearColour = { 0.0, 0.0, 0.0, 1.000000000f };
 		float depthValue = 1.0f;
 		if (ogreConfig.reverseDepth)
 		{
@@ -62,8 +61,13 @@ public:
 		static EngineRenderList engineRenerList;
 		sceneManager->getSceneRenderList(cam, engineRenerList, false);
 		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+
+		uint32_t index = 0;
 		for (auto r : engineRenerList.mOpaqueList)
 		{
+			index++;
+			if (index > 10)
+				break;
 			Ogre::Material* mat = r->getMaterial().get();
 			if (!mat->isLoaded())
 			{
@@ -87,8 +91,12 @@ public:
 			r->updateFrameResource(frameIndex);
 		}
 		rs->beginRenderPass(info);
+		index = 0;
 		for (auto r : engineRenerList.mOpaqueList)
 		{
+			index++;
+			if (index > 10)
+				break;
 			Ogre::Material* mat = r->getMaterial().get();
 			auto flags = mat->getMaterialFlags();
 			if (flags & MATERIAL_FLAG_ALPHA_TESTED)
@@ -117,6 +125,7 @@ public:
 
 		for (auto r : engineRenerList.mOpaqueList)
 		{
+			break;
 			Ogre::Material* mat = r->getMaterial().get();
 			auto flags = mat->getMaterialFlags();
 			if (flags & MATERIAL_FLAG_ALPHA_TESTED)

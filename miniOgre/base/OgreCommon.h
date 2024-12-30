@@ -1104,6 +1104,8 @@ namespace Ogre {
 
         BufferObjectBinding mBindingType;
 
+        bool raw;
+
     } BufferDesc;
 
     enum VertexElementType

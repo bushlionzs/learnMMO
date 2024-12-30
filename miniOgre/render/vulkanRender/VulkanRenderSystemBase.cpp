@@ -884,7 +884,7 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
     glslCompileShader(
         res->_fullname,
         *vertexContent,
-        privateInfo->vertexShaderEntryPoint,
+        privateInfo->computeShaderEntryPoint,
         shaderInfo.shaderMacros,
         moduleInfo);
     vulkanProgram->updateComputeShader(moduleInfo.shaderModule);
@@ -1171,11 +1171,13 @@ void VulkanRenderSystemBase::updateDescriptorSet(
     uint32_t bufferCount = 0;
     uint32_t samplerCount = 0;
     VkWriteDescriptorSet  descriptorWrite[32];
-
+    uint32_t write_index = 0;
     for (uint32_t i = 0; i < count; i++)
     {
         const DescriptorData* pParam = pParams + i;
         const VKDescriptorInfo* descriptroInfo = vulkanProgram->getDescriptor(pParam->pName);
+        /*if (descriptroInfo == nullptr)
+            continue;*/
         assert(descriptroInfo);
         const uint32_t       arrayCount = std::max(1U, pParam->mCount);
 
@@ -1203,14 +1205,15 @@ void VulkanRenderSystemBase::updateDescriptorSet(
                     imageInfos[index].sampler = vulkanTexture->getSampler();
                 }
             }
-            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite[i].pNext = nullptr;
-            descriptorWrite[i].dstSet = set->vkSet;
-            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
-            descriptorWrite[i].descriptorCount = arrayCount;
-            descriptorWrite[i].descriptorType = type;
-            descriptorWrite[i].dstArrayElement = 0;
-            descriptorWrite[i].pImageInfo = &imageInfos[imageCount];
+            descriptorWrite[write_index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[write_index].pNext = nullptr;
+            descriptorWrite[write_index].dstSet = set->vkSet;
+            descriptorWrite[write_index].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[write_index].descriptorCount = arrayCount;
+            descriptorWrite[write_index].descriptorType = type;
+            descriptorWrite[write_index].dstArrayElement = 0;
+            descriptorWrite[write_index].pImageInfo = &imageInfos[imageCount];
+            write_index++;
             imageCount += arrayCount;
         }
 
@@ -1229,14 +1232,15 @@ void VulkanRenderSystemBase::updateDescriptorSet(
                 bufferInfos[index].buffer = vbo->buffer.getGpuBuffer();
             }
 
-            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite[i].pNext = nullptr;
-            descriptorWrite[i].dstSet = set->vkSet;
-            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
-            descriptorWrite[i].descriptorCount = arrayCount;
-            descriptorWrite[i].descriptorType = type;
-            descriptorWrite[i].dstArrayElement = 0;
-            descriptorWrite[i].pBufferInfo = &bufferInfos[bufferCount];
+            descriptorWrite[write_index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[write_index].pNext = nullptr;
+            descriptorWrite[write_index].dstSet = set->vkSet;
+            descriptorWrite[write_index].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[write_index].descriptorCount = arrayCount;
+            descriptorWrite[write_index].descriptorType = type;
+            descriptorWrite[write_index].dstArrayElement = 0;
+            descriptorWrite[write_index].pBufferInfo = &bufferInfos[bufferCount];
+            write_index++;
             bufferCount += arrayCount;
         }
         break;
@@ -1267,14 +1271,15 @@ void VulkanRenderSystemBase::updateDescriptorSet(
                 samplerInfos[index].imageView = VK_NULL_HANDLE;
                 samplerInfos[index].sampler = sampler;
             }
-            descriptorWrite[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite[i].pNext = nullptr;
-            descriptorWrite[i].dstSet = set->vkSet;
-            descriptorWrite[i].dstBinding = descriptroInfo->layoutBinding.binding;
-            descriptorWrite[i].descriptorCount = arrayCount;
-            descriptorWrite[i].descriptorType = type;
-            descriptorWrite[i].dstArrayElement = 0;
-            descriptorWrite[i].pImageInfo = &samplerInfos[samplerCount];
+            descriptorWrite[write_index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[write_index].pNext = nullptr;
+            descriptorWrite[write_index].dstSet = set->vkSet;
+            descriptorWrite[write_index].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[write_index].descriptorCount = arrayCount;
+            descriptorWrite[write_index].descriptorType = type;
+            descriptorWrite[write_index].dstArrayElement = 0;
+            descriptorWrite[write_index].pImageInfo = &samplerInfos[samplerCount];
+            write_index++;
             samplerCount += arrayCount;
         }
         break;
@@ -1286,7 +1291,7 @@ void VulkanRenderSystemBase::updateDescriptorSet(
 
     bluevk::vkUpdateDescriptorSets(
         mVulkanPlatform->getDevice(),
-        count,
+        write_index,
         descriptorWrite, 0, nullptr);
     
 }

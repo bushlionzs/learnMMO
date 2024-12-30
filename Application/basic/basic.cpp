@@ -88,7 +88,7 @@ void BasicApplication::base1()
 	ShaderInfo& info = mat->getShaderInfo();
 	//info.shaderName = "testShader";
 	//mSceneManager->setSkyBox(true, "SkyLan", 1000.0f);
-	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, -10.f), Ogre::Vector3::ZERO);
+	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, -5.f), Ogre::Vector3::ZERO);
 	mGameCamera->setCameraType(CameraMoveType_FirstPerson);
 	mGameCamera->setMoveSpeed(5);
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
@@ -277,12 +277,12 @@ void BasicApplication::base5()
 	auto mipmapPipelineHandle = rs->createPipeline(rasterState, mipmapHandle);
 
 	auto mipmapDescSet = rs->createDescriptorSet(mipmapHandle, 0);
-
-	auto mipmapBlockHandle = rs->createBufferObject(
-		BufferObjectBinding::BufferObjectBinding_Uniform,
-		RESOURCE_MEMORY_USAGE_GPU_ONLY,
-		0,
-		sizeof(Ogre::Matrix4));
+	BufferDesc desc{};
+	desc.mBindingType = BufferObjectBinding::BufferObjectBinding_Uniform;
+	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+	desc.bufferCreationFlags = 0;
+	desc.mSize = sizeof(Ogre::Matrix4);
+	auto mipmapBlockHandle = rs->createBufferObject(desc);
 	const char* name = "garden_nx.dds";
 	name = "studio_garden_px.jpg";
 	auto tex = rs->createTextureFromFile(name, nullptr);

@@ -89,6 +89,7 @@ target_include_directories(${MINIOGRE_LIB_NAME}
 	${ROOT_INC}/3rd/ffmpeg/include
 	${ROOT_INC}/3rd/stormlib
 	${ROOT_INC}/3rd/DirectXShaderCompiler/inc
+	${ROOT_INC}/3rd/winpixeventruntime/include
 	${ROOT_INC}/3rdSource/utils/include
 	${ROOT_INC}/3rdSource/math/include
 	${ROOT_INC}/3rdSource/vkmemalloc/include
@@ -107,6 +108,7 @@ dxgi
 dxguid
 d3d12
 d3d11
+WinPixEventRuntime
 D3DCompiler
 dxcompiler)
 

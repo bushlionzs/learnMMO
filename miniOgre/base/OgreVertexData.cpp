@@ -26,8 +26,10 @@ void VertexSlotInfo::createBuffer(uint32_t vertexSize, uint32_t vertexCount)
     desc.mBindingType = BufferObjectBinding_Vertex;
     desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
     desc.bufferCreationFlags = bufferCreationFlags;
+    desc.mElementCount = vertexCount;
+    desc.mStructStride = vertexSize;
     desc.mSize = vertexSize * vertexCount;
-
+    desc.raw = true;
     mVertexBufferHandle = rs->createBufferObject(desc);
 }
 

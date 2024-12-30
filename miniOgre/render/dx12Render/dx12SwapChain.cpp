@@ -69,8 +69,6 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	ThrowIfFailed(device->CreateDescriptorHeap(
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
 
-	mSwapChain.Reset();
-
 	DXGI_SWAP_CHAIN_DESC1 desc;
 	desc.Width = mWidth;
 	desc.Height = mHeight;
@@ -168,5 +166,5 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	texProperty._tex_usage = Ogre::TextureUsage::DEPTH_ATTACHMENT;
 	texProperty._tex_format = D3D12Mappings::getPixelFormat(mDepthFormat);
 
-	mDepth = new Dx12Texture(std::string("colorTarget"), &texProperty, mCommands, depth, descriptorId);
+	mDepth = new Dx12Texture(std::string("depthTarget"), &texProperty, mCommands, depth, descriptorId);
 }

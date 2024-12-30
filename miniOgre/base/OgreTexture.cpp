@@ -45,12 +45,28 @@ namespace Ogre {
 			return true;
 		}
 
-		if (_tex_usage & Ogre::TextureUsage::WRITEABLE)
-		{
-			return true;
-		}
 		return false;
 	}
+
+	bool TextureProperty::haveImageFile()
+	{
+		if (_tex_usage & Ogre::TextureUsage::COLOR_ATTACHMENT)
+		{
+			return false;
+		}
+		if (_tex_usage & Ogre::TextureUsage::DEPTH_ATTACHMENT)
+		{
+			return false;
+		}
+
+		if (_tex_usage & Ogre::TextureUsage::WRITEABLE)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
 
 	void TextureProperty::gltfSampler()
 	{
@@ -126,7 +142,7 @@ namespace Ogre {
 			mFace = 6;
 		}
 
-		if (mTextureProperty.isRenderTarget())
+		if (!mTextureProperty.haveImageFile())
 		{
 			mFormat = mTextureProperty._tex_format;
 			createInternalResources();

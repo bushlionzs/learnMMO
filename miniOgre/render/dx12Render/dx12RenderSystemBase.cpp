@@ -1,5 +1,9 @@
 #include "OgreHeader.h"
 #include "dx12RenderSystemBase.h"
+#define USE_PIX
+#if defined(USE_PIX)
+#include <winpixeventruntime/pix3.h>
+#endif 
 #include "OgreMoveObject.h"
 #include "OgreMaterial.h"
 #include "OgreRenderable.h"
@@ -25,7 +29,6 @@
 #include "dx12Frame.h"
 #include "D3D12Mappings.h"
 #include "d3dutil.h"
-
 #include "dx12SwapChain.h"
 #include "memoryAllocator.h"
 
@@ -102,6 +105,15 @@ bool Dx12RenderSystemBase::engineInit()
         mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
         mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
     };
+
+    D3D12_COMMAND_SIGNATURE_DESC desc = {};
+    D3D12_INDIRECT_ARGUMENT_DESC arg = {};
+    arg.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+    desc.NumArgumentDescs = 1;
+    desc.pArgumentDescs = &arg;
+    desc.ByteStride = sizeof(IndirectDrawIndexArguments);
+    auto hr = mDevice->CreateCommandSignature(
+        &desc, NULL, IID_PPV_ARGS(&mDrawIndexCommandSignature));
 	return true;
 }
 
@@ -389,8 +401,12 @@ void Dx12RenderSystemBase::drawIndexedIndirect(
     uint32_t stride
 )
 {
+    
     ID3D12GraphicsCommandList* cl = mCommands->get();
-   
+
+    DX12BufferObject* bufferObject =
+        mResourceAllocator.handle_cast<DX12BufferObject*>(drawBuffer);
+    cl->ExecuteIndirect(mDrawIndexCommandSignature, drawCount, bufferObject->getResource(), offset, NULL, 0);
 }
 
 void Dx12RenderSystemBase::beginComputePass(
@@ -441,9 +457,17 @@ void Dx12RenderSystemBase::dispatchComputeShader()
 
 void Dx12RenderSystemBase::pushGroupMarker(const char* maker) 
 {
+#if defined(USE_PIX)
+    ID3D12GraphicsCommandList* cl = mCommands->get();
+    PIXBeginEvent(cl, PIX_COLOR((BYTE)(255), (BYTE)(255), (BYTE)0), maker);
+#endif
 }
 void Dx12RenderSystemBase::popGroupMarker() 
 {
+#if defined(USE_PIX)
+    ID3D12GraphicsCommandList* cl = mCommands->get();
+    PIXEndEvent(cl);
+#endif
 }
 
 void Dx12RenderSystemBase::bindVertexBuffer(

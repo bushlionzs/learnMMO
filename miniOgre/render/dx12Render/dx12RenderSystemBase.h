@@ -145,4 +145,6 @@ protected:
     DescriptorHeapContext mDescriptorHeapContext;
 
     bool mSetDescriptorHeaps;
+
+    ID3D12CommandSignature* mDrawIndexCommandSignature = nullptr;
 };

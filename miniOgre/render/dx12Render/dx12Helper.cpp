@@ -6,7 +6,6 @@
 #include "OgreRenderTarget.h"
 #include "dx12Helper.h"
 #include "dx12RenderSystem.h"
-#include "Dx12HardwareBuffer.h"
 #include "dx12Shader.h"
 #include "dx12Handles.h"
 #include "dx12Texture.h"

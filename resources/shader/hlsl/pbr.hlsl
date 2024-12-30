@@ -39,16 +39,8 @@ struct PBRInfo
 };
 
 #define  M_PI  3.141592653589793
-float c_MinRoughness = 0.04;
 
-#define  albedoIndex  0
-#define ambientOcclusionIndex  1
-#define normalMapIndex  2
-#define emissiveIndex  3
-#define metalRoughnessIndex 4
-#define brdfLutIndex  5
-#define iblDiffuseIndex  0
-#define iblSpecularIndex  1
+
 float4 SRGBtoLINEAR(float4 srgbIn)
 {
     #ifdef MANUAL_SRGB
@@ -246,7 +238,7 @@ float4 PS(VertexOut pin) : SV_Target
 #else
     float roughness = u_MetallicRoughnessValues.y;
     float metalness = u_MetallicRoughnessValues.x;
-	roughness = clamp(roughness, c_MinRoughness, 1.0);
+	roughness = clamp(roughness, 0.04, 1.0);
     metalness = clamp(metalness, 0.0, 1.0);
 #endif
   

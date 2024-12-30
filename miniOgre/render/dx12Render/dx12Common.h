@@ -124,6 +124,15 @@ struct D3D12ParamDesc
     uint32_t semanticIndex;
 };
 typedef std::vector<D3D12ParamDesc> D3d12ShaderParameters;
+
+typedef struct IndirectDrawIndexArguments
+{
+    uint32_t mIndexCount;
+    uint32_t mInstanceCount;
+    uint32_t mStartIndex;
+    uint32_t mVertexOffset;
+    uint32_t mStartInstance;
+} IndirectDrawIndexArguments;
 std::wstring AnsiToWString(const std::string& str);
 std::wstring AnsiToWString(const char* str);
 

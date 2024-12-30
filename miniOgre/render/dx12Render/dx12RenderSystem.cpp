@@ -1,6 +1,5 @@
 #include "OgreHeader.h"
 #include "dx12RenderSystem.h"
-#include "dx12HardwareBufferManager.h"
 #include "OgreMoveObject.h"
 #include "OgreMaterial.h"
 #include "OgreRenderable.h"

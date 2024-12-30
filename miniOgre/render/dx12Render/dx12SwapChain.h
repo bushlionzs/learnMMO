@@ -46,7 +46,6 @@ public:
 private:
     void createSwapChain2(bool srgb);
 private:
-    ComPtr<IDXGISwapChain> mSwapChain;
     IDXGISwapChain3* mSwapChain3;
     Dx12Texture* mDepth;
     std::vector<Dx12Texture*> mColors;

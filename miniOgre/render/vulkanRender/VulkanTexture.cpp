@@ -220,12 +220,16 @@ void VulkanTexture::postLoad()
 {
     VkCommandBuffer cb = VulkanHelper::getSingleton().beginTransferCommand();  
 
-    vks::tools::copyBufferToImage(
-        cb,
-        mStagingBuffer,
-        mTextureImage,
-        this
-    );
+    if (mStagingBuffer)
+    {
+        vks::tools::copyBufferToImage(
+            cb,
+            mStagingBuffer,
+            mTextureImage,
+            this
+        );
+    }
+    
 
     if (mNeedMipmaps)
     {
