@@ -23,11 +23,12 @@ public:
 		mFrameBufferObjectList.resize(ogreConfig.swapBufferCount);
 		for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
 		{
-			mFrameBufferObjectList[i] =
-				rs->createBufferObject(
-					BufferObjectBinding::BufferObjectBinding_Uniform, 
-					RESOURCE_MEMORY_USAGE_GPU_ONLY,
-					0, sizeof(mFrameConstantBuffer));
+			BufferDesc desc{};
+			desc.mBindingType = BufferObjectBinding_Uniform;
+			desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+			desc.bufferCreationFlags = 0;
+			desc.mSize = sizeof(mFrameConstantBuffer);
+			mFrameBufferObjectList[i] = rs->createBufferObject(desc);
 		}
 		auto width = ogreConfig.width;
 		auto height = ogreConfig.height;

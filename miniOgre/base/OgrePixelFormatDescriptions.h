@@ -1029,7 +1029,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         { "PFG_BC1_UNORM",
         /* Bytes per element */
-        0,
+        4,
         /* Flags */
         PFF_COMPRESSED,
         /* Component type and count */
@@ -1042,7 +1042,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         { "PFG_BC1_UNORM_SRGB",
         /* Bytes per element */
-        0,
+        4,
         /* Flags */
         PFF_COMPRESSED,
         /* Component type and count */
@@ -1055,7 +1055,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         { "PFG_BC2_UNORM",
         /* Bytes per element */
-        0,
+        4,
         /* Flags */
         PFF_COMPRESSED,
         /* Component type and count */
@@ -1068,7 +1068,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         { "PFG_BC2_UNORM_SRGB",
         /* Bytes per element */
-        0,
+        4,
         /* Flags */
         PFF_COMPRESSED,
         /* Component type and count */
@@ -1081,7 +1081,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         { "PF_BC3_UNORM",
         /* Bytes per element */
-        0,
+        1,
         /* Flags */
         PFF_COMPRESSED,
         /* Component type and count */
@@ -1094,7 +1094,7 @@ namespace Ogre {
         //-----------------------------------------------------------------------
         {"PFG_BC3_UNORM_SRGB",
             /* Bytes per element */
-            0,
+            1,
             /* Flags */
             PFF_COMPRESSED,
             /* Component type and count */

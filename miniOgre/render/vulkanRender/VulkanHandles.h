@@ -646,9 +646,7 @@ struct VulkanBufferObject : public HwBufferObject, VulkanResource {
     VulkanBufferObject(
         VmaAllocator allocator, 
         VulkanStagePool& stagePool, 
-        uint32_t byteCount,
-        BufferObjectBinding bindingType,
-        uint32_t bufferCreationFlags);
+        BufferDesc& desc);
 
     VulkanBuffer buffer;
     const BufferObjectBinding bindingType;

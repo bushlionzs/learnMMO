@@ -328,12 +328,12 @@ void DX12Helper::generateMipmaps(Dx12Texture* tex)
 		TextureManager::getSingleton().addTexture("outputTarget", mMipmapTarget->getTarget());
 
 		mMipMapDescSet = rs->createDescriptorSet(mMipmapHandle, 0);
-
-		mMipMapBlockHandle = rs->createBufferObject(
-			BufferObjectBinding::BufferObjectBinding_Uniform,
-			RESOURCE_MEMORY_USAGE_GPU_ONLY,
-			0,
-			sizeof(Ogre::Matrix4));
+		BufferDesc desc{};
+		desc.mBindingType = BufferObjectBinding_Uniform;
+		desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+		desc.bufferCreationFlags = 0;
+		desc.mSize = sizeof(Ogre::Matrix4);
+		mMipMapBlockHandle = rs->createBufferObject(desc);
 
 		
 		DescriptorData descriptorData[1];

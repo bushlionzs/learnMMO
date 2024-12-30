@@ -5,7 +5,7 @@
 #include "VulkanHelper.h"
 #include "VulkanRenderSystem.h"
 #include "VulkanTools.h"
-#include "VulkanHardwareBufferManager.h"
+//#include "VulkanHardwareBufferManager.h"
 #include "FVulkanBuffer.h"
 #include "VulkanMappings.h"
 #include "VulkanLayoutCache.h"
@@ -77,9 +77,6 @@ VulkanHelper::VulkanHelper(VulkanRenderSystemBase* rs)
     :mResourceAllocator(8388608, false)
 {
     mVulkanRenderSystem = rs;
-
- 
-    new VulkanHardwareBufferManager();
 }
 
 VulkanHelper::~VulkanHelper()

@@ -464,7 +464,7 @@ namespace vks
 			VkImage image,
 			VulkanTexture* tex)
 		{
-			uint32_t mipLevels = tex->getSourceMipmaps() + 1;
+			uint32_t mipLevels = tex->getNumMipmaps();
 			uint32_t face_count = tex->getFace();
 
 			std::vector<VkBufferImageCopy> regions;
@@ -487,10 +487,10 @@ namespace vks
 					bufferCopyRegion.imageExtent.depth = 1;
 					bufferCopyRegion.bufferOffset = offset;
 					regions.push_back(bufferCopyRegion);
-
+					offset += PixelUtil::getMemorySize(width, height, 1, tex->getFormat());
 					if (width > 1)width /= 2;
 					if (height > 1)height /= 2;
-					offset += tex->getBuffer(face, i)->getSizeInBytes();
+					
 				}
 			}
 

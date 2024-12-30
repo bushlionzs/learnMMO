@@ -69,12 +69,12 @@ namespace Ogre
         rasterState.pixelFormat = format;
 
         Handle<HwPipeline> pipelineHandle = rs->createPipeline(rasterState, programHandle);
-
-        Handle<HwBufferObject> pushBlockHandle = rs->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_Uniform,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            0,
-            pushBlockSize);
+        BufferDesc desc{};
+        desc.mBindingType = BufferObjectBinding_Uniform;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = 0;
+        desc.mSize = pushBlockSize;
+        Handle<HwBufferObject> pushBlockHandle = rs->createBufferObject(desc);
         auto zeroDescSet = rs->createDescriptorSet(programHandle, 0);
         DescriptorData descriptorData[2];
 

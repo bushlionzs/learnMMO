@@ -5,7 +5,6 @@
 #include "OgreResourceManager.h"
 #include "myutils.h"
 #include "VulkanHelper.h"
-#include "VulkanHardwarePixelBuffer.h"
 #include "VulkanMappings.h"
 #include "VulkanTools.h"
 
@@ -76,35 +75,16 @@ void VulkanTexture::_createSurfaceList(void)
         return;
     }
     
-    // Create new list of surfaces
-    mSurfaceList.clear();
-    size_t depth = mTextureProperty._depth;
-
     uint64_t bufferSizeAll = 0;
+    mOffsetList.clear();
     for (size_t face = 0; face < mFace; ++face)
     {
         size_t width = mTextureProperty._width;
         size_t height = mTextureProperty._height;
         for (size_t mip = 0; mip <= mTextureProperty._numMipmaps; ++mip)
         {
-
-            VulkanHardwarePixelBuffer* buffer;
-            buffer = new VulkanHardwarePixelBuffer(
-                this, // parentTexture
-                mip,
-                width,
-                height,
-                depth,
-                face,
-                bufferSizeAll,
-                mFormat,
-                (HardwareBuffer::Usage)mUsage
-            );
-
-            bufferSizeAll += buffer->getSizeInBytes();
-
-            mSurfaceList.push_back(HardwarePixelBufferPtr(buffer));
-
+            mOffsetList.push_back(bufferSizeAll);
+            bufferSizeAll += PixelUtil::getMemorySize(width, height, 1, mFormat);
             if (width > 1) width /= 2;
             if (height > 1) height /= 2;
         }
@@ -196,28 +176,63 @@ void VulkanTexture::freeInternalResourcesImpl(void)
     }
 }
 
+void VulkanTexture::updateTexture(const std::vector<const CImage*>& images)
+{
+        uint32 faces = mFace;
+        int32_t depth = 1;
+        uint32_t offset = 0;
+
+        for (uint32 i = 0; i < mFace; ++i)
+        {
+            uint32_t width = mTextureProperty._width;
+            uint32_t height = mTextureProperty._height;
+            for (uint32 mip = 0; mip <= mTextureProperty._numMipmaps; ++mip)
+            {
+                PixelBox src;
+                size_t face = (depth == 1) ? i : 0;
+
+
+                Box dst(0, 0, 0, width, height, depth);
+                // Load from faces of images[0]
+                src = images[0]->getPixelBox(i, mip);
+                Vector3i srcSize(src.getWidth(), src.getHeight(), src.getDepth());
+                Vector3i dstSize(dst.getWidth(), dst.getHeight(), dst.getDepth());
+                if (srcSize != dstSize)
+                {
+                    OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR, "size invalid");
+                }
+
+                void* data = mMappedMemory + offset;
+
+                PixelBox dstBox = PixelBox(src.getWidth(), src.getHeight(),
+                    src.getDepth(), mFormat, data);
+                PixelUtil::bulkPixelConversion(src, dstBox);
+
+                offset += PixelUtil::getMemorySize(width, height, depth, mFormat);
+
+                width = width > 1 ? width / 2 : 1;
+                height = height > 1 ? height / 2 : 1;
+            }
+        }
+}
+
 void VulkanTexture::postLoad()
 {
-    auto frameIndex = 0;
+    VkCommandBuffer cb = VulkanHelper::getSingleton().beginTransferCommand();  
 
-    VkCommandBuffer commandBuffer = VulkanHelper::getSingleton().beginTransferCommand();
-    if (!mSurfaceList.empty())
-    {
-        vks::tools::copyBufferToImage(
-            commandBuffer,
-            mStagingBuffer,
-            mTextureImage,
-            this
-        );
-    }
+    vks::tools::copyBufferToImage(
+        cb,
+        mStagingBuffer,
+        mTextureImage,
+        this
+    );
 
     if (mNeedMipmaps)
     {
-        //generate mipmap
-        vks::tools::generateMipmaps(commandBuffer, this);
+        vks::tools::generateMipmaps(cb, this);
     }
 
-    VulkanHelper::getSingleton().endTransferCommand(commandBuffer);
+    VulkanHelper::getSingleton().endTransferCommand(cb);
 }
 
 void VulkanTexture::createImage(
@@ -358,12 +373,6 @@ void VulkanTexture::createTextureSampler()
     mTextureSampler = VulkanHelper::getSingleton().getSampler(mTextureProperty._samplerParams);
 }
 
-
-void* VulkanTexture::getVulkanBuffer(uint32_t offset)
-{
-    return mMappedMemory + offset;
-}
-
 VulkanLayout VulkanTexture::getLayout(uint32_t layer, uint32_t level) const
 {
     assert_invariant(level <= 0xffff && layer <= 0xffff);
@@ -462,13 +471,32 @@ void VulkanTexture::transitionLayout(
     setLayout(range, newLayout);
 }
 
-void VulkanTexture::updateTextureData()
+void VulkanTexture::blitFromMemory(
+    const PixelBox& src, const Box& dst, uint32_t face, uint32_t mipmap)
 {
-    VkCommandBuffer commandBuffer = mCommands->get().buffer();
+    Vector3i srcSize(src.getWidth(), src.getHeight(), src.getDepth());
+    Vector3i dstSize(dst.getWidth(), dst.getHeight(), dst.getDepth());
+    if (srcSize != dstSize)
+    {
+        OGRE_EXCEPT(Exception::ERR_RENDERINGAPI_ERROR,
+            "D3D12 device cannot copy a subresource - source and dest size are not the same and they have to be the same in DX12.",
+            "D3D12HardwarePixelBuffer::blitFromMemory");
+    }
+
+
+    PixelBox dstBox = PixelBox(src.getWidth(), src.getHeight(),
+        src.getDepth(), mFormat, mMappedMemory);
+    PixelUtil::bulkPixelConversion(src, dstBox);
+}
+
+void VulkanTexture::uploadData()
+{
+    VkCommandBuffer cb = VulkanHelper::getSingleton().beginTransferCommand();
     vks::tools::copyBufferToImage(
-        commandBuffer,
+        cb,
         mStagingBuffer,
         mTextureImage,
         this
     );
+    VulkanHelper::getSingleton().endTransferCommand(cb);
 }

@@ -20,23 +20,23 @@ public:
 
     
 
-    const std::string& getVsBlob()
+    const std::string* getVsBlob()
     {
-        return mVertexByteCode;
+        return mVertexByteCode.empty()?nullptr: &mVertexByteCode;
     }
 
-    const std::string& getGsBlob()
+    const std::string* getGsBlob()
     {
-        return mGeometryByteCode;
+        return mGeometryByteCode.empty()?nullptr: &mGeometryByteCode;
     }
-    const std::string& getPsBlob()
+    const std::string* getPsBlob()
     {
-        return mFragByteCode;
+        return mFragByteCode.empty()?nullptr: &mFragByteCode;
     }
 
-    const std::string& getComputeBlob()
+    const std::string* getComputeBlob()
     {
-        return mComputeByteCode;
+        return mComputeByteCode.empty()?nullptr:&mComputeByteCode;
     }
     
     ID3D12RootSignature* getRootSignature()

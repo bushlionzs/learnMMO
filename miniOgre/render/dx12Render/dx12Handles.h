@@ -6,10 +6,7 @@ class DxMemoryAllocator;
 struct DX12BufferObject : public HwBufferObject {
     DX12BufferObject(
         DescriptorHeapContext* context,
-        BufferObjectBinding bufferObjectBinding,
-        ResourceMemoryUsage memoryUsage,
-        uint32_t bufferCreationFlags,
-        uint32_t byteCount,
+        BufferDesc& desc,
         DxDescriptorID id
         );
     void copyData(ID3D12GraphicsCommandList* cmdList, const char* data, uint32_t size);

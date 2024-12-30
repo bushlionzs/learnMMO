@@ -1047,6 +1047,65 @@ namespace Ogre {
         char windowHandle[128];
     };
 
+
+    //! Buffer object binding type
+    enum  BufferObjectBinding
+    {
+        BufferObjectBinding_None = 0,
+        BufferObjectBinding_Vertex = 1,
+        BufferObjectBinding_Index = BufferObjectBinding_Vertex << 1,
+        BufferObjectBinding_Uniform = BufferObjectBinding_Index << 1,
+        BufferObjectBinding_Buffer = BufferObjectBinding_Uniform << 1,
+        BufferObjectBinding_Storge = BufferObjectBinding_Buffer << 1,
+        BufferObjectBinding_InDirectBuffer = BufferObjectBinding_Storge << 1,
+        BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
+    };
+
+    typedef enum ResourceMemoryUsage
+    {
+        /// No intended memory usage specified.
+        RESOURCE_MEMORY_USAGE_UNKNOWN = 0,
+        /// Memory will be used on device only, no need to be mapped on host.
+        RESOURCE_MEMORY_USAGE_GPU_ONLY = 1,
+        /// Memory will be mapped on host. Could be used for transfer to device.
+        RESOURCE_MEMORY_USAGE_CPU_ONLY = 2,
+        /// Memory will be used for frequent (dynamic) updates from host and reads on device.
+        RESOURCE_MEMORY_USAGE_CPU_TO_GPU = 3,
+        /// Memory will be used for writing on device and readback on host.
+        RESOURCE_MEMORY_USAGE_GPU_TO_CPU = 4,
+        RESOURCE_MEMORY_USAGE_COUNT,
+        RESOURCE_MEMORY_USAGE_MAX_ENUM = 0x7FFFFFFF
+    } ResourceMemoryUsage;
+
+    typedef struct BufferDesc
+    {
+        /// Size of the buffer (in bytes)
+        uint64_t             mSize;
+        /// Index of the first element accessible by the SRV/UAV (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
+        uint32_t             mFirstElement;
+        /// Number of elements in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
+        uint32_t             mElementCount;
+        /// Size of each element (in bytes) in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
+        uint32_t             mStructStride;
+        /// Alignment
+        uint32_t             mAlignment;
+        /// Debug name used in gpu profile
+        const char* pName;
+        ResourceMemoryUsage  mMemoryUsage;
+        /// Creation flags of the buffer
+        uint32_t  bufferCreationFlags; //BufferCreationFlags
+        /// What type of queue the buffer is owned by
+        QueueType            mQueueType;
+        /// What state will the buffer get created in
+        ResourceState        mStartState;
+        //TinyImageFormat      mFormat;
+        /// Flags specifying the suitable usage of this buffer (Uniform buffer, Vertex Buffer, Index Buffer,...)
+        DescriptorType       mDescriptors;
+
+        BufferObjectBinding mBindingType;
+
+    } BufferDesc;
+
     enum VertexElementType
     {
         VET_FLOAT1 = 0,
@@ -1119,17 +1178,7 @@ namespace Ogre {
     };
 
 
-    //! Buffer object binding type
-    enum  BufferObjectBinding
-    {
-        BufferObjectBinding_None = 0,
-        BufferObjectBinding_Vertex = 1,
-        BufferObjectBinding_Index = BufferObjectBinding_Vertex << 1,
-        BufferObjectBinding_Uniform = BufferObjectBinding_Index << 1,
-        BufferObjectBinding_Storge = BufferObjectBinding_Uniform << 1,
-        BufferObjectBinding_InDirectBuffer = BufferObjectBinding_Storge << 1,
-        BufferObjectBinding_AccelerationStructure = (BufferObjectBinding_InDirectBuffer << 1),
-    };
+    
 
     typedef enum DescriptorType
     {
@@ -1167,21 +1216,7 @@ namespace Ogre {
         DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE = (DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER << 1),
     } DescriptorType;
 
-    typedef enum ResourceMemoryUsage
-    {
-        /// No intended memory usage specified.
-        RESOURCE_MEMORY_USAGE_UNKNOWN = 0,
-        /// Memory will be used on device only, no need to be mapped on host.
-        RESOURCE_MEMORY_USAGE_GPU_ONLY = 1,
-        /// Memory will be mapped on host. Could be used for transfer to device.
-        RESOURCE_MEMORY_USAGE_CPU_ONLY = 2,
-        /// Memory will be used for frequent (dynamic) updates from host and reads on device.
-        RESOURCE_MEMORY_USAGE_CPU_TO_GPU = 3,
-        /// Memory will be used for writing on device and readback on host.
-        RESOURCE_MEMORY_USAGE_GPU_TO_CPU = 4,
-        RESOURCE_MEMORY_USAGE_COUNT,
-        RESOURCE_MEMORY_USAGE_MAX_ENUM = 0x7FFFFFFF
-    } ResourceMemoryUsage;
+    
 
     enum BackendResourceState
     {

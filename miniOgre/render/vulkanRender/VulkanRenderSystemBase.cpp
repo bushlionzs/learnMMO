@@ -566,22 +566,18 @@ void VulkanRenderSystemBase::bindIndexBuffer(Handle<HwBufferObject> bufferHandle
 }
 
 Handle<HwBufferObject> VulkanRenderSystemBase::createBufferObject(
-    BufferObjectBinding bufferObjectBinding,
-    ResourceMemoryUsage memoryUsage,
-    uint32_t bufferCreationFlags,
-    uint32_t byteCount,
-    const char* debugName)
+    BufferDesc& desc)
 {
     Handle<HwBufferObject> boh =  mResourceAllocator.allocHandle<VulkanBufferObject>();
 
     VulkanBufferObject* bufferObject = mResourceAllocator.construct<VulkanBufferObject>(boh, mAllocator,
-        *mStagePool, byteCount, bufferObjectBinding, bufferCreationFlags);
+        *mStagePool, desc);
 
     if (mVulkanSettings->mDebugUtilsExtension)
     {
-        if (debugName)
+        if (desc.pName)
         {
-            bufferObject->buffer.setBufferName(mVulkanPlatform->getDevice(), debugName);
+            bufferObject->buffer.setBufferName(mVulkanPlatform->getDevice(), desc.pName);
         }
     }
     

@@ -379,12 +379,11 @@ void VulkanVertexBuffer::setBuffer(VulkanResourceAllocator const& allocator,
 }
 
 VulkanBufferObject::VulkanBufferObject(VmaAllocator allocator, VulkanStagePool& stagePool,
-        uint32_t byteCount, BufferObjectBinding bindingType,
-    uint32_t bufferCreationFlags)
-    : HwBufferObject(byteCount),
+    BufferDesc& desc)
+    : HwBufferObject(desc.mSize),
       VulkanResource(VulkanResourceType::BUFFER_OBJECT),
-      buffer(allocator, stagePool, getBufferObjectUsage(bindingType, bufferCreationFlags), byteCount),
-      bindingType(bindingType) {}
+      buffer(allocator, stagePool, getBufferObjectUsage(desc.mBindingType, desc.bufferCreationFlags), desc.mSize),
+      bindingType(desc.mBindingType) {}
 
 VulkanTimerQuery::VulkanTimerQuery(std::tuple<uint32_t, uint32_t> indices)
     : VulkanThreadSafeResource(VulkanResourceType::TIMER_QUERY),

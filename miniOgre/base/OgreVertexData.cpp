@@ -21,12 +21,14 @@ void VertexSlotInfo::createBuffer(uint32_t vertexSize, uint32_t vertexCount)
         bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | 
             BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
     }
-    mVertexBufferHandle = rs->createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Vertex,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        bufferCreationFlags,
-        vertexSize * vertexCount,
-        "VertexBuffer");
+
+    BufferDesc desc{};
+    desc.mBindingType = BufferObjectBinding_Vertex;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = bufferCreationFlags;
+    desc.mSize = vertexSize * vertexCount;
+
+    mVertexBufferHandle = rs->createBufferObject(desc);
 }
 
 void VertexSlotInfo::writeData(const char* data, uint32_t size)

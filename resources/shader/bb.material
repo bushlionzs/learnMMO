@@ -61,8 +61,8 @@ material myrect
 			shader basic
 			texture_unit
 			{
-				texture studio_garden_px.jpg
-				//texture outputTarget
+				//texture studio_garden_px.jpg
+				texture ForgeFlags.dds
 			}
 
 		}

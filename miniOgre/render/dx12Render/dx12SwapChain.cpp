@@ -141,9 +141,10 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
+
 	D3D12_CLEAR_VALUE optClear;
 	optClear.Format = mDepthFormat;
-	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Depth = ogreConfig.reverseDepth ? 0.0f : 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 
 

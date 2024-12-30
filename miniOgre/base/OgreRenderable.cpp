@@ -74,31 +74,31 @@ namespace Ogre {
         {
             FrameResourceInfo* resourceInfo = &mFrameResourceInfoList[i];
             resourceInfo->update = false;
+            BufferDesc desc{};
+            desc.mBindingType = BufferObjectBinding_Uniform;
+            desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+            desc.bufferCreationFlags = 0;
+            desc.mSize = sizeof(ObjectConstantBuffer);
             Handle<HwBufferObject> objectBufferHandle =
-                rs->createBufferObject(
-                    BufferObjectBinding::BufferObjectBinding_Uniform, 
-                    RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
-                    0,
-                    sizeof(ObjectConstantBuffer));
+                rs->createBufferObject(desc);
             resourceInfo->modelObjectHandle = objectBufferHandle;
 
             Handle<HwBufferObject> matBufferHandle;
             if (mat->isPbr())
             {
-                matBufferHandle =
-                    rs->createBufferObject(
-                        BufferObjectBinding::BufferObjectBinding_Uniform, 
-                        RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
-                        0,
-                        sizeof(PbrMaterialConstanceBuffer));
+                desc.mBindingType = BufferObjectBinding_Uniform;
+                desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+                desc.bufferCreationFlags = 0;
+                desc.mSize = sizeof(PbrMaterialConstanceBuffer);
+                matBufferHandle = rs->createBufferObject(desc);
             }
             else
             {
-                matBufferHandle =
-                    rs->createBufferObject(
-                        BufferObjectBinding::BufferObjectBinding_Uniform,
-                        RESOURCE_MEMORY_USAGE_CPU_TO_GPU,
-                        0, sizeof(GeneralMaterialConstantBuffer));
+                desc.mBindingType = BufferObjectBinding_Uniform;
+                desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+                desc.bufferCreationFlags = 0;
+                desc.mSize = sizeof(GeneralMaterialConstantBuffer);
+                matBufferHandle = rs->createBufferObject(desc);
             }
 
             resourceInfo->matObjectHandle = matBufferHandle;
@@ -126,12 +126,11 @@ namespace Ogre {
             RawData* rawData = getSkinnedData();
             if (rawData)
             {
-                resourceInfo->skinObjectHandle =
-                    rs->createBufferObject(
-                        BufferObjectBinding::BufferObjectBinding_Uniform,
-                        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                        0,
-                        sizeof(SkinnedConstantBuffer));
+                desc.mBindingType = BufferObjectBinding_Uniform;
+                desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+                desc.bufferCreationFlags = 0;
+                desc.mSize = sizeof(SkinnedConstantBuffer);
+                resourceInfo->skinObjectHandle = rs->createBufferObject(desc);
                 descriptorData[descriptorCount].pName = "cbSkinned";
                 descriptorData[descriptorCount].mCount = 1;
                 descriptorData[descriptorCount].descriptorType = DESCRIPTOR_TYPE_BUFFER;

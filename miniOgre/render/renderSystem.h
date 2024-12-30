@@ -135,12 +135,14 @@ public:
     virtual void bindIndexBuffer(Handle<HwBufferObject> bufHandle, uint32_t indexSize) {}
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes) { return nullptr; }
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle) {}
-    virtual Handle<HwBufferObject> createBufferObject(
+    /*virtual Handle<HwBufferObject> createBufferObject(
         BufferObjectBinding bindingType,
         ResourceMemoryUsage memoryUsage,
         uint32_t bufferCreationFlags,
         uint32_t byteCount,
-        const char* debugName = nullptr);
+        const char* debugName = nullptr);*/
+    virtual Handle<HwBufferObject> createBufferObject(
+        BufferDesc& desc);
     virtual void updateBufferObject(
         Handle<HwBufferObject> boh, 
         const char* data, 

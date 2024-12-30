@@ -78,10 +78,7 @@ namespace Ogre {
 
 		mUsage = mTextureProperty._tex_usage;
 		mFormat = mTextureProperty._tex_format;
-
 		mFace = 1;
-
-		mNumMipmaps = 1;
 	}
 
 	OgreTexture::~OgreTexture()
@@ -92,13 +89,6 @@ namespace Ogre {
 	TextureType OgreTexture::getTextureType()
 	{
 		return mTextureProperty._texType;
-	}
-
-	const HardwarePixelBufferPtr& OgreTexture::getBuffer(size_t face, size_t mipmap)
-	{
-		size_t idx = face * (mTextureProperty._numMipmaps + 1) + mipmap;
-		assert(idx < mSurfaceList.size());
-		return mSurfaceList[idx];
 	}
 
 	void OgreTexture::createInternalResources()
@@ -113,7 +103,6 @@ namespace Ogre {
 	{
 		if (mInternalResourcesCreated)
 		{
-			mSurfaceList.clear();
 			freeInternalResourcesImpl();
 			mInternalResourcesCreated = false;
 		}
@@ -185,13 +174,6 @@ namespace Ogre {
 		mTextureProperty._depth = mSrcDepth;
 		mTextureProperty._tex_format = mSrcFormat;
 		mTextureProperty._numMipmaps = images[0]->getNumMipmaps();
-		mNumMipmaps = mTextureProperty._numMipmaps;
-
-		if (PixelUtil::isCompressed(mSrcFormat) && mNumMipmaps > 0)
-		{
-			mNumMipmaps = std::max((uint32_t)1, mNumMipmaps);
-			mTextureProperty._numMipmaps = mNumMipmaps;
-		}
 
 		mFormat = PixelUtil::getFormatForBitDepths(mSrcFormat, 0, 0);
 		mFace = 1;
@@ -201,72 +183,60 @@ namespace Ogre {
 		}
 		createInternalResources();
 
+		updateTexture(images);
 
-		uint32 faces;
-		bool multiImage; // Load from multiple images?
-		if (images.size() > 1)
-		{
-			faces = uint32(images.size());
-			multiImage = true;
-		}
-		else
-		{
-			faces = images[0]->getNumFaces();
-			multiImage = false;
-		}
+		//uint32 faces;
+		//bool multiImage; // Load from multiple images?
+		//if (images.size() > 1)
+		//{
+		//	faces = uint32(images.size());
+		//	multiImage = true;
+		//}
+		//else
+		//{
+		//	faces = images[0]->getNumFaces();
+		//	multiImage = false;
+		//}
 
-		
-		int32_t mip = 0;
-		int32_t depth = 1;
-		for (uint32 mip = 0; mip <= std::min(mNumMipmaps, mTextureProperty._numMipmaps); ++mip)
-		{
-			for (uint32 i = 0; i < mFace; ++i)
-			{
-				PixelBox src;
-				size_t face = (depth == 1) ? i : 0; // depth = 1, then cubemap face else 3d/ array layer
+		//
+		//int32_t mip = 0;
+		//int32_t depth = 1;
+		//for (uint32 mip = 0; mip <= std::min(mNumMipmaps, mTextureProperty._numMipmaps); ++mip)
+		//{
+		//	for (uint32 i = 0; i < mFace; ++i)
+		//	{
+		//		PixelBox src;
+		//		size_t face = (depth == 1) ? i : 0; // depth = 1, then cubemap face else 3d/ array layer
 
-				auto buffer = getBuffer(face, mip);
-				Box dst(0, 0, 0, buffer->getWidth(), buffer->getHeight(), buffer->getDepth());
+		//		auto buffer = getBuffer(face, mip);
+		//		Box dst(0, 0, 0, buffer->getWidth(), buffer->getHeight(), buffer->getDepth());
 
-				if (multiImage)
-				{
-					// Load from multiple images
-					src = images[i]->getPixelBox(0, mip);
-					// set dst layer
-					if (depth > 1)
-					{
-						dst.front = i;
-						dst.back = i + 1;
-					}
-				}
-				else
-				{
-					// Load from faces of images[0]
-					src = images[0]->getPixelBox(i, mip);
-				}
+		//		if (multiImage)
+		//		{
+		//			// Load from multiple images
+		//			src = images[i]->getPixelBox(0, mip);
+		//			// set dst layer
+		//			if (depth > 1)
+		//			{
+		//				dst.front = i;
+		//				dst.back = i + 1;
+		//			}
+		//		}
+		//		else
+		//		{
+		//			// Load from faces of images[0]
+		//			src = images[0]->getPixelBox(i, mip);
+		//		}
 
-				if (mTextureProperty._gamma != 1.0f) {
-					assert(false);
-					//// Apply gamma correction
-					//// Do not overwrite original image but do gamma correction in temporary buffer
-					//Image tmp(src.format, src.getWidth(), getHeight(), src.getDepth());
-					//PixelBox corrected = tmp.getPixelBox();
-					//PixelUtil::bulkPixelConversion(src, corrected);
-
-					//Image::applyGamma(corrected.data, mGamma, tmp.getSize(), tmp.getBPP());
-
-					//// Destination: entire texture. blitFromMemory does the scaling to
-					//// a power of two for us when needed
-					//buffer->blitFromMemory(corrected, dst);
-				}
-				else
-				{
-					// Destination: entire texture. blitFromMemory does the scaling to
-					// a power of two for us when needed
-					buffer->blitFromMemory(src, dst);
-				}
-			}
-		}
+		//		if (mTextureProperty._gamma != 1.0f) {
+		//			assert(false);
+		//		}
+		//		else
+		//		{
+		//			buffer->blitFromMemory(src, dst);
+		//		}
+		//	}
+		//}
 	}
 
 	void OgreTexture::unload()
@@ -279,5 +249,12 @@ namespace Ogre {
 		CImage img;
 		img.loadRawData(stream, uWidth, uHeight, format);
 		loadImage(img);
+	}
+
+	uint32_t OgreTexture::getDataOffset(uint32_t face, uint32_t mip)
+	{
+		size_t idx = face * (mTextureProperty._numMipmaps + 1) + mip;
+		assert(idx < mOffsetList.size());
+		return mOffsetList[idx];
 	}
 }

@@ -73,7 +73,7 @@ namespace Ogre
 		static Ogre::PixelFormat getPixelFormat(DXGI_FORMAT format);
 
 		static D3D12_RESOURCE_STATES util_to_dx12_resource_state(uint32_t state);
-
+		static DXGI_FORMAT util_to_dx12_srv_format(DXGI_FORMAT defaultFormat);
 		static D3D12_TEXTURE_ADDRESS_MODE getWrapMode(filament::backend::SamplerWrapMode mode);
 		static D3D12_FILTER getFilter(const filament::backend::SamplerParams& params);
 

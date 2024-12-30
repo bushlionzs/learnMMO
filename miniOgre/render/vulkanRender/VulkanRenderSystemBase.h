@@ -86,11 +86,7 @@ protected:
         uint32_t vertexSize);
     virtual void bindIndexBuffer(Handle<HwBufferObject>, uint32_t indexSize);
     virtual Handle<HwBufferObject> createBufferObject(
-        BufferObjectBinding bufferObjectBinding,
-        ResourceMemoryUsage memoryUsage,
-        uint32_t bufferCreationFlags,
-        uint32_t byteCount,
-        const char* debugName) override;
+        BufferDesc& desc) override;
 
     virtual void updateBufferObject(
         Handle<HwBufferObject> boh,

@@ -1,6 +1,5 @@
 #include "OgreHeader.h"
 #include "dx12RenderSystemBase.h"
-#include "dx12HardwareBufferManager.h"
 #include "OgreMoveObject.h"
 #include "OgreMaterial.h"
 #include "OgreRenderable.h"
@@ -338,6 +337,8 @@ void Dx12RenderSystemBase::bindPipeline(
     cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     for (uint32_t i = 0; i < setCount; i++)
     {
+        if (!descSets[i])
+            continue;
         DX12DescriptorSet* dset = mResourceAllocator.handle_cast<DX12DescriptorSet*>(descSets[i]);
         std::vector<const DescriptorInfo*> descriptorInfos = dset->getDescriptorInfos();
         auto cbvSrvUavHandle = dset->getCbvSrvUavHandle();
@@ -355,6 +356,7 @@ void Dx12RenderSystemBase::bindPipeline(
                 auto gpuHandle = descriptor_id_to_gpu_handle(
                     mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
                 cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+                int kk = 0;
             }
             
         }
@@ -413,13 +415,13 @@ void Dx12RenderSystemBase::beginComputePass(
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
                     mDescriptorHeapContext.pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
-                cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+                cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
             }
             else
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
                     mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
-                cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+                cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
             }
         }
     }
@@ -486,18 +488,13 @@ void Dx12RenderSystemBase::unlockBuffer(Handle<HwBufferObject> boh)
 }
 
 Handle<HwBufferObject> Dx12RenderSystemBase::createBufferObject(
-    BufferObjectBinding bindingType,
-    ResourceMemoryUsage memoryUsage,
-    uint32_t bufferCreationFlags,
-    uint32_t byteCount,
-    const char* debugName)
+    BufferDesc& desc)
 {
     Handle<HwBufferObject> boh = mResourceAllocator.allocHandle<DX12BufferObject>();
     DxDescriptorID id = consume_descriptor_handles(
         mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
     DX12BufferObject* bufferObject = mResourceAllocator.construct<DX12BufferObject>(
-        boh, &mDescriptorHeapContext, bindingType, 
-        memoryUsage, bufferCreationFlags, byteCount, id);
+        boh, &mDescriptorHeapContext, desc, id);
     return boh;
 }
 
@@ -557,8 +554,8 @@ Handle<HwComputeProgram> Dx12RenderSystemBase::createComputeProgram(
     DX12ProgramImpl* pImpl = computeProgram->getProgramImpl();
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.pRootSignature = pImpl->getRootSignature();
-    const auto& blob = pImpl->getComputeBlob();
-    psoDesc.CS = { reinterpret_cast<const BYTE*>(blob.c_str()), blob.size()};
+    const std::string* blob = pImpl->getComputeBlob();
+    psoDesc.CS = { reinterpret_cast<const BYTE*>(blob->c_str()), blob->size()};
     ID3D12PipelineState* pipelineState;
     auto hr = mDevice->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
     assert_invariant(hr == S_OK);
@@ -637,13 +634,13 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
     DXGI_FORMAT colorFormat = D3D12Mappings::_getPF(format);
     mDX12PipelineCache.bindFormat(colorFormat, DXGI_FORMAT_D32_FLOAT);
 
-    const std::string& vsCode = dx12ProgramImpl->getVsBlob();
-    const std::string& gsCode = dx12ProgramImpl->getGsBlob();
-    const std::string& psCode = dx12ProgramImpl->getPsBlob();
+    const std::string* vsCode = dx12ProgramImpl->getVsBlob();
+    const std::string* gsCode = dx12ProgramImpl->getGsBlob();
+    const std::string* psCode = dx12ProgramImpl->getPsBlob();
     mDX12PipelineCache.bindProgram(
-        &vsCode,
-        &gsCode,
-        &psCode);
+        vsCode,
+        gsCode,
+        psCode);
     mDX12PipelineCache.bindRasterState(dx12RasterState);
     mDX12PipelineCache.bindPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
@@ -728,6 +725,10 @@ void Dx12RenderSystemBase::updateDescriptorSet(
             
             break;
         case D3D_SIT_CBUFFER:
+        case D3D_SIT_UAV_RWSTRUCTURED:
+        case D3D_SIT_BYTEADDRESS:
+        case D3D_SIT_STRUCTURED:
+        case D3D_SIT_UAV_RWBYTEADDRESS:
         {
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
@@ -750,7 +751,14 @@ void Dx12RenderSystemBase::updateDescriptorSet(
             {
                 if (pParam->descriptorType == DESCRIPTOR_TYPE_SAMPLER)
                 {
-                    assert(false);
+                    DX12Sampler* sampler = mResourceAllocator.handle_cast<DX12Sampler*>(pParam->ppSamplers[arr]);
+                    DxDescriptorID srcId = sampler->getDescriptorID();
+                    d3dUtil::copy_descriptor_handle(
+                        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
+                        srcId,
+                        mDescriptorHeapContext.pSamplerHeaps[0],
+                        samplerHandle + descriptroInfo->mSetIndex + arr
+                    );
                 }
                 else
                 {

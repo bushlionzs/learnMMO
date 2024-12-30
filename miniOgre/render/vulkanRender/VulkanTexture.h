@@ -88,10 +88,10 @@ public:
         VulkanLayout newLayout);
 
     
+    virtual void blitFromMemory(
+        const PixelBox& src, const Box& dstBox, uint32_t face, uint32_t mipmap)override;
 
-    void updateTextureData();
-    void* getVulkanBuffer(uint32_t offset);
-
+    virtual void uploadData()override;
 
     int32_t getSlot()
     {
@@ -107,6 +107,7 @@ private:
     void _createSurfaceList(void);
     virtual void createInternalResourcesImpl(void);
     virtual void freeInternalResourcesImpl(void);
+    virtual void updateTexture(const std::vector<const CImage*>& images);
     virtual void postLoad();
 private:
     void createImage(

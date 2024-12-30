@@ -162,15 +162,14 @@ void VulkanRenderSystem::addAccelerationStructure(
             &accelerationStructureBuildGeometryInfo, pAS->pMaxPrimitiveCountPerGeometry,
             &accelerationStructureBuildSizesInfo);
 
+        BufferDesc desc{};
+        desc.mBindingType = BufferObjectBinding_AccelerationStructure;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = BUFFER_CREATION_FLAG_OWN_MEMORY_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
+            BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION;
+        desc.mSize = accelerationStructureBuildSizesInfo.accelerationStructureSize;
 
-        pAS->asBufferHandle = this->createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_AccelerationStructure,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            BUFFER_CREATION_FLAG_OWN_MEMORY_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
-            BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION,
-            accelerationStructureBuildSizesInfo.accelerationStructureSize,
-            nullptr
-        );
+        pAS->asBufferHandle = this->createBufferObject(desc);
         VkAccelerationStructureCreateInfoKHR accelerationStructureCreate_info = {};
         accelerationStructureCreate_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
         accelerationStructureCreate_info.buffer = getVkBuffer(pAS->asBufferHandle);
@@ -220,15 +219,13 @@ void VulkanRenderSystem::addAccelerationStructure(
 
 
         uint32_t instanceSize = pDesc->mTop.mDescCount * sizeof(instanceDescs[0]);
-        //todo
-        pAS->instanceDescBuffer = 
-            createBufferObject(
-                BufferObjectBinding::BufferObjectBinding_Storge,
-                RESOURCE_MEMORY_USAGE_GPU_ONLY,
-                BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
-                BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT,
-                instanceSize,
-                nullptr);
+        BufferDesc desc;
+        desc.mBindingType = BufferObjectBinding_Storge;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
+            BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT;
+        desc.mSize = instanceSize;
+        pAS->instanceDescBuffer =  createBufferObject(desc);
         this->updateBufferObject(pAS->instanceDescBuffer, (const char*)instanceDescs, instanceSize);
         VkDeviceOrHostAddressConstKHR instanceDataDeviceAddress = {};
         instanceDataDeviceAddress.deviceAddress = getBufferDeviceAddress(getVkBuffer(pAS->instanceDescBuffer));
@@ -255,14 +252,13 @@ void VulkanRenderSystem::addAccelerationStructure(
             &accelerationStructureBuildGeometryInfo, &pAS->mPrimitiveCount,
             &accelerationStructureBuildSizesInfo);
 
-        
-        pAS->asBufferHandle = createBufferObject(
-            BufferObjectBinding::BufferObjectBinding_AccelerationStructure,
-            RESOURCE_MEMORY_USAGE_GPU_ONLY,
-            BUFFER_CREATION_FLAG_OWN_MEMORY_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
-            BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION,
-            accelerationStructureBuildSizesInfo.accelerationStructureSize,
-            nullptr);
+        desc.mBindingType = BufferObjectBinding_AccelerationStructure;
+        desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        desc.bufferCreationFlags = BUFFER_CREATION_FLAG_OWN_MEMORY_BIT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS |
+            BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION;
+        desc.mSize = accelerationStructureBuildSizesInfo.accelerationStructureSize;
+        pAS->instanceDescBuffer = createBufferObject(desc);
+        pAS->asBufferHandle = createBufferObject(desc);
 
         VkAccelerationStructureCreateInfoKHR accelerationStructureCreate_info = {};
         accelerationStructureCreate_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -284,13 +280,12 @@ void VulkanRenderSystem::addAccelerationStructure(
     }
 
     // Create scratch buffer
-
-    pAS->scratchBufferHandle = createBufferObject(
-        BufferObjectBinding::BufferObjectBinding_Storge,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS | BUFFER_CREATION_FLAG_OWN_MEMORY_BIT,
-        scratchBufferSize,
-        nullptr);
+    BufferDesc desc{};
+    desc.mBindingType = BufferObjectBinding_Storge;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+    desc.bufferCreationFlags = BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS | BUFFER_CREATION_FLAG_OWN_MEMORY_BIT;
+    desc.mSize = scratchBufferSize;
+    pAS->scratchBufferHandle = createBufferObject(desc);
     // Buffer device address
     pAS->mScratchBufferDeviceAddress = getBufferDeviceAddress(getVkBuffer(pAS->scratchBufferHandle));
 

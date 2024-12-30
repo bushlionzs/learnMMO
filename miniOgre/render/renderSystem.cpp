@@ -111,11 +111,7 @@ void RenderSystem::present()
 }
 
 Handle<HwBufferObject> RenderSystem::createBufferObject(
-    BufferObjectBinding bindingType,
-    ResourceMemoryUsage memoryUsage,
-    uint32_t bufferCreationFlags,
-    uint32_t byteCount,
-    const char* debugName)
+    BufferDesc& desc)
 {
     assert(false);
     return Handle<HwBufferObject>();

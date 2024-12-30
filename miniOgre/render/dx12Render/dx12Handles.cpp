@@ -10,41 +10,48 @@
 
 DX12BufferObject::DX12BufferObject(
     DescriptorHeapContext* context,
-    BufferObjectBinding bufferObjectBinding,
-    ResourceMemoryUsage memoryUsage,
-    uint32_t bufferCreationFlags,
-    uint32_t byteCount,
+    BufferDesc& desc,
     DxDescriptorID id
    )
 {
     mDescriptorHeapContext = context;
-    mBufferObjectBinding = bufferObjectBinding;
-    mMemoryUsage = memoryUsage;
+    mBufferObjectBinding = desc.mBindingType;
+    mMemoryUsage = desc.mMemoryUsage;
     mDescriptorID = id;
-    mByteCount = d3dUtil::CalcConstantBufferByteSize(byteCount);
+    mByteCount = desc.mSize;
+
+    if (BufferObjectBinding_Uniform == mBufferObjectBinding)
+    {
+        mByteCount = d3dUtil::CalcConstantBufferByteSize(mByteCount);
+    }
+    
     ID3D12Device* dx12Device = DX12Helper::getSingleton().getDevice();
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(mByteCount);
+
+    D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+
+    if (BufferObjectBinding_Storge == mBufferObjectBinding)
+    {
+        state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    }
     ThrowIfFailed(dx12Device->CreateCommittedResource(
         &heapProperties,
         D3D12_HEAP_FLAG_NONE,
         &bufferDesc,
-        D3D12_RESOURCE_STATE_COMMON,
+        state,
         nullptr,
         IID_PPV_ARGS(BufferGPU.GetAddressOf())));
 
     auto cpuHandle = descriptor_id_to_cpu_handle(
         context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], id);
 
-
-    if (mByteCount < 65536)
+    switch (mBufferObjectBinding)
     {
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = (UINT)mByteCount;
-        dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
-    }
-    else
+    case BufferObjectBinding_Vertex:
+    case BufferObjectBinding_Index:
+    case BufferObjectBinding_Buffer:
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -54,6 +61,31 @@ DX12BufferObject::DX12BufferObject(
         srvDesc.Buffer.StructureByteStride = 1;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
         dx12Device->CreateShaderResourceView(BufferGPU.Get(), &srvDesc, cpuHandle);
+    }
+    break;
+    case BufferObjectBinding_Storge:
+    {
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+        uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uavDesc.Buffer.NumElements = desc.mElementCount;
+        uavDesc.Buffer.StructureByteStride = desc.mStructStride;
+        uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        dx12Device->CreateUnorderedAccessView(BufferGPU.Get(), nullptr, &uavDesc, cpuHandle);
+        int kk = 0;
+    }
+        break;
+    case BufferObjectBinding_Uniform:
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = (UINT)mByteCount;
+        dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
+    }
+        break;
+    default:
+        assert(false);
+        break;
     }
 
     heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);

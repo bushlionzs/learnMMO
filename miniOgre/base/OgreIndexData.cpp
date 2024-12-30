@@ -36,14 +36,13 @@ void IndexData::createBuffer(uint32_t indexSize, uint32_t indexCount)
         bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT |
             BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
     }
-
-    mIndexBufferHandle = rs->createBufferObject(
-        BufferObjectBinding_Index,
-        RESOURCE_MEMORY_USAGE_GPU_ONLY,
-        bufferCreationFlags,
-        indexSize * indexCount,
-        "IndexBuffer");
-    
+    BufferDesc desc{};
+    desc.mBindingType = BufferObjectBinding_Index;
+    desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    desc.bufferCreationFlags = bufferCreationFlags;
+    desc.mSize = indexSize * indexCount;
+    desc.pName = "IndexBuffer";
+    mIndexBufferHandle = rs->createBufferObject(desc);
 }
 
 void IndexData::writeData(const char* data, uint32_t size)

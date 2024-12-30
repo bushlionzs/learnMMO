@@ -90,11 +90,7 @@ public:
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle);
     virtual Handle<HwBufferObject> createBufferObject(
-        BufferObjectBinding bindingType,
-        ResourceMemoryUsage memoryUsage,
-        uint32_t bufferCreationFlags,
-        uint32_t byteCount,
-        const char* debugName = nullptr);
+        BufferDesc& desc);
     virtual void updateBufferObject(
         Handle<HwBufferObject> boh,
         const char* data,

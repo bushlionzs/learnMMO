@@ -19,7 +19,7 @@ struct VertexOut
     float2	oTexcoord_0 : TEXCOORD0;
 };
 
-VertexOut vs(VertexIn vIn)
+VertexOut VS(VertexIn vIn)
 {
 	VertexOut vOut;
 	
@@ -28,7 +28,7 @@ VertexOut vs(VertexIn vIn)
 	return vOut;
 }
 
-float4 ps(VertexOut pin) : SV_Target
+float4 PS(VertexOut pin) : SV_Target
 {
 	return first.SampleLevel(firstSampler, pin.oTexcoord_0, 0.0f);
 }

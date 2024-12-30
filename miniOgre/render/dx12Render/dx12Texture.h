@@ -57,22 +57,28 @@ public:
     {
         return mSamplerDescriptorID;
     }
-    void updateTextureData();
+
+    virtual void blitFromMemory(
+        const PixelBox& src, const Box& dstBox, uint32_t face, uint32_t mipmap)override;
+    virtual void uploadData()override;
     void generateMipmaps();
 private:
     virtual void createInternalResourcesImpl(void);
     virtual void freeInternalResourcesImpl(void);
     void _create2DTex();
     void _createSurfaceList(void);
+    virtual void updateTexture(const std::vector<const CImage*>& images);
     virtual void postLoad();
     void buildDescriptorHeaps();
     bool need_midmap();
+    void updateLayoutInfos();
 private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> mTex;
     Microsoft::WRL::ComPtr<ID3D12Resource> mTexUpload;
-    
-
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts = nullptr;
+    UINT64* pRowSizesInBytes = nullptr;
+    UINT* pNumRows = nullptr;
     bool mCreate = false;
     DXGI_FORMAT mD3DFormat;
     DXGI_SAMPLE_DESC mFSAAType;

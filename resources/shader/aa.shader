@@ -264,15 +264,15 @@ shader mipmap
     shader_unit
 	 {
 		shader_type directx
-		vertex_shader mipmap.hlsl vs
-		frag_shader mipmap.hlsl ps
+		vertex_shader mipmap.hlsl VS
+		frag_shader mipmap.hlsl PS
 	 }
 	 
 	 shader_unit
 	 {
 		shader_type vulkan
-		vertex_shader mipmap.glsl vs
-		frag_shader mipmap.glsl ps
+		vertex_shader mipmap.glsl VS
+		frag_shader mipmap.glsl PS
 	 }
 }
 

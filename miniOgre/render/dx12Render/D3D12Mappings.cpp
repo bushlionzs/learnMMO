@@ -127,6 +127,8 @@ namespace Ogre {
         case PF_DXT3:           return DXGI_FORMAT_BC2_UNORM;
         case PF_DXT4:           return DXGI_FORMAT_BC2_UNORM;
         case PF_DXT5:           return DXGI_FORMAT_BC3_UNORM;
+        case PFG_BC3_UNORM:             return DXGI_FORMAT_BC3_UNORM;
+        case PFG_BC3_UNORM_SRGB:        return DXGI_FORMAT_BC3_UNORM_SRGB;
         case PF_BC4_SNORM:      return DXGI_FORMAT_BC4_SNORM;
         case PF_BC4_UNORM:      return DXGI_FORMAT_BC4_UNORM;
         case PF_BC5_SNORM:      return DXGI_FORMAT_BC5_SNORM;
@@ -138,8 +140,9 @@ namespace Ogre {
         case PF_FLOAT32_GR:     return DXGI_FORMAT_R32G32_FLOAT;
         case PF_DEPTH16:        return DXGI_FORMAT_R32_TYPELESS;
         case PF_DEPTH32:        return DXGI_FORMAT_R32_TYPELESS;
-        case PF_DEPTH32F:       return DXGI_FORMAT_R32_TYPELESS;
-        case PF_DEPTH24_STENCIL8:     return DXGI_FORMAT_R24G8_TYPELESS;
+        case PF_DEPTH32F:       return DXGI_FORMAT_D32_FLOAT;
+        case PF_DEPTH24_STENCIL8:     return DXGI_FORMAT_D24_UNORM_S8_UINT;
+        
         default:                return DXGI_FORMAT_UNKNOWN;
         }
     }
@@ -311,6 +314,8 @@ namespace Ogre {
         case D3D_SIT_CBUFFER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
         case D3D_SIT_TEXTURE:
+        case D3D_SIT_BYTEADDRESS:
+        case D3D_SIT_STRUCTURED:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         case D3D_SIT_SAMPLER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
@@ -386,6 +391,17 @@ namespace Ogre {
 #endif
 
         return ret;
+    }
+
+    DXGI_FORMAT D3D12Mappings::util_to_dx12_srv_format(DXGI_FORMAT defaultFormat)
+    {
+        switch (defaultFormat)
+        {
+        case DXGI_FORMAT_D32_FLOAT:
+            return DXGI_FORMAT_R32_FLOAT;
+        default:
+            return defaultFormat;
+        }
     }
 
     D3D12_TEXTURE_ADDRESS_MODE D3D12Mappings::getWrapMode(

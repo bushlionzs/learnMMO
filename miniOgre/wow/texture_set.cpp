@@ -79,8 +79,6 @@ std::shared_ptr<OgreTexture> TextureSet::createAlphaMapTexture(const std::string
     texProperty._tex_usage = Ogre::TextureUsage::UPLOADABLE;
     auto tex = TextureManager::getSingleton().createManual(name, texProperty);
 
-    const auto& buffer = tex->getBuffer();
-
     std::vector<uint8_t> amap(3 * 64 * 64);
     uint8_t const* alpha_ptr[3];
 
@@ -101,8 +99,9 @@ std::shared_ptr<OgreTexture> TextureSet::createAlphaMapTexture(const std::string
     }
 
     PixelBox src(64, 64, 1, PF_BYTE_RGB, amap.data());
-    buffer->blitFromMemory(src);
-    buffer->uploadData();
+    Box dst(Vector3i(tex->getWidth(), tex->getHeight(), tex->getDepth()));
+    tex->blitFromMemory(src, dst);
+    tex->uploadData();
 
     return tex;
 }

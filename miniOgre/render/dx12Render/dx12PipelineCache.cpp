@@ -96,18 +96,26 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     psoDesc.pRootSignature = mPipelineRequirements.rootSignature;
 
     const std::string* vsblob = mPipelineRequirements.shaders[0];
-    psoDesc.VS =
+    if (vsblob)
     {
-        reinterpret_cast<const BYTE*>(vsblob->c_str()),
-        vsblob->size()
-    };
+        psoDesc.VS =
+        {
+            reinterpret_cast<const BYTE*>(vsblob->c_str()),
+            vsblob->size()
+        };
+    }
+    
 
     const std::string* psblob = mPipelineRequirements.shaders[2];
-    psoDesc.PS =
+    if (psblob)
     {
-        reinterpret_cast<const BYTE*>(psblob->c_str()),
-        psblob->size()
-    };
+        psoDesc.PS =
+        {
+            reinterpret_cast<const BYTE*>(psblob->c_str()),
+            psblob->size()
+        };
+    }
+    
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
     psoDesc.RasterizerState.CullMode = mPipelineRequirements.rasterState.cullMode;

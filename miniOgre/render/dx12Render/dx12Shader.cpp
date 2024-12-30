@@ -264,7 +264,9 @@ void DX12ProgramImpl::parseShaderInfo()
         if (shaderResource.type == D3D_SIT_TEXTURE ||
             shaderResource.type == D3D_SIT_CBUFFER ||
             shaderResource.type == D3D_SIT_SAMPLER ||
+            shaderResource.type == D3D_SIT_BYTEADDRESS ||
             shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS||
+            shaderResource.type == D3D_SIT_STRUCTURED ||
             shaderResource.type == D3D_SIT_UAV_RWSTRUCTURED)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,

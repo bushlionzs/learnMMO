@@ -98,11 +98,6 @@ namespace Ogre {
             mTextureProperty._height = height;
         }
 
-        void setNumMipmaps(uint32 num)
-        {
-            mNumMipmaps = num;
-        }
-
         int32_t getHeight()
         {
             return mTextureProperty._height;
@@ -124,13 +119,9 @@ namespace Ogre {
             return mTextureProperty._tex_format;
         }
 
-        uint32_t getSourceMipmaps()
-        {
-            return mTextureProperty._numMipmaps;
-        }
         uint32_t getNumMipmaps()
         {
-            return mNumMipmaps;
+            return mTextureProperty._numMipmaps + 1;
         }
 
         uint32_t getFace()
@@ -154,26 +145,33 @@ namespace Ogre {
 
         TextureType getTextureType();
 
-        virtual const HardwarePixelBufferPtr& getBuffer(size_t face = 0, size_t mipmap = 0);
         void createInternalResources();
         void freeInternalResources(void);
         virtual void createInternalResourcesImpl(void) = 0;
         virtual void freeInternalResourcesImpl(void) = 0;
+        virtual void updateTexture(const std::vector<const CImage*>& images) = 0;
         virtual void preLoad();
         bool load(utils::JobSystem::Job* job);
         void loadImpl();
         virtual void postLoad();
         uint32 getMaxMipmaps() const;
-        void loadImage(const CImage& img);
-        void _loadImages(const std::vector<const CImage*>& images);
+        
         virtual void unload();
+        virtual void uploadData() {}
+        virtual void blitFromMemory(
+            const PixelBox& src, const Box& dstBox, uint32_t face = 0, uint32_t mipmap = 0) {}
+        void loadImage(const CImage& img);
+        void loadRawData(DataStreamPtr& stream, ushort uWidth, ushort uHeight,
+            PixelFormat format);
 
-        void loadRawData(DataStreamPtr& stream, ushort uWidth, ushort uHeight, PixelFormat format);
+        uint32_t getDataOffset(uint32_t face, uint32_t mip);
+    private:
+        
+        void _loadImages(const std::vector<const CImage*>& images);
     protected:
         String mName;
         TextureProperty mTextureProperty;
         uint32_t mFace = 1;
-        uint32_t mNumMipmaps = 0;
         PixelFormat mFormat;
         int mUsage;
 
@@ -182,11 +180,10 @@ namespace Ogre {
 
         std::vector<String> mLayerNames;
 
-        typedef std::vector<HardwarePixelBufferPtr> SurfaceList;
-        SurfaceList mSurfaceList;
-
         bool mLoad = false;
 
         bool mInternalResourcesCreated = false;
+
+        std::vector<uint32_t> mOffsetList;
     };
 }

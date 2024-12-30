@@ -232,8 +232,9 @@ void OgreTexture::loadFromMemory(const void* buffer, const Sizef& buffer_size,
                 pTex->createInternalResources();
                 
             }
-        pTex->getBuffer(0, 0)->blitFromMemory(pixelBox);
-        pTex->postLoad();
+        Box dst(Vector3i(pTex->getWidth(), pTex->getHeight(), pTex->getDepth()));
+        pTex->blitFromMemory(pixelBox, dst);
+        pTex->uploadData();
         d_size.d_width = buffer_size.d_width;
         d_size.d_height = buffer_size.d_height;
         d_dataSize = buffer_size;
@@ -260,7 +261,7 @@ void OgreTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     Ogre::PixelBox pb(area.getWidth(), area.getHeight(),
                       1, Ogre::PF_A8R8G8B8, const_cast<void*>(sourceData));
     Ogre::Box box(area.left(), area.top(), area.right(), area.bottom());
-    d_texture->getBuffer()->blitFromMemory(pb, box);
+    d_texture->blitFromMemory(pb, box);
 }
 
 //----------------------------------------------------------------------------//
@@ -270,8 +271,9 @@ void OgreTexture::blitToMemory(void* targetData)
         return;
 
     Ogre::PixelBox pb(d_size.d_width, d_size.d_height,
-                      1, Ogre::PF_A8R8G8B8, targetData);
-    d_texture->getBuffer()->blitToMemory(pb);
+        1, Ogre::PF_A8R8G8B8, targetData);
+    assert(false);
+    //d_texture->getBuffer()->blitToMemory(pb);
 }
 
 //----------------------------------------------------------------------------//

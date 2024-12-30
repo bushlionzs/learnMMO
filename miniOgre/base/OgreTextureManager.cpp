@@ -60,7 +60,6 @@ namespace Ogre {
     {
         OgreTexture* tmp = Ogre::Root::getSingleton().getRenderSystem()->createTextureFromFile(name, nullptr);
 
-        tmp->setNumMipmaps(1000);
 
         tmp->loadImage(img);
 
