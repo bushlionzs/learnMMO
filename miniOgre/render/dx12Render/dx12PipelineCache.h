@@ -12,11 +12,11 @@ class DX12PipelineCache
 public:
     struct RasterState {
         D3D12_CULL_MODE       cullMode : 2;
-        BOOL           frontFace : 2;
-        BOOL              depthBiasEnable : 1;
-        BOOL              blendEnable : 1;
-        BOOL              depthWriteEnable : 1;
-        BOOL              depthTestEnable : 1;
+        bool                frontFace : 2;
+        bool              depthBiasEnable : 1;
+        bool              blendEnable : 1;
+        bool              depthWriteEnable : 1;
+        bool              depthTestEnable : 1;
         D3D12_BLEND         srcColorBlendFactor : 5; // offset = 1 byte
         D3D12_BLEND         dstColorBlendFactor : 5;
         D3D12_BLEND         srcAlphaBlendFactor : 5;

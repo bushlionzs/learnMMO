@@ -63,6 +63,7 @@ DX12BufferObject::DX12BufferObject(
         if (desc.raw)
         {
             srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            srvDesc.Buffer.NumElements = mByteCount / 4;
             srvDesc.Buffer.StructureByteStride = 0;
             srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
         }
@@ -77,6 +78,13 @@ DX12BufferObject::DX12BufferObject(
         uavDesc.Buffer.NumElements = desc.mElementCount;
         uavDesc.Buffer.StructureByteStride = desc.mStructStride;
         uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        if (desc.raw)
+        {
+            uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            uavDesc.Buffer.NumElements = mByteCount / 4;
+            uavDesc.Buffer.StructureByteStride = 0;
+            uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_RAW;
+        }
         dx12Device->CreateUnorderedAccessView(BufferGPU.Get(), nullptr, &uavDesc, cpuHandle);
         int kk = 0;
     }

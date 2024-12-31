@@ -121,25 +121,31 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     psoDesc.RasterizerState.CullMode = mPipelineRequirements.rasterState.cullMode;
     
     psoDesc.RasterizerState.FrontCounterClockwise = true;
-    psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
-    psoDesc.RasterizerState.MultisampleEnable = true;
+    psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+    psoDesc.RasterizerState.MultisampleEnable = FALSE;
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)mPipelineRequirements.topology;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = mPipelineRequirements.colorFormat;
+    psoDesc.NumRenderTargets = mPipelineRequirements.rasterState.colorTargetCount;
+    for(auto i = 0;  i < psoDesc.NumRenderTargets; i++)
+    {
+        psoDesc.RTVFormats[i] = mPipelineRequirements.colorFormat;
+    }
+    
     psoDesc.SampleDesc.Count = mPipelineRequirements.rasterState.rasterizationSamples; 
     psoDesc.SampleDesc.Quality = 0;
     psoDesc.DSVFormat = mPipelineRequirements.depthFormat;
 
     
-    D3D12_DEPTH_STENCIL_DESC depthDSS;
+    D3D12_DEPTH_STENCIL_DESC depthDSS{};
     depthDSS.DepthEnable = mPipelineRequirements.rasterState.depthWriteEnable;
     depthDSS.DepthWriteMask = mPipelineRequirements.rasterState.colorWriteMask;
     depthDSS.DepthFunc = mPipelineRequirements.rasterState.depthCompareOp;
-    depthDSS.StencilEnable = false;
+    depthDSS.StencilEnable = FALSE;
+    depthDSS.StencilReadMask = 0;
+    depthDSS.StencilWriteMask = 0;
     psoDesc.DepthStencilState = depthDSS;
     
    

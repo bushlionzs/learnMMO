@@ -96,7 +96,7 @@ namespace Ogre {
             }
         }
 
-        createFrameResourceInfo();
+        //createFrameResourceInfo();
 
         mLoad = true;
 

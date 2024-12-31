@@ -1176,8 +1176,8 @@ void VulkanRenderSystemBase::updateDescriptorSet(
     {
         const DescriptorData* pParam = pParams + i;
         const VKDescriptorInfo* descriptroInfo = vulkanProgram->getDescriptor(pParam->pName);
-        /*if (descriptroInfo == nullptr)
-            continue;*/
+        if (descriptroInfo == nullptr)
+            continue;
         assert(descriptroInfo);
         const uint32_t       arrayCount = std::max(1U, pParam->mCount);
 

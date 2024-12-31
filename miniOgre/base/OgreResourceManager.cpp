@@ -8,6 +8,7 @@
 #include "gltf_loader.h"
 #include "bin_loader.h"
 #include "M2Loader.h"
+#include "fbx_loader.h"
 #include "ResourceParserManager.h"
 #include "OgreScriptLoader.h"
 #include "renderSystem.h"
@@ -164,6 +165,7 @@ namespace Ogre {
         mMeshMap[".glb"] = new GltfLoader(true);
         mMeshMap[".M2"] = new M2Loader;
         mMeshMap[".bin"] = new BinLoader;
+        mMeshMap[".fbx"] = new FbxLoader;
     }
 
     std::shared_ptr<DataStream> ResourceManager::openResource(

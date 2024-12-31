@@ -633,9 +633,8 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
 
     dx12RasterState.blendEnable = rasterState.hasBlending();
 
-    dx12RasterState.depthWriteEnable = rasterState.depthWrite;
+    dx12RasterState.depthWriteEnable = rasterState.depthWrite?TRUE:FALSE;
     dx12RasterState.depthTestEnable = rasterState.depthTest;
-
     dx12RasterState.srcColorBlendFactor = D3D12Mappings::getBlendFactor(rasterState.blendFunctionSrcRGB);
     dx12RasterState.dstColorBlendFactor = D3D12Mappings::getBlendFactor(rasterState.blendFunctionDstRGB);
     dx12RasterState.srcAlphaBlendFactor = D3D12Mappings::getBlendFactor(rasterState.blendFunctionSrcAlpha);
