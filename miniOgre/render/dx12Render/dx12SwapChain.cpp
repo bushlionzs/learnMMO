@@ -97,7 +97,7 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	swapchain->Release();
 	DXGI_COLOR_SPACE_TYPE colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
 	
-	mSwapChain3->SetMaximumFrameLatency(1);
+	//mSwapChain3->SetMaximumFrameLatency(1);
 	mSwapChain3->SetColorSpace1(colorSpace);
 	mColors.resize(ogreConfig.swapBufferCount);
 	auto* rs = DX12Helper::getSingleton().getDx12RenderSystem();

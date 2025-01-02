@@ -8,7 +8,11 @@
 class BasicApplication
 {
 public:
-	
+	struct FrameData
+	{
+		Handle<HwDescriptorSet> zeroSet;
+		Handle<HwBufferObject> passUniformBuffer;
+	};
 	BasicApplication();
 	~BasicApplication();
 
@@ -21,15 +25,18 @@ public:
 	void update(float delta);
 
 	void addCustomDirectory();
+	void updateFrameData(ICamera* camera, FrameConstantBuffer& frameBuffer);
 private:
 	void base1();
 	void base2();
 	void base3();
 	void base4();
 	void base5();
+	
+	void base6();
 private:
 	AnimationState* mAnimationState = nullptr;
-
+	std::vector<FrameData> mFrameData;
 	SceneManager* mSceneManager;
 	GameCamera* mGameCamera;
 	RenderSystem* mRenderSystem;

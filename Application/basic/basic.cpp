@@ -44,7 +44,7 @@ void BasicApplication::setup(
 	mRenderWindow = renderWindow;
 	mRenderSystem = renderSystem;
 	mRenderPipeline = renderPipeline;
-	base4();	
+	base1();
 }
 
 void BasicApplication::update(float delta)
@@ -88,7 +88,7 @@ void BasicApplication::base1()
 	ShaderInfo& info = mat->getShaderInfo();
 	//info.shaderName = "testShader";
 	//mSceneManager->setSkyBox(true, "SkyLan", 1000.0f);
-	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, -5.f), Ogre::Vector3::ZERO);
+	mGameCamera->lookAt(Ogre::Vector3(0, 0.0f, 3.f), Ogre::Vector3::ZERO);
 	mGameCamera->setCameraType(CameraMoveType_FirstPerson);
 	mGameCamera->setMoveSpeed(5);
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
@@ -143,13 +143,13 @@ void BasicApplication::base2()
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 		m = Ogre::Math::makePerspectiveMatrixReverseZ(
-			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 10000.f);
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 2000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
 		m = Ogre::Math::makePerspectiveMatrix(
-			Ogre::Math::PI / 2.0f, aspect, 0.1, 10000.f);
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 2000);
 	}
 	mGameCamera->getCamera()->updateProjectMatrix(m);
 
@@ -221,10 +221,6 @@ void BasicApplication::base4()
 		mAnimationState->setLoop(true);
 	}
 
-	/*mGameCamera->setHeight(300.0f);
-	mGameCamera->setDistance(500);
-	mGameCamera->setMoveSpeed(25.0f);*/
-
 	mGameCamera->lookAt(
 		Ogre::Vector3(0.0f, 0.0f, 500.0f),
 		Ogre::Vector3(0.0f, 0.0f, 0.0f));
@@ -260,116 +256,206 @@ void BasicApplication::base4()
 
 void BasicApplication::base5()
 {
-	auto* rs = mRenderSystem;
+	std::string meshname = "bunny.fbx";
+	meshname = "sphere_big.fbx";
+	auto mesh = MeshManager::getSingletonPtr()->load(meshname);
+
+	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
+
+	Entity* gltf = mSceneManager->createEntity("fbx", meshname);
+	SceneNode* gltfnode = root->createChildSceneNode("fbx");
+	gltfnode->updatechildren();
+	gltfnode->attachObject(gltf);
+
+	mGameCamera->lookAt(
+		Ogre::Vector3(0.0f, 0.0, 20),
+		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+	mGameCamera->setMoveSpeed(25);
+
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+
+	Ogre::Matrix4 m;
+
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 1000);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 1000);
+	}
+	mGameCamera->getCamera()->updateProjectMatrix(m);
+
+	RenderPassInput input;
+	input.color = mRenderWindow->getColorTarget();
+	input.depth = mRenderWindow->getDepthTarget();
+	input.cam = mGameCamera->getCamera();
+	input.sceneMgr = mSceneManager;
+	auto mainPass = createStandardRenderPass(input);
+	mRenderPipeline->addRenderPass(mainPass);
+}
+
+void BasicApplication::updateFrameData(ICamera* camera, FrameConstantBuffer& frameBuffer)
+{
+	RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
+	const Ogre::Matrix4& view = camera->getViewMatrix();
+	const Ogre::Matrix4& proj = camera->getProjectMatrix();
+	const Ogre::Vector3& camepos = camera->getDerivedPosition();
+	Ogre::Matrix4 invView = view.inverse();
+	Ogre::Matrix4 viewProj = proj * view;
+	Ogre::Matrix4 invProj = proj.inverse();
+	Ogre::Matrix4 invViewProj = viewProj.inverse();
+
+	frameBuffer.View = view.transpose();
+	frameBuffer.InvView = invView.transpose();
+	frameBuffer.Proj = proj.transpose();
+	frameBuffer.InvProj = invProj.transpose();
+	frameBuffer.ViewProj = viewProj.transpose();
+	frameBuffer.InvViewProj = invViewProj.transpose();
+
+	frameBuffer.EyePosW = camepos;
+
+	
+	frameBuffer.Shadow = 0;
+	frameBuffer.directionLights[0].Direction = Ogre::Vector3(0.739942074, 0.642787576, 0.198266909);
+	frameBuffer.directionLights[0].Direction.normalise();
+
+
+
+	frameBuffer.TotalTime += Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
+	frameBuffer.DeltaTime = Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
+
+	auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+}
+
+void BasicApplication::base6()
+{
+	std::string name = "Â¥À¼ÕÊÅñ04.mesh";
+	auto mesh = MeshManager::getSingletonPtr()->load(name);
+
+	mGameCamera->lookAt(
+		Ogre::Vector3(1000, 0.0, 0.0f),
+		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+	mGameCamera->setMoveSpeed(200);
+
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+
+	Ogre::Matrix4 m;
+
+	if (ogreConfig.reverseDepth)
+	{
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 2000);
+	}
+	else
+	{
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 2.0f, aspect, 0.1, 2000);
+	}
+	mGameCamera->getCamera()->updateProjectMatrix(m);
+
 	ShaderInfo shaderInfo;
-	shaderInfo.shaderName = "mipmap";
-	VertexDeclaration decl;
-	decl.addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
-	decl.addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
-	decl.addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
-	auto mipmapHandle = rs->createShaderProgram(shaderInfo, &decl);
+	shaderInfo.shaderName = "basic2";
+	auto presentHandle = mRenderSystem->createShaderProgram(shaderInfo, nullptr);
+
 	backend::RasterState rasterState{};
-	rasterState.colorWrite = true;
-	rasterState.renderTargetCount = 1;
 	rasterState.depthWrite = false;
 	rasterState.depthTest = false;
-	rasterState.pixelFormat = PF_A8R8G8B8;
-	auto mipmapPipelineHandle = rs->createPipeline(rasterState, mipmapHandle);
+	rasterState.depthFunc = SamplerCompareFunc::A;
+	rasterState.colorWrite = true;
+	rasterState.renderTargetCount = 1;
+	rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+	auto pipelineHandle = mRenderSystem->createPipeline(rasterState, presentHandle);
 
-	auto mipmapDescSet = rs->createDescriptorSet(mipmapHandle, 0);
-	BufferDesc desc{};
-	desc.mBindingType = BufferObjectBinding::BufferObjectBinding_Uniform;
-	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-	desc.bufferCreationFlags = 0;
-	desc.mSize = sizeof(Ogre::Matrix4);
-	auto mipmapBlockHandle = rs->createBufferObject(desc);
-	const char* name = "garden_nx.dds";
-	name = "studio_garden_px.jpg";
-	auto tex = rs->createTextureFromFile(name, nullptr);
+	SubMesh* subMesh = mesh->getSubMesh(0);
 
-	DescriptorData descriptorData[3];
-
-	descriptorData[0].pName = "cbPerObject";
-	descriptorData[0].mCount = 1;
-	descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-	descriptorData[0].ppBuffers = &mipmapBlockHandle;
-		
-	descriptorData[1].pName = "first";
-	descriptorData[1].mCount = 1;
-	descriptorData[1].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[1].ppTextures = (const OgreTexture**)&tex;
-
-	descriptorData[2].pName = "firstSampler";
-	descriptorData[2].mCount = 1;
-	descriptorData[2].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[2].ppTextures = (const OgreTexture**)&tex;
-
-	rs->updateDescriptorSet(mipmapDescSet, 3, descriptorData);
-
-	auto width = mRenderWindow->getWidth();
-	auto height = mRenderWindow->getHeight();
-	
-	auto project = Ogre::Math::makeOrthoLH(0.0f, width, height, 0.0f, 0.1, 1000.0f);
-
-	/*float aspect = width / height;
-	project = Ogre::Math::makePerspectiveMatrix(
-		Ogre::Math::PI / 2.0f, aspect, 0.1, 6000);*/
-
-	Ogre::Vector3 eyePos = Ogre::Vector3(0, 0, -10);
-	Ogre::Matrix4 view = Ogre::Math::makeLookAtLH(eyePos, Ogre::Vector3::ZERO, Ogre::Vector3::UNIT_Y);
-
-	Ogre::Matrix4 viewProj = (project * view).transpose();
-
-	rs->updateBufferObject(mipmapBlockHandle, (const char*)&viewProj, sizeof(viewProj));
-	float aa = 1024;
-	Ogre::Vector3 leftop = Ogre::Vector3(-aa, aa, 0.0f);
-	Ogre::Vector3 leftbottom = Ogre::Vector3(-aa, -aa, 0.0f);
-	Ogre::Vector3 righttop = Ogre::Vector3(aa, aa, 0.0f);
-	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, -aa, 0.0f);
-	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
-
-	leftop = Ogre::Vector3(0.0f, 0.0f, 0.0f);
-	leftbottom = Ogre::Vector3(0.0f, aa, 0.0f);
-	righttop = Ogre::Vector3(aa, 0.0f, 0.0f);
-	rightbottom = Ogre::Vector3(aa, aa, 0.0f);
-	normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
-
-	std::string meshName = "rect";
-
-	auto mesh = MeshManager::getSingletonPtr()->createRect(
-		nullptr,
-		meshName,
-		leftop, leftbottom, righttop, rightbottom, normal);
+	VertexData* vertexData = subMesh->getVertexData();
+	Handle<HwBufferObject> vertexDataHandle = vertexData->getBuffer(0);
+	IndexData* indexData = subMesh->getIndexData();
+	Handle<HwBufferObject> indexDataHandle = indexData->getHandle();
+	mFrameData.resize(2);
+	DescriptorData descriptorData[16];
 
 	
-	auto* subMesh = mesh->getSubMesh(0);
-	VertexData* vertexData = mesh->getVertexData();
-	IndexData* indexData = mesh->getIndexData();
 
-	RenderPassCallback renderCallback = [=, this](RenderPassInfo& renderPassInfo) {
-		renderPassInfo.renderTargetCount = 1;
-		renderPassInfo.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();;
-		renderPassInfo.depthTarget.depthStencil = nullptr;
-		renderPassInfo.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
-		renderPassInfo.viewport = false;
+	std::shared_ptr<Material>& mat = subMesh->getMaterial();
+	mat->load(nullptr);
 
-		float v = 512;
-		rs->setViewport(0, 0, v, v, 0.0f, 1.0f);
-		rs->setScissor(0, 0, v, v);
-		rs->beginRenderPass(renderPassInfo);
-		
-		rs->bindPipeline(mipmapHandle, mipmapPipelineHandle, &mipmapDescSet, 1);
-		vertexData->bind(nullptr);
-		indexData->bind();
-		IndexDataView* indexView = subMesh->getIndexView();
-		rs->drawIndexed(indexView->mIndexCount, 1,
-			indexView->mIndexLocation, indexView->mBaseVertexLocation, 0);
-		rs->endRenderPass(renderPassInfo);
+	OgreTexture* tex = mat->getTexture(0);
+
+	for (auto i = 0; i < 2; i++)
+	{
+		auto zeroSet = mRenderSystem->createDescriptorSet(presentHandle, 0);
+
+		mFrameData[i].zeroSet = zeroSet;
+		BufferDesc desc{};
+		desc.mBindingType = BufferObjectBinding_Uniform;
+		desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+		desc.bufferCreationFlags = 0;
+		desc.mElementCount = 0;
+		desc.mStructStride = 0;
+		desc.mSize = sizeof(FrameConstantBuffer);
+		desc.pName = "FrameConstantBuffer";
+		auto passUniformBuffer = mRenderSystem->createBufferObject(desc);
+		mFrameData[i].passUniformBuffer = passUniformBuffer;
+
+		descriptorData[0].pName = "passUniformBlock";
+		descriptorData[0].mCount = 1;
+		descriptorData[0].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[0].ppBuffers = &mFrameData[i].passUniformBuffer;
+
+		descriptorData[1].pName = "vertexDataBuffer";
+		descriptorData[1].mCount = 1;
+		descriptorData[1].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[1].ppBuffers = &vertexDataHandle;
+
+		descriptorData[2].pName = "first";
+		descriptorData[2].mCount = 1;
+		descriptorData[2].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+		descriptorData[2].ppTextures = (const Ogre::OgreTexture**)& tex;
+
+		descriptorData[3].pName = "firstSampler";
+		descriptorData[3].mCount = 1;
+		descriptorData[3].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+		descriptorData[3].ppTextures = (const Ogre::OgreTexture**)&tex;
+
+		mRenderSystem->updateDescriptorSet(zeroSet, 4, descriptorData);
+	}
+
+	uint32_t indexCount = indexData->getIndexCount();
+	uint32_t indexSize = indexData->getIndexSize();
+	RenderPassCallback presentCallback = [=, this](RenderPassInfo& info) {
+		info.renderTargetCount = 1;
+		info.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();
+		info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
+		info.depthTarget.depthStencil = nullptr;
+		info.depthTarget.clearValue = { 0.0f, 0.0f };
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		mRenderSystem->bindIndexBuffer(indexDataHandle, indexSize);
+		mRenderSystem->pushGroupMarker("presentPass");
+		mRenderSystem->beginRenderPass(info);
+		mRenderSystem->bindPipeline(presentHandle, pipelineHandle,
+			&mFrameData[frameIndex].zeroSet, 1);
+		mRenderSystem->drawIndexed(indexCount, 1, 0, 0, 0);
+		mRenderSystem->endRenderPass(info);
+		mRenderSystem->popGroupMarker();
 		};
-
+	Ogre::Camera* cam = mGameCamera->getCamera();
 	UpdatePassCallback updateCallback = [=, this](float delta) {
+		FrameConstantBuffer frameBuffer;
+		this->updateFrameData(cam, frameBuffer);
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		mRenderSystem->updateBufferObject(mFrameData[frameIndex].passUniformBuffer,
+			(const char*)&frameBuffer, sizeof(frameBuffer));
 		};
-
-	auto myPass = createUserDefineRenderPass(renderCallback, updateCallback);
-	mRenderPipeline->addRenderPass(myPass);
+	auto presentPass = createUserDefineRenderPass(presentCallback, updateCallback);
+	mRenderPipeline->addRenderPass(presentPass);
 }

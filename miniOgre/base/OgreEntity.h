@@ -68,6 +68,8 @@ namespace Ogre {
 
         void setMaterialName(const std::string& name, bool copy = true);
 
+        void setColor(const Ogre::Vector4& color);
+
         const ChildObjectList& getAttachedObjects() const;
 
         void shareSkeletonInstanceWith(Entity* entity);

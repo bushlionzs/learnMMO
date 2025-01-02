@@ -9,7 +9,8 @@ int main()
 	AppInfo info;
 
 	ManualApplication app;
-
+	info.engineType = EngineType_Vulkan;
+	//info.engineType = EngineType_Dx12;
 	info.setup = [&instance, &app](RenderSystem* rs, Ogre::RenderWindow* win, Ogre::SceneManager* sceneManager, GameCamera* gameCamera) {
 		instance.setup(&app, rs, win, sceneManager, gameCamera);
 		};

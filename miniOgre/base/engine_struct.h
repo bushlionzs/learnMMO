@@ -156,10 +156,8 @@ struct RenderPassInfo
     LoadActionType depthLoadAction = LOAD_ACTION_CLEAR;
     StoreActionType depthStoreAction = STORE_ACTION_STORE;
     bool viewport = true;
-    /*Ogre::SceneManager* sceneMgr;
-    Ogre::OgreTexture* shadowMap = nullptr;
-    Ogre::ICamera* cam = nullptr;
-    bool shadowPass = false;*/
+    bool flipY = true;
+    const char* passName = nullptr;
 };
 
 struct ComputePassInfo
@@ -169,17 +167,6 @@ struct ComputePassInfo
     Ogre::Vector3i computeGroup;
 };
 
-
-struct FrameResourceInfo
-{
-    Handle<HwDescriptorSet> zeroSet;
-    Handle<HwDescriptorSet> firstSet;
-    Handle<HwDescriptorSet> zeroShadowSet;
-    Handle<HwBufferObject>  modelObjectHandle;
-    Handle<HwBufferObject>  matObjectHandle;
-    Handle<HwBufferObject>  skinObjectHandle;
-    bool update;
-};
 
 #ifndef MAX_NUM_DIR_LIGHTS
 #define MAX_NUM_DIR_LIGHTS 1
@@ -194,7 +181,7 @@ struct LightInfo
     float FalloffEnd = 10.0f;                           // point/spot light only
     Ogre::Vector3 Position = { 0.0f, 0.0f, 0.0f };  // point/spot light only
     float SpotPower = 64.0f;                            // spot light only
-    Ogre::Matrix4 lightViewProject;
+    Ogre::Vector3 lightColor = {1.0f, 1.0f, 1.0f};
 };
 
 struct FrameConstantBuffer
@@ -255,6 +242,7 @@ struct ObjectConstantBuffer
 {
     Ogre::Matrix4 world = Ogre::Matrix4::IDENTITY;
     Ogre::Matrix4 projector = Ogre::Matrix4::IDENTITY;
+    Ogre::Vector4 diffuseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 };
 
 class SkinnedConstantBuffer

@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include <bitset>
 #include "engine_struct.h"
 #include "shader.h"
 #include <filament/Handle.h>
@@ -15,8 +15,6 @@ class RenderableData;
 using namespace filament;
 
 namespace Ogre {
-    using RenderableFrameResourceCallback = std::function< bool(
-        std::vector<FrameResourceInfo>& frameResourceInfoList, Material* mat)>;
     class Renderable
     {
     public:
@@ -69,19 +67,29 @@ namespace Ogre {
 
         Ogre::OperationType getPrimitiveTopology();
 
-        bool createFrameResource(RenderableFrameResourceCallback callback = nullptr);
-        void updateFrameResource(uint32_t frameIndex);
-        void updateMaterialInfo(bool updateTexture);
-        FrameResourceInfo* getFrameResourceInfo(uint32_t frameIndex);
+        bool updateFrameResource(
+            uint32_t frameIndex, 
+            void* frameData);
+        void* getFrameResourceInfo(uint32_t frameIndex);
 
         void setObjectType(ObjectType type);
+        ObjectType getObjectType()
+        {
+            return mObjectType;
+        }
+
+        void setColor(const Ogre::Vector4& color);
+        const Ogre::Vector4& getColor() const;
+
+        bool hasFlag(uint32_t pos) const;
+        void setFlag(uint32_t pos, bool val);
     protected:
         std::shared_ptr<Material> mMaterial;
         Ogre::Matrix4 mModel;
         uint64_t mSortValue;
         ObjectType mObjectType;
-        std::vector<FrameResourceInfo> mFrameResourceInfoList;
-
-        RenderableFrameResourceCallback mCallback = nullptr;
+        Ogre::Vector4 mColor;
+        std::vector<void*> mFrameResourceInfoList;
+        std::bitset<64>  mFlags;
     };
 }

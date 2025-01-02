@@ -22,6 +22,7 @@ struct RenderPassInput
 	Ogre::Light* light = nullptr;
 	Ogre::RenderTarget* shadowMapTarget = nullptr;
 	bool shadowPass = false;
+	bool flipY = true;
 };
 
 

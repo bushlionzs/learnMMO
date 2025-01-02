@@ -77,11 +77,11 @@ std::shared_ptr<Ogre::Mesh> FbxLoader::loadMeshFromFile(
                 FbxVertex& vertex = vertexList.at(index);
              
                 vertex.Pos.x = sourceVertices[index].x;
-                vertex.Pos.y = sourceVertices[index].y;
+                vertex.Pos.y = sourceVertices[index].y; 
                 vertex.Pos.z = sourceVertices[index].z;
 
                 vertex.Normal.x = sourceNormals[index].x;
-                vertex.Normal.y = sourceNormals[index].y;
+                vertex.Normal.y = sourceNormals[index].y; 
                 vertex.Normal.z = sourceNormals[index].z;
 
                 vertex.TexC.x = sourceTexcoords[index].x;
@@ -130,7 +130,7 @@ std::shared_ptr<Ogre::Mesh> FbxLoader::loadMeshFromFile(
             sourceMat->Get(AI_MATKEY_NAME, name);
 
             std::string matName = name.C_Str();
-            std::shared_ptr<Ogre::Material> mat = std::make_shared<Ogre::Material>(matName, true);
+            std::shared_ptr<Ogre::Material> mat = std::make_shared<Ogre::Material>(matName, false);
 
             for (aiTextureType aiType = aiTextureType_DIFFUSE; aiType < aiTextureType_UNKNOWN;
                 aiType = aiTextureType((uint32_t)aiType + 1))

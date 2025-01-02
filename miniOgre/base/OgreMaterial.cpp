@@ -96,10 +96,8 @@ namespace Ogre {
             }
         }
 
-        //createFrameResourceInfo();
-
+        createFrameResourceInfo();
         mLoad = true;
-
     }
 
     void Material::updateResourceState()

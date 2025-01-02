@@ -192,6 +192,14 @@ namespace Ogre {
         }
     }
 
+    void Entity::setColor(const Ogre::Vector4& color)
+    {
+        for (auto r : mSubEntityList)
+        {
+            r->setColor(color);
+        }
+    }
+
     const Entity::ChildObjectList& Entity::getAttachedObjects() const
     {
         static Entity::ChildObjectList aa;

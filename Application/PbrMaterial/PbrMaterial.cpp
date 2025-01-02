@@ -24,6 +24,7 @@
 #include "OgreIndexData.h"
 #include "OgreRenderTarget.h"
 #include "pbrUtil.h"
+#include "renderUtil.h"
 #include "game_camera.h"
 #include <platform_file.h>
 #include <algorithm>
@@ -384,7 +385,7 @@ void PbrMaterial::updateRenderMode(uint32_t mode)
 		for (auto entity : matBallList)
 		{
 			SubEntity* subEntity = entity->getSubEntity(0);
-			subEntity->updateMaterialInfo(false);
+			updateMaterialInfo(subEntity, false);
 		}
 	}
 	else
@@ -396,7 +397,7 @@ void PbrMaterial::updateRenderMode(uint32_t mode)
 			auto& mat = subEntity->getMaterial();
 			PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
 			matInfo.debugRenderMode = mode;
-			subEntity->updateMaterialInfo(false);
+			updateMaterialInfo(subEntity, false);
 		}
 	}
 }
@@ -414,7 +415,7 @@ void PbrMaterial::updateMaterialType(uint32_t type)
 	for (auto entity : matBallList)
 	{
 		SubEntity* subEntity = entity->getSubEntity(0);
-		subEntity->updateMaterialInfo(true);
+		updateMaterialInfo(subEntity, true);
 	}
 }
 

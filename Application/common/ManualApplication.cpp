@@ -17,7 +17,7 @@
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
 #include <ResourceParserManager.h>
-#include <CEGUIManager.h>
+#include "renderUtil.h"
 #include "pass.h"
 
 
@@ -268,6 +268,7 @@ void ManualApplication::addUIPass()
 	Ogre::SceneManager* sceneManager = ceguiManager->getSceneManager();
 	FrameConstantBuffer frameConstantBuffer;
 	auto* rs = mRenderSystem;
+	auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
 	BufferDesc desc{};
 	desc.mBindingType = BufferObjectBinding_Uniform;
 	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
@@ -277,8 +278,51 @@ void ManualApplication::addUIPass()
 		rs->createBufferObject(desc);
 
 	updateFrameData(cam, frameConstantBuffer, frameHandle);
+
+	static UserDefineShader userDefineShader;
+	userDefineShader.initCallback = initFrameResource;
+
+	userDefineShader.initCallback = initFrameResource;
+
+	RenderableBindCallback bindCallback = [=, this](uint32_t frameIndex, Renderable* r) {
+		DescriptorData descriptorData;
+		for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
+		{
+			descriptorData.mCount = 1;
+			descriptorData.pName = "cbPass";
+			descriptorData.ppBuffers = &frameHandle;
+			FrameResourceInfo* resourceInfo = (FrameResourceInfo*)r->getFrameResourceInfo(frameIndex);
+			auto* rs = Ogre::Root::getSingleton().getRenderSystem();
+			rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
+		}
+		};
+	userDefineShader.bindCallback = bindCallback;
+
+	RenderableDrawCallback drawCallback = [=, this](uint32_t frameIndex, Renderable* r) {
+		void* frameData = r->getFrameResourceInfo(frameIndex);
+		FrameResourceInfo* resourceInfo = (FrameResourceInfo*)frameData;
+		Ogre::Material* mat = r->getMaterial().get();
+
+		auto programHandle = mat->getProgram();
+		auto piplineHandle = mat->getPipeline();
+		Handle<HwDescriptorSet> descriptorSet[2];
+		descriptorSet[0] = resourceInfo->zeroSet;
+		descriptorSet[1] = resourceInfo->firstSet;
+		rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+
+
+		VertexData* vertexData = r->getVertexData();
+		IndexData* indexData = r->getIndexData();
+		vertexData->bind(nullptr);
+		indexData->bind();
+		IndexDataView* view = r->getIndexView();
+		rs->drawIndexed(view->mIndexCount, 1,
+			view->mIndexLocation, view->mBaseVertexLocation, 0);
+		};
+	userDefineShader.drawCallback = drawCallback;
+	
 	RenderPassCallback guiCallback = [=, this](RenderPassInfo& info) {		
-		auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
+		
 		info.renderTargetCount = 1;
 		info.renderTargets[0].renderTarget = mRenderWindow->getColorTarget();
 		info.renderLoadAction = LOAD_ACTION_LOAD;
@@ -287,58 +331,8 @@ void ManualApplication::addUIPass()
 		info.depthTarget.depthStencil = nullptr;
 		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
 		const std::vector<Renderable*>& renderList = ceguiManager->getRenderableList();
-		for (auto r : renderList)
-		{
-			Ogre::Material* mat = r->getMaterial().get();
-
-			if (!mat->isLoaded())
-			{
-				mat->load(nullptr);
-			}
-			if (r->createFrameResource())
-			{
-				DescriptorData descriptorData;
-				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
-				{
-					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
-
-					descriptorData.pName = "cbPass";
-					descriptorData.mCount = 1;
-					descriptorData.ppBuffers = &frameHandle;
-					
-					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
-				}
-			}
-
-			r->updateFrameResource(frameIndex);
-		}
-		rs->beginRenderPass(info);
-		for (auto r : renderList)
-		{
-			Ogre::Material* mat = r->getMaterial().get();
-			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-			FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
-			Handle<HwDescriptorSet> descriptorSet[2];
-			descriptorSet[0] = resourceInfo->zeroSet;
-			descriptorSet[1] = resourceInfo->firstSet;
-
-			auto programHandle = mat->getProgram();
-			auto piplineHandle = mat->getPipeline();
-			rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
-
-
-			VertexData* vertexData = r->getVertexData();
-			IndexData* indexData = r->getIndexData();
-			
-			vertexData->bind(nullptr);
-
-			RawDataView* dataView = r->getRawDataView();
-			if (dataView)
-			{
-				rs->draw(dataView->mVertexCount, dataView->mVertexStart);
-			}
-		}
-		rs->endRenderPass(info);
+		
+		renderScene(cam, renderList, info, &userDefineShader);
 		};
 	UpdatePassCallback updateCallback = [](float delta) {
 		};

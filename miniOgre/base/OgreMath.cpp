@@ -50,7 +50,7 @@ namespace Ogre
 
     Math::RandomValueProvider* Math::mRandProvider = NULL;
 
-#define LEFT_HANDED
+//#define LEFT_HANDED
     //-----------------------------------------------------------------------
     Math::Math( unsigned int trigTableSize )
     {
@@ -954,6 +954,14 @@ namespace Ogre
         Ogre::Matrix4 result(quat);
         
         return m * result;
+    }
+
+    Matrix4 Math::makeRotateMatrix(float degree, const Ogre::Vector3& v)
+    {
+        Ogre::Quaternion quat(Ogre::Radian(Ogre::Degree(degree)), v);
+        Ogre::Matrix4 result(quat);
+
+        return Ogre::Matrix4::IDENTITY * result;
     }
 
     Matrix4 Math::makeRotateMatrixYX(const float radiansX, const float radiansY)

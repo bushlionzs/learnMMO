@@ -345,9 +345,20 @@ void VulkanRenderSystemBase::beginRenderPass(
         auto height = renderArea.extent.height;
         VkViewport viewport{};
         viewport.x = 0.0;
-        viewport.y = height;
+        
         viewport.width = width;
-        viewport.height = -(float)height;
+        
+
+        if (renderPassInfo.flipY)
+        {
+            viewport.height = -(float)height;
+            viewport.y = height;
+        }
+        else
+        {
+            viewport.height = (float)height;
+            viewport.y = 0;
+        }
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         VkRect2D scissor = vks::initializers::rect2D(width, height, 0, 0);
@@ -1177,8 +1188,12 @@ void VulkanRenderSystemBase::updateDescriptorSet(
         const DescriptorData* pParam = pParams + i;
         const VKDescriptorInfo* descriptroInfo = vulkanProgram->getDescriptor(pParam->pName);
         if (descriptroInfo == nullptr)
+        {
+            assert(descriptroInfo);
             continue;
-        assert(descriptroInfo);
+        }
+           
+        
         const uint32_t       arrayCount = std::max(1U, pParam->mCount);
 
         

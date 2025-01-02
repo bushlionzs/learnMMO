@@ -11,6 +11,7 @@
 #include "OgreTextureManager.h"
 #include "OgreVertexData.h"
 #include "OgreIndexData.h"
+#include "renderUtil.h"
 
 class StandardRenderPass : public PassBase
 {
@@ -18,6 +19,7 @@ public:
 	StandardRenderPass(RenderPassInput& input)
 	{
 		mPassInput = input;
+		mRenderPassInfo.flipY = input.flipY;
 		RenderSystem* rs = Ogre::Root::getSingleton().getRenderSystem();
 		auto& ogreConfig = ::Root::getSingleton().getEngineConfig();
 		mFrameBufferObjectList.resize(ogreConfig.swapBufferCount);
@@ -39,6 +41,46 @@ public:
 			Ogre::Vector2(1.0f / width, 1.0f / height);
 		mFrameConstantBuffer.NearZ = 0.1f;
 		mFrameConstantBuffer.FarZ = 10000.0f;
+
+		mUserDefineShader.initCallback = initFrameResource;
+
+		RenderableBindCallback bindCallback = [=, this](uint32_t frameIndex, Renderable* r) {
+				DescriptorData descriptorData;
+				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
+				{
+					descriptorData.mCount = 1;
+					descriptorData.pName = "cbPass";
+					descriptorData.ppBuffers = &mFrameBufferObjectList[i];;
+					FrameResourceInfo* resourceInfo = (FrameResourceInfo*)r->getFrameResourceInfo(frameIndex);
+					auto* rs = Ogre::Root::getSingleton().getRenderSystem();
+					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
+				}
+			};
+		mUserDefineShader.bindCallback = bindCallback;
+
+		RenderableDrawCallback drawCallback = [=, this](uint32_t frameIndex, Renderable* r) {
+			void* frameData = r->getFrameResourceInfo(frameIndex);
+			FrameResourceInfo* resourceInfo = (FrameResourceInfo*)frameData;
+			Ogre::Material* mat = r->getMaterial().get();
+			
+			auto programHandle = mat->getProgram();
+			auto piplineHandle = mat->getPipeline();
+			Handle<HwDescriptorSet> descriptorSet[2];
+			descriptorSet[0] = resourceInfo->zeroSet;
+			descriptorSet[1] = resourceInfo->firstSet;
+			rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+
+
+			VertexData* vertexData = r->getVertexData();
+			IndexData* indexData = r->getIndexData();
+			vertexData->bind(nullptr);
+			indexData->bind();
+			IndexDataView* view = r->getIndexView();
+			rs->drawIndexed(view->mIndexCount, 1,
+				view->mIndexLocation, view->mBaseVertexLocation, 0);
+			};
+		mUserDefineShader.drawCallback = drawCallback;
+		mRenderPassInfo.passName = "generalPass";
 	}
 
 	virtual void execute(RenderSystem* rs)
@@ -58,102 +100,7 @@ public:
 		}
 		info.depthTarget.clearValue = { depthValue, 0.0f };
 
-		static EngineRenderList engineRenerList;
-		sceneManager->getSceneRenderList(cam, engineRenerList, false);
-		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-
-		uint32_t index = 0;
-		for (auto r : engineRenerList.mOpaqueList)
-		{
-			index++;
-			if (index > 10)
-				break;
-			Ogre::Material* mat = r->getMaterial().get();
-			if (!mat->isLoaded())
-			{
-				mat->load(nullptr);
-			}
-			if (r->createFrameResource())
-			{
-				DescriptorData descriptorData;
-				for (auto i = 0; i < ogreConfig.swapBufferCount; i++)
-				{
-					FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(i);
-					auto frameHandle = mFrameBufferObjectList[i];
-					descriptorData.pName = "cbPass";
-					descriptorData.mCount = 1;
-					descriptorData.ppBuffers = &frameHandle;
-					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);
-					rs->updateDescriptorSet(resourceInfo->zeroShadowSet, 1, &descriptorData);
-				}
-			}
-			
-			r->updateFrameResource(frameIndex);
-		}
-		rs->beginRenderPass(info);
-		index = 0;
-		for (auto r : engineRenerList.mOpaqueList)
-		{
-			index++;
-			if (index > 10)
-				break;
-			Ogre::Material* mat = r->getMaterial().get();
-			auto flags = mat->getMaterialFlags();
-			if (flags & MATERIAL_FLAG_ALPHA_TESTED)
-			{
-				continue;
-			}
-			auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-			FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
-			Handle<HwDescriptorSet> descriptorSet[2];
-			descriptorSet[0] = resourceInfo->zeroSet;
-			descriptorSet[1] = resourceInfo->firstSet;
-
-			auto programHandle = mat->getProgram();
-			auto piplineHandle = mat->getPipeline();
-			rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
-
-
-			VertexData* vertexData = r->getVertexData();
-			IndexData* indexData = r->getIndexData();
-			vertexData->bind(nullptr);
-			indexData->bind();
-			IndexDataView* view = r->getIndexView();
-			rs->drawIndexed(view->mIndexCount, 1,
-				view->mIndexLocation, view->mBaseVertexLocation, 0);
-		}
-
-		for (auto r : engineRenerList.mOpaqueList)
-		{
-			break;
-			Ogre::Material* mat = r->getMaterial().get();
-			auto flags = mat->getMaterialFlags();
-			if (flags & MATERIAL_FLAG_ALPHA_TESTED)
-			{
-				auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-				FrameResourceInfo* resourceInfo = r->getFrameResourceInfo(frameIndex);
-				Handle<HwDescriptorSet> descriptorSet[2];
-				descriptorSet[0] = resourceInfo->zeroSet;
-				descriptorSet[1] = resourceInfo->firstSet;
-
-				auto programHandle = mat->getProgram();
-				auto piplineHandle = mat->getPipeline();
-				rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
-
-
-				VertexData* vertexData = r->getVertexData();
-				IndexData* indexData = r->getIndexData();
-				vertexData->bind(nullptr);
-				indexData->bind();
-				IndexDataView* view = r->getIndexView();
-				rs->drawIndexed(view->mIndexCount, 1,
-					view->mIndexLocation, view->mBaseVertexLocation, 0);
-			}
-			
-		}
-		rs->endRenderPass(info);
-
-		
+		renderScene(cam, sceneManager, mRenderPassInfo, &mUserDefineShader);
 	}
 	virtual void update(float delta)
 	{
@@ -186,8 +133,8 @@ private:
 			mFrameConstantBuffer.Shadow = 1;
 
 			mFrameConstantBuffer.numDirLights = 1;
-			mFrameConstantBuffer.directionLights[0].lightViewProject =
-				(light->getProjectMatrix() * light->getViewMatrix()).transpose();
+			/*mFrameConstantBuffer.directionLights[0].lightViewProject =
+				(light->getProjectMatrix() * light->getViewMatrix()).transpose();*/
 			mFrameConstantBuffer.directionLights[0].Direction = Ogre::Vector3(-100.0f, -100.0f, 0.0f);
 		}
 		else
@@ -212,6 +159,7 @@ private:
 	RenderPassInfo mRenderPassInfo;
 	FrameConstantBuffer mFrameConstantBuffer;
 	std::vector<Handle<HwBufferObject>> mFrameBufferObjectList;
+	UserDefineShader mUserDefineShader;
 };
 
 PassBase* createStandardRenderPass(RenderPassInput& input)
