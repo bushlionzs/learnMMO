@@ -22,11 +22,6 @@ public:
     Dx12RenderSystemBase();
     ~Dx12RenderSystemBase();
 
-    struct DescriptorHeap** getCPUDescriptorHeaps()
-    {
-        return mDescriptorHeapContext.mCPUDescriptorHeaps;
-    }
-
     virtual bool engineInit();
     virtual void ready();
     virtual Ogre::RenderWindow* createRenderWindow(
@@ -34,6 +29,8 @@ public:
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name,
         TextureProperty& texProperty) override;
+    virtual void clearRenderTarget(
+        Ogre::RenderTarget* target, const Ogre::Vector4& color);
     virtual void frameStart();
     virtual void frameEnd();
     virtual void present();
@@ -142,8 +139,7 @@ protected:
 
     DxMemoryAllocator* mMemoryAllocator;
 
-    DescriptorHeapContext mDescriptorHeapContext;
-
+    DescriptorHeapContext* mDescriptorHeapContext;
     bool mSetDescriptorHeaps;
 
     ID3D12CommandSignature* mDrawIndexCommandSignature = nullptr;

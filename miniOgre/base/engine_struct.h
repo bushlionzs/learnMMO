@@ -155,6 +155,7 @@ struct RenderPassInfo
     BindDepthTargetDesc  depthTarget;
     LoadActionType depthLoadAction = LOAD_ACTION_CLEAR;
     StoreActionType depthStoreAction = STORE_ACTION_STORE;
+    uint32_t            extent[2];
     bool viewport = true;
     bool flipY = true;
     const char* passName = nullptr;

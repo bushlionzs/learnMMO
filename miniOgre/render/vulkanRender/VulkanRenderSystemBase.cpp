@@ -201,6 +201,28 @@ Ogre::RenderTarget* VulkanRenderSystemBase::createRenderTarget(
     return renderTarget;
 }
 
+void VulkanRenderSystemBase::clearRenderTarget(
+    Ogre::RenderTarget* target, const Ogre::Vector4& color)
+{
+    VkClearColorValue clearColor = { color.x, color.y, color.z, color.w };
+    VulkanTexture* tex = (VulkanTexture*)target->getTarget();
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = tex->getNumMipmaps();
+    subresourceRange.baseArrayLayer = 0;
+    subresourceRange.layerCount = 1;
+    VkCommandBuffer cb = mCommands->get().buffer();
+    vkCmdClearColorImage(
+        cb,   
+        tex->getVkImage(),           
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        &clearColor,   
+        1,             
+        &subresourceRange
+    );
+}
+
 void VulkanRenderSystemBase::frameStart()
 {
     mTriangleCount = 0;
@@ -324,7 +346,9 @@ void VulkanRenderSystemBase::beginRenderPass(
     }
     else
     {
-        assert(false);
+        renderArea.extent.width = renderPassInfo.extent[0];
+        renderArea.extent.height = renderPassInfo.extent[1];
+        layerCount = 1;
     }
 
     VkRenderingInfoKHR renderingInfo = {};
@@ -815,6 +839,9 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
                 case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
                     info.inputAttachmentCount++;
                     break;
+                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                    info.storeImage++;
+                    break;
                 case VK_DESCRIPTOR_TYPE_SAMPLER:
                     info.samplerCount++;
                     break;
@@ -1069,11 +1096,8 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
         vulkanProgram->getFragShaderFuncName());
     VkPipeline pipeline = mPipelineCache->getPipeline();
 
-    mPipelineCache->bindProgram(vulkanProgram->getVertexShader(), nullptr, nullptr);
-
-    VkPipeline pipelineShadow = mPipelineCache->getPipeline();
     VulkanPipeline* vulkanPipeline = mResourceAllocator.construct<VulkanPipeline>(
-        pipelineHandle, pipeline, pipelineShadow);
+        pipelineHandle, pipeline, VK_NULL_HANDLE);
     return pipelineHandle;
 }
 

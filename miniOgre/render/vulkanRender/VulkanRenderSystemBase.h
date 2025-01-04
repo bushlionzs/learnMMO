@@ -40,6 +40,7 @@ public:
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
         TextureProperty& texProperty) override;
+    virtual void clearRenderTarget(Ogre::RenderTarget*, const Ogre::Vector4& color) override;
     virtual void frameStart() override;
     virtual void frameEnd() override;
     virtual void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth);

@@ -202,7 +202,8 @@ ExtensionSet getDeviceExtensions(VkPhysicalDevice device) {
             VK_KHR_MULTIVIEW_EXTENSION_NAME,
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
             VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-            VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
+            VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+            VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME
     };
     ExtensionSet exts;
     // Identify supported physical device extensions
@@ -331,6 +332,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
             .samplerAnisotropy = features.samplerAnisotropy,
             .textureCompressionETC2 = features.textureCompressionETC2,
             .textureCompressionBC = features.textureCompressionBC,
+            .fragmentStoresAndAtomics = VK_TRUE,
             .shaderClipDistance = features.shaderClipDistance,
             .shaderInt64 = VK_TRUE
     };
@@ -357,6 +359,19 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
         base->pNext = (VkBaseOutStructure*) & vulkan12Features;
         base = (VkBaseOutStructure*)base->pNext;
     }
+
+    /*VkPhysicalDeviceFeatures2 features2 = {};
+    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR fragmentShaderBarycentricFeatures = {};
+    fragmentShaderBarycentricFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+    fragmentShaderBarycentricFeatures.fragmentShaderBarycentric = VK_TRUE;
+    features2.pNext = &fragmentShaderBarycentricFeatures;
+    {
+        base->pNext = (VkBaseOutStructure*)&features2;
+        base = (VkBaseOutStructure*)base->pNext;
+    }*/
+
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES
     };

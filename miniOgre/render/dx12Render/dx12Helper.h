@@ -59,8 +59,13 @@ public:
 		DescriptorHeap* heap);
 
 	void generateMipmaps(Dx12Texture* tex);
+
+	DescriptorHeapContext* getHeapContext()
+	{
+		return &mDescriptorHeapContext;
+	}
 private:
-	ComPtr<ID3D12Device> mDx12Device;
+	ComPtr<ID3D12Device> mDevice;
 	ComPtr<IDXGIFactory4> mdxgiFactory;
     ComPtr<ID3D12Fence> mFence;
 	ComPtr<ID3D12CommandQueue> mCommandQueue;
@@ -82,4 +87,7 @@ private:
 	Handle<HwSampler> mMipMapSamplerHandle;
 	Ogre::RenderTarget* mMipmapTarget;
 	tsl::robin_map<SamplerParams, DxDescriptorID, SamplerParams::Hasher, SamplerParams::EqualTo> mSamplersCache;
+
+
+	DescriptorHeapContext mDescriptorHeapContext;
 };

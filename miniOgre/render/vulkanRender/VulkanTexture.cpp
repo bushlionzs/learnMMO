@@ -272,7 +272,7 @@ void VulkanTexture::createImage(
     {
         imageInfo.imageType = VK_IMAGE_TYPE_3D;
     }
-    imageInfo.extent = { width, height, 1 };
+    imageInfo.extent = { width, height, mTextureProperty._depth };
 
     imageInfo.mipLevels = mMipLevels;
     imageInfo.arrayLayers = mFace;

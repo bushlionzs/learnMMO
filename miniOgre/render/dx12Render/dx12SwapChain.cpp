@@ -100,15 +100,14 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	//mSwapChain3->SetMaximumFrameLatency(1);
 	mSwapChain3->SetColorSpace1(colorSpace);
 	mColors.resize(ogreConfig.swapBufferCount);
-	auto* rs = DX12Helper::getSingleton().getDx12RenderSystem();
-	struct DescriptorHeap** cpuDescriptorHeaps = rs->getCPUDescriptorHeaps();
+	DescriptorHeapContext* context = DX12Helper::getSingleton().getHeapContext();
 	TextureProperty texProperty;
 	texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
 	texProperty._width = ogreConfig.width;
 	texProperty._height = ogreConfig.height;
 	texProperty._tex_format = D3D12Mappings::getPixelFormat(mColorFormat);
 
-	struct DescriptorHeap* rtvHeap = cpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
+	struct DescriptorHeap* rtvHeap = context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
 	auto descriptors = consume_descriptor_handles(rtvHeap, ogreConfig.swapBufferCount);
 	
 	for (UINT i = 0; i < ogreConfig.swapBufferCount; i++)
@@ -120,7 +119,7 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 			descriptor_id_to_cpu_handle(rtvHeap, descriptors + i);
 		device->CreateRenderTargetView(res, &rtvDesc, cpuHandle);*/
 
-		mColors[i] = new Dx12Texture("colorTarget", &texProperty, mCommands, res, descriptors + i);
+		mColors[i] = new Dx12Texture("colorTarget", &texProperty, mCommands, res);
 	}
 
 
@@ -155,7 +154,7 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 		D3D12_RESOURCE_STATE_DEPTH_WRITE,
 		&optClear,
 		IID_PPV_ARGS(&depth)));
-	struct DescriptorHeap* dsvHeap = cpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV];
+	struct DescriptorHeap* dsvHeap = context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV];
 	auto descriptorId = consume_descriptor_handles(dsvHeap, 1);
 	//D3D12_CPU_DESCRIPTOR_HANDLE depthHandle =
 	//	descriptor_id_to_cpu_handle(dsvHeap, descriptorId);
@@ -166,5 +165,5 @@ void DX12SwapChain::createSwapChain2(bool srgb)
 	texProperty._tex_usage = Ogre::TextureUsage::DEPTH_ATTACHMENT;
 	texProperty._tex_format = D3D12Mappings::getPixelFormat(mDepthFormat);
 
-	mDepth = new Dx12Texture(std::string("depthTarget"), &texProperty, mCommands, depth, descriptorId);
+	mDepth = new Dx12Texture(std::string("depthTarget"), &texProperty, mCommands, depth);
 }

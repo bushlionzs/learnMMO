@@ -124,6 +124,11 @@ bool hlslToBin(
 		arguments.push_back(L"-T");
 		arguments.push_back(L"ps_6_0");
 	}
+	else if (shaderType == GeometryShader)
+	{
+		arguments.push_back(L"-T");
+		arguments.push_back(L"gs_6_0");
+	}
 	else if(shaderType == ComputeShader)
 	{
 		arguments.push_back(L"-T");

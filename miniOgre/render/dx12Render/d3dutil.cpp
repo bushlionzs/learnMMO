@@ -356,7 +356,7 @@ void d3dUtil::add_descriptor_heap(
     CHECK_HRESULT(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pHeap->pHeap)));
 
     pHeap->mStartCpuHandle = pHeap->pHeap->GetCPUDescriptorHandleForHeapStart();
-    if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+    //if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
         pHeap->mStartGpuHandle = pHeap->pHeap->GetGPUDescriptorHandleForHeapStart();
     }

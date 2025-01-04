@@ -105,6 +105,15 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
         };
     }
     
+    const std::string* gsblob = mPipelineRequirements.shaders[1];
+    if (gsblob)
+    {
+        psoDesc.GS =
+        {
+            reinterpret_cast<const BYTE*>(gsblob->c_str()),
+            gsblob->size()
+        };
+    }
 
     const std::string* psblob = mPipelineRequirements.shaders[2];
     if (psblob)

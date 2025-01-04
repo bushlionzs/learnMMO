@@ -6,12 +6,10 @@
 Dx12RenderTarget::Dx12RenderTarget(
 	const std::string& name,
 	DX12Commands* commands,
-	TextureProperty* texProperty,
-	DxDescriptorID descriptorId,
-	DxDescriptorID targetId)
+	TextureProperty* texProperty)
 {
 	mName = name;
-	mTarget = new Dx12Texture(mName, texProperty, commands, descriptorId, targetId);
+	mTarget = new Dx12Texture(mName, texProperty, commands, true);
 	mTarget->load(nullptr);
 	mWidth = mTarget->getWidth();
 	mHeight = mTarget->getHeight();

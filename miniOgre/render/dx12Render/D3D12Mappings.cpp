@@ -321,6 +321,7 @@ namespace Ogre {
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         case D3D_SIT_UAV_RWSTRUCTURED:
         case D3D_SIT_UAV_RWBYTEADDRESS:
+        case D3D_SIT_UAV_RWTYPED:
             return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
         default:
             assert(false);

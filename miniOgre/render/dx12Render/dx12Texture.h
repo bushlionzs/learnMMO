@@ -14,15 +14,13 @@ public:
         const std::string& name, 
         Ogre::TextureProperty* texProperty, 
         DX12Commands* commands,
-        DxDescriptorID descriptorId, 
-        DxDescriptorID renderTargetId);
+        bool needSrv);
 
     Dx12Texture(
         const std::string& name,
         Ogre::TextureProperty* texProperty,
         DX12Commands* commands,
-        ID3D12Resource* resource,
-        DxDescriptorID descriptorId);
+        ID3D12Resource* resource);
 
     ~Dx12Texture();
 
@@ -65,7 +63,7 @@ public:
 private:
     virtual void createInternalResourcesImpl(void);
     virtual void freeInternalResourcesImpl(void);
-    void _create2DTex();
+    void _createTex();
     void _createSurfaceList(void);
     virtual void updateTexture(const std::vector<const CImage*>& images);
     virtual void postLoad();
@@ -88,8 +86,10 @@ private:
     DX12Commands* mCommands;
 
 
+    bool mNeedSrv;
     DxDescriptorID mDescriptors;
     DxDescriptorID mTargetDescriptorID;
+
 
     DxDescriptorID mSamplerDescriptorID;
     uint32_t mMipLevels = 1;

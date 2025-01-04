@@ -151,10 +151,8 @@ void Dx12RenderSystem::multiRender(std::vector<Ogre::Renderable*>& objs, bool mu
 
 OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, TextureProperty* texProperty)
 {
-	DxDescriptorID descriptorId = consume_descriptor_handles(
-		mDescriptorHeapContext.mCPUDescriptorHeaps[0], 1);
 	Dx12Texture* tex = new Dx12Texture(
-		name, texProperty, mCommands, descriptorId, -1);
+		name, texProperty, mCommands, true);
 
 	if (!tex->load(nullptr))
 	{

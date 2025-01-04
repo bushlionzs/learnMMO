@@ -113,9 +113,9 @@ typedef struct DescriptorHeapProperties
 
 struct DescriptorHeapContext
 {
-    struct DescriptorHeap** mCPUDescriptorHeaps;
-    struct DescriptorHeap** mCbvSrvUavHeaps;
-    struct DescriptorHeap** pSamplerHeaps;
+    struct DescriptorHeap* mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+    struct DescriptorHeap* mCbvSrvUavHeaps[1];
+    struct DescriptorHeap* pSamplerHeaps[1];
 };
 
 struct D3D12ParamDesc

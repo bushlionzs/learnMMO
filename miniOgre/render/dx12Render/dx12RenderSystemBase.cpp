@@ -33,12 +33,7 @@
 #include "memoryAllocator.h"
 
 
-DescriptorHeapProperties gCpuDescriptorHeapProperties[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {
-    { 1024 * 256, D3D12_DESCRIPTOR_HEAP_FLAG_NONE }, // CBV SRV UAV
-    { 2048, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },       // Sampler
-    { 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // RTV
-    { 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // DSV
-};
+
 #define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) \
     ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
 
@@ -70,41 +65,7 @@ bool Dx12RenderSystemBase::engineInit()
     mMemoryAllocator = new DxMemoryAllocator(mDevice);
 
 
-    mDescriptorHeapContext.mCPUDescriptorHeaps = (DescriptorHeap**)malloc(D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES * sizeof(DescriptorHeap*));
-    mDescriptorHeapContext.mCbvSrvUavHeaps = (DescriptorHeap**)malloc(1 * sizeof(DescriptorHeap*));
-    mDescriptorHeapContext.pSamplerHeaps = (DescriptorHeap**)malloc(1 * sizeof(DescriptorHeap*));
-    for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.Flags = gCpuDescriptorHeapProperties[i].mFlags;
-        desc.NodeMask = 0; 
-        desc.NumDescriptors = gCpuDescriptorHeapProperties[i].mMaxDescriptors;
-        desc.Type = (D3D12_DESCRIPTOR_HEAP_TYPE)i;
-        d3dUtil::add_descriptor_heap(mDevice, &desc, &mDescriptorHeapContext.mCPUDescriptorHeaps[i]);
-    }
-
-    for (uint32_t i = 0; i < 1; ++i)
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        desc.NodeMask = 0;
-
-        desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
-        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        d3dUtil::add_descriptor_heap(mDevice, &desc, &mDescriptorHeapContext.mCbvSrvUavHeaps[i]);
-
-        // Max sampler descriptor count
-        desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
-        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-        d3dUtil::add_descriptor_heap(mDevice, &desc, &mDescriptorHeapContext.pSamplerHeaps[i]);
-    }
-
-
-    ID3D12DescriptorHeap* heaps[] =
-    {
-        mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
-        mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
-    };
+    mDescriptorHeapContext = helper->getHeapContext();
 
     D3D12_COMMAND_SIGNATURE_DESC desc = {};
     D3D12_INDIRECT_ARGUMENT_DESC arg = {};
@@ -142,29 +103,34 @@ Ogre::RenderTarget* Dx12RenderSystemBase::createRenderTarget(
         texProperty._samplerParams.wrapS = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapT = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
         texProperty._samplerParams.wrapR = filament::backend::SamplerWrapMode::CLAMP_TO_EDGE;
-        type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-
-        targetId = consume_descriptor_handles(
-            mDescriptorHeapContext.mCPUDescriptorHeaps[type], 1);
     }
     else if (texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::COLOR_ATTACHMENT)
     {
-        type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-
-        targetId = consume_descriptor_handles(
-            mDescriptorHeapContext.mCPUDescriptorHeaps[type], 1);
+    }
+    else if(texProperty._tex_usage & (uint32_t)Ogre::TextureUsage::WRITEABLE)
+    {
     }
     else
     {
-        //WRITEABLE
+        assert(false);
     }
 
-    DxDescriptorID descriptorId = consume_descriptor_handles(
-        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
-    
-    Dx12RenderTarget* renderTarget = new Dx12RenderTarget(
-        name, mCommands, &texProperty, descriptorId, targetId);
+    Dx12RenderTarget* renderTarget = new Dx12RenderTarget(name, mCommands, &texProperty);
     return renderTarget;
+}
+
+void Dx12RenderSystemBase::clearRenderTarget(
+    Ogre::RenderTarget* target, const Ogre::Vector4& color)
+{
+    ID3D12GraphicsCommandList* cl = mCommands->get();
+    Dx12Texture* tex = (Dx12Texture*)target->getTarget();
+    DxDescriptorID targetId = tex->getTargetDescriptorId();
+    auto cpuHandle = descriptor_id_to_cpu_handle(
+        mDescriptorHeapContext->mCPUDescriptorHeaps[0], targetId);
+    auto uavGpuHandle = descriptor_id_to_gpu_handle(
+        mDescriptorHeapContext->mCPUDescriptorHeaps[0], targetId);
+    cl->ClearUnorderedAccessViewFloat(uavGpuHandle, cpuHandle, 
+        tex->getResource(), color.ptr(), 0, nullptr);
 }
 
 void Dx12RenderSystemBase::frameStart()
@@ -175,8 +141,8 @@ void Dx12RenderSystemBase::frameStart()
     auto* cl = mCommands->get();
     ID3D12DescriptorHeap* heaps[] = 
     { 
-        mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
-        mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
+        mDescriptorHeapContext->mCbvSrvUavHeaps[0]->pHeap,
+        mDescriptorHeapContext->pSamplerHeaps[0]->pHeap
     };
     cl->SetDescriptorHeaps(2, heaps);
 }
@@ -273,7 +239,7 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
         Dx12RenderTarget* colorTarget = (Dx12RenderTarget*)renderPassInfo.renderTargets[i].renderTarget;
         auto* tex = colorTarget->getTarget();
         DxDescriptorID srcid = tex->getTargetDescriptorId();
-        DescriptorHeap* heap = mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
+        DescriptorHeap* heap = mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
         auto cpuHandle = descriptor_id_to_cpu_handle(heap, srcid);
         renderTargetHandle[i] = cpuHandle;
         cl->ClearRenderTargetView(cpuHandle, ptr, 0, nullptr);
@@ -286,7 +252,7 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
         Dx12RenderTarget* depthTarget = (Dx12RenderTarget*)renderPassInfo.depthTarget.depthStencil;
         auto* tex = depthTarget->getTarget();
         DxDescriptorID srcid = tex->getTargetDescriptorId();
-        depthHandle = descriptor_id_to_cpu_handle(mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], srcid);
+        depthHandle = descriptor_id_to_cpu_handle(mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], srcid);
         cl->ClearDepthStencilView(depthHandle, D3D12_CLEAR_FLAG_DEPTH,
             renderPassInfo.depthTarget.clearValue.depth, renderPassInfo.depthTarget.clearValue.stencil, 0, nullptr);
 
@@ -360,13 +326,13 @@ void Dx12RenderSystemBase::bindPipeline(
             if (descriptorInfo->mType == D3D_SIT_SAMPLER)
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
-                    mDescriptorHeapContext.pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
+                    mDescriptorHeapContext->pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
                 cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
             }
             else
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
-                    mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
+                    mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
                 cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
                 int kk = 0;
             }
@@ -430,13 +396,13 @@ void Dx12RenderSystemBase::beginComputePass(
             if (descriptorInfo->mType == D3D_SIT_SAMPLER)
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
-                    mDescriptorHeapContext.pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
+                    mDescriptorHeapContext->pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
                 cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
             }
             else
             {
                 auto gpuHandle = descriptor_id_to_gpu_handle(
-                    mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
+                    mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
                 cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
             }
         }
@@ -516,9 +482,9 @@ Handle<HwBufferObject> Dx12RenderSystemBase::createBufferObject(
 {
     Handle<HwBufferObject> boh = mResourceAllocator.allocHandle<DX12BufferObject>();
     DxDescriptorID id = consume_descriptor_handles(
-        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
+        mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
     DX12BufferObject* bufferObject = mResourceAllocator.construct<DX12BufferObject>(
-        boh, &mDescriptorHeapContext, desc, id);
+        boh, mDescriptorHeapContext, desc, id);
     return boh;
 }
 
@@ -563,9 +529,8 @@ Handle<HwSampler> Dx12RenderSystemBase::createTextureSampler(
     Handle<HwSampler> samplerHandle = mResourceAllocator.allocHandle<HwSampler>();
     DescriptorHeap* heap;
     Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
-    struct DescriptorHeap** heaps = rs->getCPUDescriptorHeaps();
-    heap = heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER];
-    DxDescriptorID id = DX12Helper::getSingleton().getSampler(samplerParams, heap);
+    struct DescriptorHeap* samplerHeap = mDescriptorHeapContext->pSamplerHeaps[0];
+    DxDescriptorID id = DX12Helper::getSingleton().getSampler(samplerParams, samplerHeap);
     DX12Sampler* sampler = mResourceAllocator.construct<DX12Sampler>(samplerHandle, id);
     return samplerHandle;
 }
@@ -601,14 +566,14 @@ Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
 
     uint32_t cbvSrvUavDescCount = programImpl->getCbvSrvUavDescCount(set);
 
-    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mDescriptorHeapContext.mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
+    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mDescriptorHeapContext->mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
     dx12DescSet->updateCbvSrvUavHandle(cbvSrvUavHandle, cbvSrvUavDescCount);
 
     uint32_t samplerCount = programImpl->getSamplerCount(set);
 
     if (samplerCount > 0)
     {
-        DxDescriptorID samplerHandle = consume_descriptor_handles(mDescriptorHeapContext.pSamplerHeaps[0], samplerCount);
+        DxDescriptorID samplerHandle = consume_descriptor_handles(mDescriptorHeapContext->pSamplerHeaps[0], samplerCount);
         dx12DescSet->updateSamplerHandle(samplerHandle, samplerCount);
     }
     return dsh;
@@ -693,14 +658,14 @@ Handle<HwDescriptorSet> Dx12RenderSystemBase::createDescriptorSet(
 
     uint32_t cbvSrvUavDescCount = dx12ProgramImpl->getCbvSrvUavDescCount(set);
 
-    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mDescriptorHeapContext.mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
+    DxDescriptorID cbvSrvUavHandle = consume_descriptor_handles(mDescriptorHeapContext->mCbvSrvUavHeaps[0], cbvSrvUavDescCount);
     dx12DescSet->updateCbvSrvUavHandle(cbvSrvUavHandle, cbvSrvUavDescCount);
 
     uint32_t samplerCount = dx12ProgramImpl->getSamplerCount(set);
 
     if (samplerCount > 0)
     {
-        DxDescriptorID samplerHandle = consume_descriptor_handles(mDescriptorHeapContext.pSamplerHeaps[0], samplerCount);
+        DxDescriptorID samplerHandle = consume_descriptor_handles(mDescriptorHeapContext->pSamplerHeaps[0], samplerCount);
         dx12DescSet->updateSamplerHandle(samplerHandle, samplerCount);
     }
     return dsh;
@@ -732,26 +697,39 @@ void Dx12RenderSystemBase::updateDescriptorSet(
         switch (descriptroInfo->mType)
         {
         case D3D_SIT_TEXTURE:
+        case D3D_SIT_UAV_RWTYPED:
         {
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
                 Dx12Texture* dx12Texture = (Dx12Texture*)pParam->ppTextures[arr];
-                auto srcid = dx12Texture->getDescriptorId();
+                DxDescriptorID id;
+                if (pParam->descriptorType == DESCRIPTOR_TYPE_RW_TEXTURE)
+                {
+                    id = dx12Texture->getTargetDescriptorId();
+                }
+                else
+                {
+                    id = dx12Texture->getDescriptorId();
+                }
+
                 d3dUtil::copy_descriptor_handle(
-                    mDescriptorHeapContext.mCPUDescriptorHeaps[0],
-                    srcid,
-                    mDescriptorHeapContext.mCbvSrvUavHeaps[0],
+                    mDescriptorHeapContext->mCPUDescriptorHeaps[0],
+                    id,
+                    mDescriptorHeapContext->mCbvSrvUavHeaps[0],
                     cbvSrvUavHandle + descriptroInfo->mSetIndex + arr
-                    );
+                );
+
+                int kk = 0;
             }
         }
-            
+          
             break;
         case D3D_SIT_CBUFFER:
         case D3D_SIT_UAV_RWSTRUCTURED:
         case D3D_SIT_BYTEADDRESS:
         case D3D_SIT_STRUCTURED:
         case D3D_SIT_UAV_RWBYTEADDRESS:
+        
         {
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
@@ -759,9 +737,9 @@ void Dx12RenderSystemBase::updateDescriptorSet(
                 DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(boh);
                 DxDescriptorID srcId = bo->getDescriptorID();
                 d3dUtil::copy_descriptor_handle(
-                    mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
+                    mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
                     srcId,
-                    mDescriptorHeapContext.mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
+                    mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
                     cbvSrvUavHandle + descriptroInfo->mSetIndex + arr
                 );
             }
@@ -777,9 +755,9 @@ void Dx12RenderSystemBase::updateDescriptorSet(
                     DX12Sampler* sampler = mResourceAllocator.handle_cast<DX12Sampler*>(pParam->ppSamplers[arr]);
                     DxDescriptorID srcId = sampler->getDescriptorID();
                     d3dUtil::copy_descriptor_handle(
-                        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
+                        mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
                         srcId,
-                        mDescriptorHeapContext.pSamplerHeaps[0],
+                        mDescriptorHeapContext->pSamplerHeaps[0],
                         samplerHandle + descriptroInfo->mSetIndex + arr
                     );
                 }
@@ -790,9 +768,9 @@ void Dx12RenderSystemBase::updateDescriptorSet(
                     DxDescriptorID srcId = dx12Texture->getSamplerDescriptorID();
 
                     d3dUtil::copy_descriptor_handle(
-                        mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
+                        mDescriptorHeapContext->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
                         srcId,
-                        mDescriptorHeapContext.pSamplerHeaps[0],
+                        mDescriptorHeapContext->pSamplerHeaps[0],
                         samplerHandle + descriptroInfo->mSetIndex + arr
                     );
                 }
@@ -966,8 +944,8 @@ void Dx12RenderSystemBase::beginCmd()
     auto* cl = mCommands->get();
     ID3D12DescriptorHeap* heaps[] =
     {
-        mDescriptorHeapContext.mCbvSrvUavHeaps[0]->pHeap,
-        mDescriptorHeapContext.pSamplerHeaps[0]->pHeap
+        mDescriptorHeapContext->mCbvSrvUavHeaps[0]->pHeap,
+        mDescriptorHeapContext->pSamplerHeaps[0]->pHeap
     };
     cl->SetDescriptorHeaps(2, heaps);
 

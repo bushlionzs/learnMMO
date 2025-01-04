@@ -40,7 +40,7 @@ public:
     virtual Ogre::RenderTarget* createRenderTarget(
         const String& name, 
         TextureProperty& texProperty);
-
+    virtual void clearRenderTarget(Ogre::RenderTarget*, const Ogre::Vector4& color) {}
     virtual void ready() {}
 
     virtual const String& getRenderSystemName()

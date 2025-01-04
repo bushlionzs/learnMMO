@@ -14,9 +14,7 @@ public:
 	Dx12RenderTarget(
 		const std::string& name,
 		DX12Commands* commands,
-		TextureProperty* texProperty,
-		DxDescriptorID descriptorId,
-		DxDescriptorID targetId);
+		TextureProperty* texProperty);
 	Dx12RenderTarget(DX12SwapChain* swapChain, bool depth = false);
 	~Dx12RenderTarget();
 

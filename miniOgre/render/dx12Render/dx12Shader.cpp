@@ -273,7 +273,8 @@ void DX12ProgramImpl::parseShaderInfo()
             shaderResource.type == D3D_SIT_BYTEADDRESS ||
             shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS||
             shaderResource.type == D3D_SIT_STRUCTURED ||
-            shaderResource.type == D3D_SIT_UAV_RWSTRUCTURED)
+            shaderResource.type == D3D_SIT_UAV_RWSTRUCTURED ||
+            shaderResource.type== D3D_SIT_UAV_RWTYPED)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,
                 &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);

@@ -16,6 +16,13 @@
 
 template<> DX12Helper* Ogre::Singleton<DX12Helper>::msSingleton = 0;
 
+DescriptorHeapProperties gCpuDescriptorHeapProperties[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {
+	{ 1024 * 256, D3D12_DESCRIPTOR_HEAP_FLAG_NONE }, // CBV SRV UAV
+	{ 2048, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },       // Sampler
+	{ 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // RTV
+	{ 512, D3D12_DESCRIPTOR_HEAP_FLAG_NONE },        // DSV
+};
+
 DX12Helper::DX12Helper(Dx12RenderSystemBase* rs)
 {
 	m4xMsaaState = false;
@@ -44,7 +51,7 @@ void DX12Helper::createBaseInfo()
 	HRESULT hardwareResult = D3D12CreateDevice(
 		nullptr,             // default adapter
 		D3D_FEATURE_LEVEL_12_0,
-		IID_PPV_ARGS(&mDx12Device));
+		IID_PPV_ARGS(&mDevice));
 
 	// Fallback to WARP device.
 	if (FAILED(hardwareResult))
@@ -55,41 +62,67 @@ void DX12Helper::createBaseInfo()
 		ThrowIfFailed(D3D12CreateDevice(
 			pWarpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&mDx12Device)));
+			IID_PPV_ARGS(&mDevice)));
 	}
 
 	mRtvDescriptorSize = 
-		mDx12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	mDsvDescriptorSize = 
-		mDx12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	mCbvSrvUavDescriptorSize = 
-		mDx12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
 	msQualityLevels.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	msQualityLevels.SampleCount = 4;
 	msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 	msQualityLevels.NumQualityLevels = 0;
-	ThrowIfFailed(mDx12Device->CheckFeatureSupport(
+	ThrowIfFailed(mDevice->CheckFeatureSupport(
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,
 		sizeof(msQualityLevels)));
 
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
 
-	ThrowIfFailed(mDx12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE,
+	ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(&mFence)));
 
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	ThrowIfFailed(mDx12Device->CreateCommandQueue(&queueDesc, 
+	ThrowIfFailed(mDevice->CreateCommandQueue(&queueDesc,
 		IID_PPV_ARGS(&mCommandQueue)));
+
+	for (uint32_t i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+		desc.Flags = gCpuDescriptorHeapProperties[i].mFlags;
+		desc.NodeMask = 0;
+		desc.NumDescriptors = gCpuDescriptorHeapProperties[i].mMaxDescriptors;
+		desc.Type = (D3D12_DESCRIPTOR_HEAP_TYPE)i;
+		d3dUtil::add_descriptor_heap(mDevice.Get(), &desc, &mDescriptorHeapContext.mCPUDescriptorHeaps[i]);
+	}
+
+	for (uint32_t i = 0; i < 1; ++i)
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		desc.NodeMask = 0;
+
+		desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		d3dUtil::add_descriptor_heap(mDevice.Get(), &desc, &mDescriptorHeapContext.mCbvSrvUavHeaps[i]);
+
+		// Max sampler descriptor count
+		desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+		d3dUtil::add_descriptor_heap(mDevice.Get(), &desc, &mDescriptorHeapContext.pSamplerHeaps[i]);
+	}
 }
 
 ID3D12Device* DX12Helper::getDevice()
 {
-	return mDx12Device.Get();
+	return mDevice.Get();
 }
 
 IDXGIFactory4* DX12Helper::getDXGIFactory()
@@ -288,7 +321,7 @@ DxDescriptorID DX12Helper::getSampler(
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
 	DxDescriptorID id = consume_descriptor_handles(heap, 1);
 	cpuHandle = descriptor_id_to_cpu_handle(heap, id);
-	mDx12Device->CreateSampler(&samplerDesc, cpuHandle);
+	mDevice->CreateSampler(&samplerDesc, cpuHandle);
 
 	mSamplersCache.insert({ params, id });
 	return id;
