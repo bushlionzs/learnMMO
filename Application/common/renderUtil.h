@@ -31,7 +31,7 @@ struct FrameResourceInfo
 
 void initFrameResource(uint32_t frameIndex, Renderable* r);
 
-void updateFrameResource(Renderable* r);
+void updateFrameResource(uint32_t frameIndex, Renderable* r);
 
 void updateMaterialInfo(Renderable* r, bool updateTexture);
 

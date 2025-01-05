@@ -271,6 +271,11 @@ void Dx12RenderSystemBase::beginRenderPass(RenderPassInfo& renderPassInfo)
         width = depthTarget->getWidth();
         height = depthTarget->getHeight();
     }
+    else
+    {
+        width = renderPassInfo.extent[0];
+        height = renderPassInfo.extent[1];
+    }
 
     cl->OMSetRenderTargets(renderPassInfo.renderTargetCount, renderTargetHandle, 
         FALSE, hasDepth?&depthHandle:NULL);
@@ -331,6 +336,10 @@ void Dx12RenderSystemBase::bindPipeline(
             }
             else
             {
+                if (strcmp(descriptorInfo->pName, "shadowBuffer") == 0)
+                {
+                    int kk = 0;
+                }
                 auto gpuHandle = descriptor_id_to_gpu_handle(
                     mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
                 cl->SetGraphicsRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
@@ -527,10 +536,7 @@ Handle<HwSampler> Dx12RenderSystemBase::createTextureSampler(
     filament::backend::SamplerParams& samplerParams)
 {
     Handle<HwSampler> samplerHandle = mResourceAllocator.allocHandle<HwSampler>();
-    DescriptorHeap* heap;
-    Dx12RenderSystemBase* rs = DX12Helper::getSingleton().getDx12RenderSystem();
-    struct DescriptorHeap* samplerHeap = mDescriptorHeapContext->pSamplerHeaps[0];
-    DxDescriptorID id = DX12Helper::getSingleton().getSampler(samplerParams, samplerHeap);
+    DxDescriptorID id = DX12Helper::getSingleton().getSampler(samplerParams);
     DX12Sampler* sampler = mResourceAllocator.construct<DX12Sampler>(samplerHandle, id);
     return samplerHandle;
 }
@@ -686,8 +692,13 @@ void Dx12RenderSystemBase::updateDescriptorSet(
     {
         const DescriptorData* pParam = pParams + i;
         const DescriptorInfo* descriptroInfo = dx12ProgramImpl->getDescriptor(pParam->pName);
+        if (strcmp(pParam->pName, "PcfShadowMapSampler") == 0)
+        {
+            int kk = 0;
+        }
         if (descriptroInfo == nullptr)
         {
+            assert(false);
             continue;
         }
         dx12DescSet->addDescriptroInfo(descriptroInfo);
@@ -705,7 +716,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
                 DxDescriptorID id;
                 if (pParam->descriptorType == DESCRIPTOR_TYPE_RW_TEXTURE)
                 {
-                    id = dx12Texture->getTargetDescriptorId();
+                    id = dx12Texture->getTargetDescriptorId() + pParam->mLevel;
                 }
                 else
                 {

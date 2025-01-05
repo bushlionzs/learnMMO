@@ -232,32 +232,8 @@ void DX12ProgramImpl::parseShaderInfo()
             return a.set > b.set;
         });
 
-    for (uint32_t i = 0; i < 4; i++)
-    {
-        uint32_t index = 0;
-        uint32_t samplerIndex = 0;
-        for (auto& shaderSource : mProgramResourceList)
-        {
-            if (shaderSource.set == i)
-            {
-                if (shaderSource.type == D3D_SIT_SAMPLER)
-                {
-                    shaderSource.set_index = samplerIndex;
-                    samplerIndex += shaderSource.size;
-                }
-                else
-                {
-                    shaderSource.set_index = index;
-                    if (shaderSource.size == 5)
-                    {
-                        int kk = 0;
-                    }
-                    index += shaderSource.size;
-                }
-                
-            }
-        }
-    }
+    updateSetIndex();
+
     D3D12_ROOT_PARAMETER1      rootParams[D3D12_MAX_ROOT_COST] = {};
     UINT rootParamCount = 0;
     constexpr uint32_t         kMaxResourceTableSize = 32;
@@ -445,14 +421,53 @@ const DescriptorInfo* DX12ProgramImpl::getDescriptor(const char* descriptorName)
     return nullptr;
 }
 
+void DX12ProgramImpl::updateSetIndex()
+{
+    for (uint32_t i = 0; i < 4; i++)
+    {
+        uint32_t index = 0;
+        uint32_t samplerIndex = 0;
+        for (auto& shaderSource : mProgramResourceList)
+        {
+            if (shaderSource.set == i)
+            {
+                if (shaderSource.type == D3D_SIT_SAMPLER)
+                {
+                    shaderSource.set_index = samplerIndex;
+                    samplerIndex += shaderSource.size;
+                }
+                else
+                {
+                    shaderSource.set_index = index;
+                    
+                    index += shaderSource.size;
+
+                    if (shaderSource.type == D3D_SIT_UAV_RWTYPED)
+                    {
+                        index += D3D12_MAX_MIPMAP_COUNT;
+                    }
+                }
+            }
+        }
+    }
+}
+
 uint32_t DX12ProgramImpl::getCbvSrvUavDescCount(uint32_t set)
 {
     uint32_t count = 0;
     for (auto& shaderSource : mProgramResourceList)
     {
-        if (shaderSource.set == set && shaderSource.type != D3D_SIT_SAMPLER)
+        if (shaderSource.set == set)
         {
-            count += shaderSource.size;
+            if (shaderSource.type != D3D_SIT_SAMPLER)
+            {
+                count += shaderSource.size;
+
+                if (shaderSource.type == D3D_SIT_UAV_RWTYPED)
+                {
+                    count += D3D12_MAX_MIPMAP_COUNT;
+                }
+            }
         }
     }
 

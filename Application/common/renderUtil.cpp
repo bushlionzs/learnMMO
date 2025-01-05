@@ -248,12 +248,12 @@ void initFrameResource(uint32_t frameIndex, Renderable* r)
     }
 }
 
-void updateFrameResource(Renderable* r)
+void updateFrameResource(uint32_t frameIndex, Renderable* r)
 {
-    auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
     void* frameData= r->getFrameResourceInfo(frameIndex);
     FrameResourceInfo* resourceInfo = (FrameResourceInfo*)frameData;
-   
+    if (resourceInfo == nullptr)
+        return;
     if (resourceInfo->update)
     {
         auto objectType = r->getObjectType();
@@ -486,10 +486,8 @@ void renderScene(
         }
 
         userDefineShader->bindCallback(frameIndex, r);
-        updateFrameResource(r);
     }
 
-    rs->pushGroupMarker(renderPassInfo.passName);
     rs->beginRenderPass(renderPassInfo);
     for (auto r : renderList)
     {
@@ -514,7 +512,6 @@ void renderScene(
     }
 
     rs->endRenderPass(renderPassInfo);
-    rs->popGroupMarker();
 }
 
 //void drawRenderable(

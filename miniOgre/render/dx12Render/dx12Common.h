@@ -24,6 +24,8 @@ enum Dx12PassState
 };
 #define FRAME_RESOURCE_COUNT 1
 #define D3D12MA_IMPLEMENTATION
+
+#define D3D12_MAX_MIPMAP_COUNT 11
 class Dx12Pass
 {
 public:

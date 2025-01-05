@@ -176,7 +176,7 @@ void Dx12Texture::_createTex()
     else
     {
         texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        if (mTextureProperty._texType == TEX_TYPE_3D)
+        if (mTextureProperty._tex_usage & Ogre::TextureUsage::WRITEABLE)
         {
             texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -399,6 +399,10 @@ void Dx12Texture::buildDescriptorHeaps()
 
         if (mNeedSrv)
         {
+            if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+            {
+                int kk = 0;
+            }
             mDescriptors = consume_descriptor_handles(
                 context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
             auto cpuHandle = descriptor_id_to_cpu_handle(
@@ -438,7 +442,7 @@ void Dx12Texture::buildDescriptorHeaps()
         else if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::WRITEABLE)
         {
             mTargetDescriptorID = consume_descriptor_handles(
-                context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], mMipLevels);
+                context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], mMipLevels);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
             uavDesc.Format = mTex->GetDesc().Format;
@@ -451,6 +455,11 @@ void Dx12Texture::buildDescriptorHeaps()
             {
                 uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             }
+            if (mMipLevels == 1)
+            {
+                int kk = 0;
+            }
+            assert(mMipLevels <= D3D12_MAX_MIPMAP_COUNT);
 
             for (uint32_t i = 0; i < mMipLevels; i++)
             {
@@ -460,8 +469,7 @@ void Dx12Texture::buildDescriptorHeaps()
             }
 
         }
-        mSamplerDescriptorID = DX12Helper::getSingleton().getSampler(mTextureProperty._samplerParams,
-            context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]);
+        mSamplerDescriptorID = DX12Helper::getSingleton().getSampler(mTextureProperty._samplerParams);
         mCreate = true;
     }
 }

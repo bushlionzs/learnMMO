@@ -943,6 +943,7 @@ enum class TextureCubemapFace : uint8_t {
 //! Sampler Wrap mode
 enum class SamplerWrapMode : uint8_t {
     CLAMP_TO_EDGE,      //!< clamp-to-edge. The edge of the texture extends to infinity.
+    CLAMP_TO_BODY,
     REPEAT,             //!< repeat. The texture infinitely repeats in the wrap direction.
     MIRRORED_REPEAT,    //!< mirrored-repeat. The texture infinitely repeats and mirrors in the wrap direction.
 };

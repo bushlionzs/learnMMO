@@ -6,11 +6,43 @@
 #include "vctBase.h"
 #include "OgreCamera.h"
 
-struct FrameData
+#define VCT_SCENE_VOLUME_SIZE 256
+#define VCT_MIPS 6
+
+struct VctFrameResourceInfo
 {
-	Handle <HwDescriptorSet> zeroDescSet;
-	Handle <HwDescriptorSet> firstDescSet;
+	Handle<HwDescriptorSet> zeroSet;
+	Handle<HwDescriptorSet> firstSet;
+	Handle<HwDescriptorSet> zeroShadowSet;
+	Handle<HwBufferObject>  modelObjectHandle;
+	Handle<HwBufferObject>  matObjectHandle;
+	Handle<HwBufferObject>  skinObjectHandle;
+	bool update;
+	Handle<HwDescriptorSet> zeroSetOfVoxelization;	
 };
+
+struct VctFrameData
+{
+	Handle <HwDescriptorSet> mipmapPrepareZeroSet;
+	Handle <HwDescriptorSet> mipmapResultZeroSet[VCT_MIPS];
+	Handle<HwBufferObject>   mipmapBlockHandle[VCT_MIPS];
+	Handle <HwDescriptorSet> tracingConeZeroSet;
+};
+
+struct VoxelizationBlock
+{
+	Ogre::Matrix4 worldVoxelCube;
+	Ogre::Matrix4 viewProjection;
+	Ogre::Matrix4 shadowViewProjection;
+	float worldVoxelScale;
+};
+
+struct MipmapBlock
+{
+	int MipDimension;
+	int MipLevel;
+};
+
 class VoxelConeTracingApp
 {
 public:
@@ -27,6 +59,8 @@ public:
 private:
 	void sceneGeometryPass();
 	void shadowPass();
+	void voxelizationPass();
+	void computePass();
 	void initScene();
 	void addEntry(
 		const std::string& entryName,
@@ -35,9 +69,11 @@ private:
 		const Ogre::Matrix4& rotate,
 		const Ogre::Vector4& color
 	);
+	void initFrameResource(uint32_t frameIndex, Renderable* r);
 private:
 	static const uint32_t sceneGeometryPassBit = 3;
 	static const uint32_t shadowPassBit = 5;
+	static const uint32_t voxelizationPassBit = 7;
 	SceneManager* mSceneManager = nullptr;
 	GameCamera* mGameCamera = nullptr;
 	RenderSystem* mRenderSystem = nullptr;
@@ -45,7 +81,29 @@ private:
 	RenderPipeline* mRenderPipeline;
 	FrameConstantBuffer mFrameConstantBuffer;
 	
-	std::vector<FrameData> mFrameData;
-
 	VoxelizationContext mVoxelizationContext;
+
+	Handle<HwProgram> mSceneGeometryProgramHandle;
+	Handle<HwPipeline> mSceneGeometryPipelineHandle;
+
+	Handle<HwProgram> mShadowProgramHandle;
+	Handle<HwPipeline> mShadowPipelineHandle;
+
+	Handle<HwProgram> mVoxellizationProgramHandle;
+	Handle<HwPipeline> mVoxellizationPipelineHandle;
+
+	Handle<HwComputeProgram> mMipmapPrepareHandle;
+	Handle<HwComputeProgram> mMipmapMainHandle;
+	Handle<HwComputeProgram> mTracingConeHandle;
+	Handle<HwBufferObject>  MipmapBlockHandle;
+	Handle<HwBufferObject> tracingVoxelizationBlockHandle;
+	std::vector<VctFrameData> mComputeFrameData;
+	
+	Ogre::Vector3 mLightPos;
+	Ogre::Vector3 mLightTarget;
+
+	Ogre::Matrix4 mLightView;
+	Ogre::Matrix4 mLightProject;
+
+	VoxelizationBlock mVoxelizationBlock;
 };

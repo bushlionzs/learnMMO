@@ -55,8 +55,7 @@ public:
 
 
 	DxDescriptorID getSampler(
-		const filament::backend::SamplerParams& params,
-		DescriptorHeap* heap);
+		const filament::backend::SamplerParams& params);
 
 	void generateMipmaps(Dx12Texture* tex);
 

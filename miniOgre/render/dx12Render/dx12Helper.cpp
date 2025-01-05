@@ -297,14 +297,13 @@ void DX12Helper::parseInputParams(
 }
 
 DxDescriptorID DX12Helper::getSampler(
-	const filament::backend::SamplerParams& params, 
-	DescriptorHeap* heap)
+	const filament::backend::SamplerParams& params)
 {
 	auto iter = mSamplersCache.find(params);
 	if (UTILS_LIKELY(iter != mSamplersCache.end())) {
 		return iter->second;
 	}
-
+	struct DescriptorHeap* heap = mDescriptorHeapContext.mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER];
 	D3D12_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.AddressU = D3D12Mappings::getWrapMode(params.wrapS);
 	samplerDesc.AddressV = D3D12Mappings::getWrapMode(params.wrapT);
@@ -315,7 +314,10 @@ DxDescriptorID DX12Helper::getSampler(
 	samplerDesc.MinLOD = 0.0f;
 	samplerDesc.MaxLOD = D3D12Mappings::getMaxLod(params.mipMapMode);
 	samplerDesc.ComparisonFunc = D3D12Mappings::getCompareOp(params.compareFunc);
-
+	samplerDesc.BorderColor[0] = 1.0f;
+	samplerDesc.BorderColor[1] = 1.0f;
+	samplerDesc.BorderColor[2] = 1.0f;
+	samplerDesc.BorderColor[3] = 1.0f;
 	
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;

@@ -412,6 +412,8 @@ namespace Ogre {
         {
         case SamplerWrapMode::CLAMP_TO_EDGE:
             return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        case SamplerWrapMode::CLAMP_TO_BODY:
+            return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
         case SamplerWrapMode::REPEAT:
             return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         case SamplerWrapMode::MIRRORED_REPEAT:
@@ -421,9 +423,47 @@ namespace Ogre {
 
     D3D12_FILTER D3D12Mappings::getFilter(const filament::backend::SamplerParams& params)
     {
-        if (params.anisotropyLog2 > 0)
+        if (params.filterMin == SamplerFilterType::NEAREST)
         {
-            return D3D12_FILTER_ANISOTROPIC;
+            if (params.filterMag == SamplerFilterType::NEAREST)
+            {
+                switch (params.mipMapMode) {
+                case backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
+                    return D3D12_FILTER_MIN_MAG_MIP_POINT;
+                case backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
+                    return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+                }
+            }
+            else
+            {
+                switch (params.mipMapMode) {
+                case backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
+                    return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+                case backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
+                    return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+                }
+            }
+        }
+        else if (params.filterMin == SamplerFilterType::LINEAR)
+        {
+            if (params.filterMag == SamplerFilterType::NEAREST)
+            {
+                switch (params.mipMapMode) {
+                case backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
+                    return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+                case backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
+                    return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+                }
+            }
+            else
+            {
+                switch (params.mipMapMode) {
+                case backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
+                    return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                case backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
+                    return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                }
+            }
         }
         return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     }
@@ -432,9 +472,9 @@ namespace Ogre {
     {
         switch (mipMapMode) {
         case filament::backend::SamplerMipMapMode::MIPMAP_MODE_NEAREST:
-            return 0;
+            return FLT_MAX;
         case filament::backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR:
-            return 1000.0f;
+            return FLT_MAX;
         default:
             assert(false);
             return 1000.0f;

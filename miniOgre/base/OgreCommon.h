@@ -1289,7 +1289,8 @@ namespace Ogre {
     typedef struct DescriptorData
     {
         const char* pName;
-        uint32_t    mCount;
+        uint32_t    mCount:16;
+        uint32_t    mLevel : 16;
         Ogre::DescriptorType descriptorType;
         union
         {
