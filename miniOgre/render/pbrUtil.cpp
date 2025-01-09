@@ -66,7 +66,7 @@ namespace Ogre
         rasterState.renderTargetCount = 1;
         rasterState.depthWrite = false;
         rasterState.depthTest = false;
-        rasterState.pixelFormat = format;
+        rasterState.pixelFormat[0] = format;
 
         Handle<HwPipeline> pipelineHandle = rs->createPipeline(rasterState, programHandle);
         BufferDesc desc{};
@@ -261,7 +261,7 @@ namespace Ogre
         rasterState.renderTargetCount = 1;
         rasterState.depthWrite = false;
         rasterState.depthTest = false;
-        rasterState.pixelFormat = PF_FLOAT16_GR;
+        rasterState.pixelFormat[0] = PF_FLOAT16_GR;
         Handle<HwPipeline> pipelineHandle = rs->createPipeline(rasterState, programHandle);
         RenderPassInfo renderPassInfo;
         renderPassInfo.renderTargetCount = 1;

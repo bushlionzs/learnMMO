@@ -158,7 +158,7 @@ public:
         uint32_t set);
     virtual Handle<HwPipelineLayout> createPipelineLayout(std::array<Handle<HwDescriptorSetLayout>, 4>& layouts);
     virtual Handle<HwProgram> createShaderProgram(const ShaderInfo& mShaderInfo, VertexDeclaration* decl);
-    virtual Handle<HwRaytracingProgram> createRaytracingProgram(const ShaderInfo& mShaderInfo);
+    virtual Handle<HwRaytracingProgram> createRaytracingProgram(const RaytracingShaderInfo& mShaderInfo);
     virtual void updatePushConstants(
         Handle<HwProgram> program,
         uint32_t offset, 

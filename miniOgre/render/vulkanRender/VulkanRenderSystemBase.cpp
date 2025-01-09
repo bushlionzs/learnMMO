@@ -1070,7 +1070,7 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
         vulkanProgram->getVertexInputBindings();
     std::vector<VkVertexInputAttributeDescription>& attributeDescriptions =
         vulkanProgram->getAttributeDescriptions();
-    PixelFormat format = (PixelFormat)rasterState.pixelFormat;
+    PixelFormat format = (PixelFormat)rasterState.pixelFormat[0];
     if (format == PF_UNKNOWN)
     {
         format = mRenderWindow->getColorFormat();

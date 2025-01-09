@@ -108,6 +108,7 @@ void Dx12Texture::_createTex()
         {
             auto current = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
 
+            current = std::min(current, mTextureProperty._maxMipLevel);
             if (current > mMipLevels)
             {
                 if (mTextureProperty._texType != TEX_TYPE_3D)
@@ -399,9 +400,9 @@ void Dx12Texture::buildDescriptorHeaps()
 
         if (mNeedSrv)
         {
-            if (mTextureProperty._tex_usage & (uint32_t)Ogre::TextureUsage::DEPTH_ATTACHMENT)
+            if (mName == "voxelTextureNegX")
             {
-                int kk = 0;
+
             }
             mDescriptors = consume_descriptor_handles(
                 context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1);
@@ -465,6 +466,16 @@ void Dx12Texture::buildDescriptorHeaps()
             {
                 auto cpuHandle = descriptor_id_to_cpu_handle(
                     context->mCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], mTargetDescriptorID + i);
+
+                if (mTextureProperty._texType == TEX_TYPE_3D)
+                {
+                    uavDesc.Texture3D.MipSlice = i;
+                }
+                else
+                {
+                    uavDesc.Texture2D.MipSlice = i;
+                }
+                
                 device->CreateUnorderedAccessView(mTex.Get(), nullptr, &uavDesc, cpuHandle);
             }
 

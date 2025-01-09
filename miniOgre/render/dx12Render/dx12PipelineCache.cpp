@@ -42,9 +42,13 @@ void DX12PipelineCache::bindRasterState(const RasterState& rasterState) noexcept
     mPipelineRequirements.rasterState = rasterState;
 }
 
-void DX12PipelineCache::bindFormat(DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat)
+void DX12PipelineCache::bindFormat(DXGI_FORMAT colorFormat[8], DXGI_FORMAT depthFormat)
 {
-    mPipelineRequirements.colorFormat = colorFormat;
+    for (uint32_t i = 0; i < 8; i++)
+    {
+        mPipelineRequirements.colorFormat[i] = colorFormat[i];
+    }
+    
     mPipelineRequirements.depthFormat = depthFormat;
 }
 
@@ -126,12 +130,12 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     }
     
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
     psoDesc.RasterizerState.CullMode = mPipelineRequirements.rasterState.cullMode;
-    
-    psoDesc.RasterizerState.FrontCounterClockwise = true;
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
     psoDesc.RasterizerState.MultisampleEnable = FALSE;
+    psoDesc.RasterizerState.SlopeScaledDepthBias = mPipelineRequirements.rasterState.depthBiasSlopeFactor;
+
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
@@ -140,7 +144,7 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     psoDesc.NumRenderTargets = mPipelineRequirements.rasterState.colorTargetCount;
     for(auto i = 0;  i < psoDesc.NumRenderTargets; i++)
     {
-        psoDesc.RTVFormats[i] = mPipelineRequirements.colorFormat;
+        psoDesc.RTVFormats[i] = mPipelineRequirements.colorFormat[i];
     }
     
     psoDesc.SampleDesc.Count = mPipelineRequirements.rasterState.rasterizationSamples; 
@@ -155,6 +159,7 @@ DX12PipelineCache::DX12PipelineCacheEntry* DX12PipelineCache::createPipeline()
     depthDSS.StencilEnable = FALSE;
     depthDSS.StencilReadMask = 0;
     depthDSS.StencilWriteMask = 0;
+    
     psoDesc.DepthStencilState = depthDSS;
     
    

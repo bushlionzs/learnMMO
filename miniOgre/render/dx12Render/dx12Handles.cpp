@@ -162,6 +162,11 @@ DX12Program::DX12Program(const ShaderInfo& info, VertexDeclaration* decl)
     mProgramImpl = new DX12ProgramImpl(info, decl);
 }
 
+DX12RayTracingProgram::DX12RayTracingProgram(const RaytracingShaderInfo& shaderInfo)
+{
+
+}
+
 DX12ComputeProgram::DX12ComputeProgram(const ShaderInfo& info)
 {
     mProgramImpl = new DX12ProgramImpl(info, nullptr);

@@ -163,7 +163,7 @@ Handle<HwProgram> RenderSystem::createShaderProgram(const ShaderInfo& mShaderInf
 }
 
 Handle<HwRaytracingProgram> RenderSystem::createRaytracingProgram(
-    const ShaderInfo& mShaderInfo)
+    const RaytracingShaderInfo& mShaderInfo)
 {
     assert(false);
     return Handle<HwRaytracingProgram>();

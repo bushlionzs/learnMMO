@@ -27,7 +27,7 @@ DX12SwapChain::DX12SwapChain(DX12Commands* commands, HWND hWnd, bool srgb)
 
 void DX12SwapChain::present()
 {
-	mCommands->flush(false);
+	mCommands->flush(true);
 	ThrowIfFailed(mSwapChain3->Present(0, 0));
 }
 

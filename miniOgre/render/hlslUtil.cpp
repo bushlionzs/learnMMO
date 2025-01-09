@@ -64,11 +64,12 @@ public:
 		_COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource
 	)
 	{
-		std::string name = dy::unicode_to_acsi(pFilename + 2);
+		std::string name = dy::unicode_to_acsi(pFilename);
+		name = dy::get_short_name(name);
 		ResourceInfo* res = ResourceManager::getSingleton().getResource(name);
 
 		get_file_content(res->_fullname.c_str(), content);
-
+		const char* kk = content.c_str();
 		ComPtr<IDxcBlobEncoding> pBlob;
 
 		HRESULT hr = pLibrary->CreateBlobWithEncodingFromPinned(
@@ -106,41 +107,43 @@ bool hlslToBin(
 
 	dxcBuffer.Ptr = shaderContent.c_str();
 	dxcBuffer.Size = shaderContent.size();
-	dxcBuffer.Encoding = CP_UTF8;
+	dxcBuffer.Encoding = CP_ACP;
 	std::vector<LPCWSTR> arguments = {
 	L"-Zi",
 	L"-Od",
 	L"-Qembed_debug"
 	};
 	
-
+	std::wstring targetProfile;
 	if (shaderType == VertexShader)
 	{
-		arguments.push_back(L"-T");
-		arguments.push_back(L"vs_6_0");
+		targetProfile = L"vs_6_5";
 	}
 	else if (shaderType == PixelShader)
 	{
-		arguments.push_back(L"-T");
-		arguments.push_back(L"ps_6_0");
+		targetProfile = L"ps_6_5";
 	}
 	else if (shaderType == GeometryShader)
 	{
-		arguments.push_back(L"-T");
-		arguments.push_back(L"gs_6_0");
+		targetProfile = L"gs_6_5";
 	}
 	else if(shaderType == ComputeShader)
 	{
-		arguments.push_back(L"-T");
-		arguments.push_back(L"cs_6_0");
+		targetProfile = L"cs_6_5";
+	}
+	else if (shaderType == RayGenShader ||
+		       shaderType == MissShader ||
+		       shaderType == AnyHitShader ||
+		      shaderType == ClosestHitShader)
+	{
+		targetProfile = L"lib_6_6";
 	}
 	else
 	{
 		assert(false);
 	}
 	std::wstring wEntryPoint = dy::acsi_to_widebyte(entryPoint);
-	arguments.push_back(L"-E");
-	arguments.push_back(wEntryPoint.c_str());
+	std::wstring wShaderName = dy::acsi_to_widebyte(shaderName);
 	wchar_t buffer[256];
 	std::vector<std::wstring> pool;
 	pool.reserve(shaderMacros.size());
@@ -153,25 +156,45 @@ bool hlslToBin(
 		arguments.push_back(L"-D");
 		arguments.push_back(pool.back().c_str());
 	}
-
+	vulkan = false;
 	if (vulkan)
 	{
-		arguments.push_back(L"-D");
-		arguments.push_back(L"VULKAN");
+		arguments.push_back(L"-D VULKAN");
 		arguments.push_back(L"-spirv");
+		arguments.push_back(L"-fspv-target-env=vulkan1.3");
 	}
 	
 
-	arguments.push_back(L"-D");
-	arguments.push_back(L"DIRECT3D12");
+	arguments.push_back(L"-D DIRECT3D12");
 
+	IDxcCompilerArgs* args = nullptr;
+	pUtils->BuildArguments(
+		wShaderName.c_str(),
+		wEntryPoint.c_str(),
+		targetProfile.c_str(),
+		arguments.data(),
+		static_cast<UINT>(arguments.size()),
+		NULL,
+		0,
+		&args);
+	{
+		uint32_t size = args->GetCount();
+		LPCWSTR* str = args->GetArguments();
+		std::vector<std::wstring> bb;
+		for (uint32_t i = 0; i < size; i++)
+		{
+			LPCWSTR aa = str[i];
+			bb.push_back(aa);
+		}
+		int kk = 0;
+	}
 	CustomDxcInclude includer;
 	IDxcResult* pResult = nullptr;
-	IDxcCompilerArgs;
+
 	HRESULT hr = pCompiler->Compile(
 		&dxcBuffer,           // 源代码
-		arguments.data(),      // 编译参数
-		arguments.size(),
+		args->GetArguments(),      // 编译参数
+		args->GetCount(),
 		&includer,
 		IID_PPV_ARGS(&pResult)
 		);
@@ -183,28 +206,21 @@ bool hlslToBin(
 	}
 	ComPtr<IDxcBlob> pShaderBlob;
 	pResult->GetResult(&pShaderBlob);
+
+	IDxcBlobUtf8* errors = nullptr;
+	if (FAILED(pResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr))) return false;
+	if (errors != nullptr && errors->GetStringLength() != 0)
+	{
+		const char* str = (char*)errors->GetStringPointer();
+		 OutputDebugStringA(str);
+		 assert(false);
+		 return false;
+	}
 	const char* data = (const char*)pShaderBlob->GetBufferPointer();
 	uint32_t size = pShaderBlob->GetBufferSize();
-	if (size == 0)
-	{
-		hr = pResult->GetStatus(nullptr);
-		if (FAILED(hr))
-		{
-			// 如果编译失败，尝试获取错误信息
-			ComPtr<IDxcBlobEncoding> pErrorBlob;
-			ComPtr<IDxcBlobWide> pErrorName;
-			pResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrorBlob), &pErrorName);
-			
-			if (pErrorBlob && pErrorBlob->GetBufferSize() > 0)
-			{
-				// 打印或记录错误信息
-				OutputDebugStringA((char*)pErrorBlob->GetBufferPointer());
-			}
-			
-			return false;
-		}
-	}
+	
 	spv.assign(data, size);
 	pResult->Release();
+	args->Release();
 	return true;
 }

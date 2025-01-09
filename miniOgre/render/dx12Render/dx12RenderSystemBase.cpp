@@ -413,6 +413,7 @@ void Dx12RenderSystemBase::beginComputePass(
                 auto gpuHandle = descriptor_id_to_gpu_handle(
                     mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
                 cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+                int kk = 0;
             }
         }
     }
@@ -600,8 +601,7 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
     dx12RasterState.cullMode = D3D12Mappings::getCullMode(rasterState.culling);
     dx12RasterState.frontFace = FALSE;
     dx12RasterState.depthBiasEnable = FALSE;
-
-
+    
     dx12RasterState.blendEnable = rasterState.hasBlending();
 
     dx12RasterState.depthWriteEnable = rasterState.depthWrite?TRUE:FALSE;
@@ -617,15 +617,21 @@ Handle<HwPipeline> Dx12RenderSystemBase::createPipeline(
     dx12RasterState.rasterizationSamples = DX12Helper::getSingleton().hasMsaa() ? 4 : 1;
     dx12RasterState.colorTargetCount = rasterState.renderTargetCount;
     dx12RasterState.depthCompareOp = D3D12Mappings::getComparisonFunc(rasterState.depthFunc);
-    dx12RasterState.depthBiasConstantFactor = 0.0f;
-    dx12RasterState.depthBiasSlopeFactor = 0.0f;
-    PixelFormat format = (PixelFormat)rasterState.pixelFormat;
-    if (format == PF_UNKNOWN)
-    {
-        format = mRenderWindow->getColorFormat();
-    }
+    dx12RasterState.depthBiasSlopeFactor = rasterState.depthBiasSlopeFactor;
+    dx12RasterState.depthBiasConstantFactor = rasterState.depthBiasConstantFactor;
 
-    DXGI_FORMAT colorFormat = D3D12Mappings::_getPF(format);
+    DXGI_FORMAT colorFormat[8] = {};
+    for (uint32_t i = 0; i < rasterState.renderTargetCount; i++)
+    {
+        PixelFormat format = (PixelFormat)rasterState.pixelFormat[i];
+        if (format == PF_UNKNOWN)
+        {
+            format = mRenderWindow->getColorFormat();
+        }
+
+        colorFormat[i] = D3D12Mappings::_getPF(format);
+    }
+    
     mDX12PipelineCache.bindFormat(colorFormat, DXGI_FORMAT_D32_FLOAT);
 
     const std::string* vsCode = dx12ProgramImpl->getVsBlob();
@@ -692,7 +698,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
     {
         const DescriptorData* pParam = pParams + i;
         const DescriptorInfo* descriptroInfo = dx12ProgramImpl->getDescriptor(pParam->pName);
-        if (strcmp(pParam->pName, "PcfShadowMapSampler") == 0)
+        if (strcmp(pParam->pName, "outputTexture") == 0)
         {
             int kk = 0;
         }

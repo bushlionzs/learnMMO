@@ -30,7 +30,7 @@ public:
     /// 
 
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(
-        const ShaderInfo& mShaderInfo);
+        const RaytracingShaderInfo& mShaderInfo);
     virtual Handle<HwDescriptorSet> createDescriptorSet(
         Handle<HwRaytracingProgram> programHandle,
         uint32_t set) override;

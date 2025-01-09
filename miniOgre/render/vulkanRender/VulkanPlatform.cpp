@@ -356,8 +356,8 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice,
     vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
     {
-        base->pNext = (VkBaseOutStructure*) & vulkan12Features;
-        base = (VkBaseOutStructure*)base->pNext;
+       // base->pNext = (VkBaseOutStructure*) & vulkan12Features;
+       // base = (VkBaseOutStructure*)base->pNext;
     }
 
     /*VkPhysicalDeviceFeatures2 features2 = {};

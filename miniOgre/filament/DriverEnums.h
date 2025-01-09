@@ -1143,8 +1143,8 @@ struct RasterState {
     using BlendFunction = backend::BlendFunction;
 
     RasterState() noexcept { // NOLINT
-        static_assert(sizeof(RasterState) == sizeof(uint64_t),
-                "RasterState size not what was intended");
+       /* static_assert(sizeof(RasterState) == sizeof(uint64_t),
+                "RasterState size not what was intended");*/
         culling = CullingMode::NONE;
         blendEquationRGB = BlendEquation::ADD;
         blendEquationAlpha = BlendEquation::ADD;
@@ -1222,7 +1222,9 @@ struct RasterState {
             bool depthTest                             : 1;        // 32
 
             uint16_t renderTargetCount;
-            uint16_t pixelFormat;
+            uint16_t pixelFormat[8];
+            float                 depthBiasConstantFactor; // offset = 8 bytes
+            float                 depthBiasSlopeFactor;    // offset = 12 bytes
         };
         uint64_t u = 0;
     };

@@ -92,6 +92,18 @@ private:
     DX12ProgramImpl* mProgramImpl;
 };
 
+struct DX12RayTracingProgram : public HwProgram
+{
+public:
+    DX12RayTracingProgram(const RaytracingShaderInfo& shaderInfo);
+    DX12ProgramImpl* getProgramImpl()
+    {
+        return mProgramImpl;
+    }
+private:
+    DX12ProgramImpl* mProgramImpl;
+};
+
 struct DX12ComputeProgram : public HwComputeProgram
 {
 public:

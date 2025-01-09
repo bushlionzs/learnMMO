@@ -61,6 +61,7 @@ namespace Ogre {
         uint32_t _numMipmaps;
         Ogre::PixelFormat _tex_format;
         bool _need_mipmap;
+        uint32_t _maxMipLevel;
         float _gamma;
         uint32_t _fsaa;
         uint32_t _tex_usage; //TextureUsage

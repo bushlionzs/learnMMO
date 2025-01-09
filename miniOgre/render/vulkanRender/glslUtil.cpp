@@ -115,7 +115,12 @@ bool glslCompileShader(
     
     std::string result;
     const char* suffix = getSuffix(shaderName);
-    if (strcmp(suffix, ".glsl") == 0)
+    bool glsl = true;
+    if (strcmp(suffix, ".glsl") != 0)
+    {
+        glsl = false;
+    }
+    if (glsl)
     {
         shaderc::Compiler compiler;
         shaderc::CompileOptions options;
@@ -165,7 +170,7 @@ bool glslCompileShader(
             assert_invariant(false);
         }
 
-
+        //options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
         shaderc::SpvCompilationResult module =
             compiler.CompileGlslToSpv(
                 shaderContent,

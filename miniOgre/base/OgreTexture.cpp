@@ -15,6 +15,7 @@ namespace Ogre {
 		_numMipmaps = 0;
 		_tex_format = Ogre::PF_R8G8B8A8;
 		_need_mipmap = true;
+		_maxMipLevel = INT_MAX;
 		_gamma = 1.0f;
 		_fsaa = 0;
 		_tex_usage = TU_DEFAULT;

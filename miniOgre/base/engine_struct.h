@@ -260,9 +260,11 @@ struct ShaderInfo
 
 struct RaytracingShaderInfo
 {
-    String rayGenShaderName;
-    String missShaderName;
-    String closeHitShaderName;
+    String rayTracingName;
+    String rayGenEntryName;
+    String rayMissEntryName;
+    String rayClosethitEntryName;
+    String rayAnyHitEntryName;
 };
 
 class SkinnedData

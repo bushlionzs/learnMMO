@@ -318,7 +318,7 @@ DxDescriptorID DX12Helper::getSampler(
 	samplerDesc.BorderColor[1] = 1.0f;
 	samplerDesc.BorderColor[2] = 1.0f;
 	samplerDesc.BorderColor[3] = 1.0f;
-	
+
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
 	DxDescriptorID id = consume_descriptor_handles(heap, 1);
@@ -347,7 +347,7 @@ void DX12Helper::generateMipmaps(Dx12Texture* tex)
 		rasterState.renderTargetCount = 1;
 		rasterState.depthWrite = false;
 		rasterState.depthTest = false;
-		rasterState.pixelFormat = PF_A8B8G8R8;
+		rasterState.pixelFormat[0] = PF_A8B8G8R8;
 		mMipmapPipelineHandle = rs->createPipeline(rasterState, mMipmapHandle);
 
 		Ogre::TextureProperty texProperty;

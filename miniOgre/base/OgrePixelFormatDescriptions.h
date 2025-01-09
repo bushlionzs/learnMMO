@@ -398,6 +398,19 @@ namespace Ogre {
             0, 0, 0, 0, 0, 0, 0, 0
         },
         //-----------------------------------------------------------------------
+        { "PF_RGBA16_SNORM",
+        /* Bytes per element */
+        8,
+        /* Flags */
+        PFF_FLOAT | PFF_HASALPHA,
+        /* Component type and count */
+        PCT_FLOAT16, 4,
+        /* rbits, gbits, bbits, abits */
+        16, 16, 16, 16,
+        /* Masks and shifts */
+        0, 0, 0, 0, 0, 0, 0, 0
+        },
+        //-----------------------------------------------------------------------
         {"PF_FLOAT32_RGB",
             /* Bytes per element */
             12,

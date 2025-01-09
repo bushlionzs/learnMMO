@@ -1285,7 +1285,7 @@ namespace Ogre {
         uint16_t      mArrayLayer;
     } RenderTargetBarrier;
 
-
+    struct AccelerationStructure;
     typedef struct DescriptorData
     {
         const char* pName;
@@ -1297,6 +1297,7 @@ namespace Ogre {
             const OgreTexture** ppTextures;
             const Handle<HwBufferObject>* ppBuffers;
             const Handle<HwSampler>* ppSamplers;
+            AccelerationStructure* pAS;
         };
        
     } DescriptorData;
