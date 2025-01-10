@@ -1047,6 +1047,28 @@ namespace Ogre {
         char windowHandle[128];
     };
 
+    enum BackendResourceState
+    {
+        RESOURCE_STATE_UNDEFINED = 0,
+        RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER = 0x1,
+        RESOURCE_STATE_INDEX_BUFFER = 0x2,
+        RESOURCE_STATE_RENDER_TARGET = 0x4,
+        RESOURCE_STATE_UNORDERED_ACCESS = 0x8,
+        RESOURCE_STATE_DEPTH_WRITE = 0x10,
+        RESOURCE_STATE_DEPTH_READ = 0x20,
+        RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE = 0x40,
+        RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 0x80,
+        RESOURCE_STATE_SHADER_RESOURCE = 0x40 | 0x80,
+        RESOURCE_STATE_STREAM_OUT = 0x100,
+        RESOURCE_STATE_INDIRECT_ARGUMENT = 0x200,
+        RESOURCE_STATE_COPY_DEST = 0x400,
+        RESOURCE_STATE_COPY_SOURCE = 0x800,
+        RESOURCE_STATE_GENERIC_READ = (((((0x1 | 0x2) | 0x40) | 0x80) | 0x200) | 0x800),
+        RESOURCE_STATE_PRESENT = 0x1000,
+        RESOURCE_STATE_COMMON = 0x2000,
+        RESOURCE_STATE_ACCELERATION_STRUCTURE_READ = 0x4000,
+        RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE = 0x8000,
+    };
 
     //! Buffer object binding type
     enum  BufferObjectBinding
@@ -1097,7 +1119,7 @@ namespace Ogre {
         /// What type of queue the buffer is owned by
         QueueType            mQueueType;
         /// What state will the buffer get created in
-        ResourceState        mStartState;
+        BackendResourceState        mStartState;
         //TinyImageFormat      mFormat;
         /// Flags specifying the suitable usage of this buffer (Uniform buffer, Vertex Buffer, Index Buffer,...)
         DescriptorType       mDescriptors;
@@ -1220,28 +1242,7 @@ namespace Ogre {
 
     
 
-    enum BackendResourceState
-    {
-        RESOURCE_STATE_UNDEFINED = 0,
-        RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER = 0x1,
-        RESOURCE_STATE_INDEX_BUFFER = 0x2,
-        RESOURCE_STATE_RENDER_TARGET = 0x4,
-        RESOURCE_STATE_UNORDERED_ACCESS = 0x8,
-        RESOURCE_STATE_DEPTH_WRITE = 0x10,
-        RESOURCE_STATE_DEPTH_READ = 0x20,
-        RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE = 0x40,
-        RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 0x80,
-        RESOURCE_STATE_SHADER_RESOURCE = 0x40 | 0x80,
-        RESOURCE_STATE_STREAM_OUT = 0x100,
-        RESOURCE_STATE_INDIRECT_ARGUMENT = 0x200,
-        RESOURCE_STATE_COPY_DEST = 0x400,
-        RESOURCE_STATE_COPY_SOURCE = 0x800,
-        RESOURCE_STATE_GENERIC_READ = (((((0x1 | 0x2) | 0x40) | 0x80) | 0x200) | 0x800),
-        RESOURCE_STATE_PRESENT = 0x1000,
-        RESOURCE_STATE_COMMON = 0x2000,
-        RESOURCE_STATE_ACCELERATION_STRUCTURE_READ = 0x4000,
-        RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE = 0x8000,
-    };
+   
     typedef struct BufferBarrier
     {
         Handle<HwBufferObject> buffer;

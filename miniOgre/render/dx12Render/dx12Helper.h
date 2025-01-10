@@ -1,7 +1,6 @@
 #pragma once
 
 #include "OgreSingleton.h"
-#include "UploadBuffer.h"
 #include "dx12Common.h"
 
 

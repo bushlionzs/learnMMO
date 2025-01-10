@@ -16,17 +16,14 @@
 #include "OgreSceneManager.h"
 #include "OgreStringConverter.h"
 #include "OgreResourceManager.h"
-#include "dx12Buffer.h"
 #include "dx12Shader.h"
 #include "dx12Texture.h"
 #include "dx12Handles.h"
 #include "dx12RenderTarget.h"
 #include "dx12Commands.h"
-#include "dx12TextureHandleManager.h"
 #include "dx12ShadowMap.h"
 #include "dx12RenderWindow.h"
 #include "dx12Helper.h"
-#include "dx12Frame.h"
 #include "D3D12Mappings.h"
 #include "d3dutil.h"
 #include "dx12SwapChain.h"
@@ -691,7 +688,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
 {
     DX12DescriptorSet* dx12DescSet = mResourceAllocator.handle_cast<DX12DescriptorSet*>(dsh);
 
-    DX12ProgramImpl* dx12ProgramImpl = dx12DescSet->getProgram();
+    DX12ProgramBase* dx12ProgramImpl = dx12DescSet->getProgram();
 
     DxDescriptorID cbvSrvUavHandle = dx12DescSet->getCbvSrvUavHandle();
     for (auto i = 0; i < count; i++)
@@ -713,6 +710,11 @@ void Dx12RenderSystemBase::updateDescriptorSet(
 
         switch (descriptroInfo->mType)
         {
+        case D3D_SIT_RTACCELERATIONSTRUCTURE:
+        {
+
+        }
+            break;
         case D3D_SIT_TEXTURE:
         case D3D_SIT_UAV_RWTYPED:
         {
@@ -738,9 +740,8 @@ void Dx12RenderSystemBase::updateDescriptorSet(
 
                 int kk = 0;
             }
-        }
-          
-            break;
+        }  
+        break;
         case D3D_SIT_CBUFFER:
         case D3D_SIT_UAV_RWSTRUCTURED:
         case D3D_SIT_BYTEADDRESS:

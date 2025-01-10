@@ -212,6 +212,10 @@ enum class ShaderStageFlags : uint8_t {
     FRAGMENT = 0x2,
     COMPUTE = 0x4,
     GEOMETRY = 0x8,
+    RAYGEN = 0x10,
+    RAYMISS = 0x20,
+    RAYCLOSETHIT = 0x40,
+    RAYANYHIT = 0x80,
     ALL_SHADER_STAGE_FLAGS = VERTEX | FRAGMENT | COMPUTE | GEOMETRY
 };
 

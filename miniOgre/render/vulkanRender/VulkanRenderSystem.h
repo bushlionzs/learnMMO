@@ -37,9 +37,9 @@ public:
 
     virtual void bindPipeline(
         Handle<HwRaytracingProgram> programHandle,
-        Handle<HwDescriptorSet>* descSets,
+        const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount
-    );
+    ) override;
 
     virtual void traceRay(Handle<HwRaytracingProgram> programHandle);
     virtual void copyImage(Ogre::RenderTarget* dst, Ogre::RenderTarget* src);

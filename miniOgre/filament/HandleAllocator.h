@@ -346,6 +346,11 @@ namespace filament::backend {
             auto id = HandleBase::HandleId(offset / Allocator::getAlignment());
             id |= tag & HANDLE_TAG_MASK;
             assert_invariant((id & HANDLE_HEAP_FLAG) == 0);
+            bool b = isPoolHandle(id);
+            if (id == 2013266065)
+            {
+                int kk = 0;
+            }
             return id;
         }
 

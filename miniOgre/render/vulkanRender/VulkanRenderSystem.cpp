@@ -20,22 +20,6 @@
 #include "VulkanWindow.h"
 #include "VulkanLayoutCache.h"
 
-struct VulkanAccelerationStructure: public Ogre::AccelerationStructure
-{
-    Handle<HwBufferObject> asBufferHandle;
-    uint64_t               mASDeviceAddress;
-    Handle<HwBufferObject> scratchBufferHandle;
-    uint64_t               mScratchBufferDeviceAddress;
-    Handle<HwBufferObject> instanceDescBuffer;
-    VkAccelerationStructureGeometryKHR* pGeometryDescs;
-    uint32_t* pMaxPrimitiveCountPerGeometry;
-    VkAccelerationStructureKHR           mAccelerationStructure;
-    uint32_t                             mPrimitiveCount;
-    uint32_t                             mDescCount;
-    VkBuildAccelerationStructureFlagsKHR mFlags;
-    VkAccelerationStructureTypeKHR       mType;
-};
-
 
 VulkanRenderSystem::VulkanRenderSystem(HWND wnd)
 {
@@ -332,6 +316,7 @@ void VulkanRenderSystem::buildAccelerationStructure(RaytracingBuildASDesc* pDesc
 void VulkanRenderSystem::removeAccelerationStructureScratch(
     AccelerationStructure* pAccelerationStructure)
 {
+    return;
     VulkanAccelerationStructure* as = (VulkanAccelerationStructure*)pAccelerationStructure;
     destroyBufferObject(as->scratchBufferHandle);
     as->scratchBufferHandle.clear();
@@ -382,9 +367,10 @@ void VulkanRenderSystem::updateDescriptorSetAccelerationStructure(
 Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     const RaytracingShaderInfo& shaderInfo)
 {
-    Handle<HwRaytracingProgram> program = mResourceAllocator.allocHandle<HwRaytracingProgram>();
+    Handle<HwRaytracingProgram> program = mResourceAllocator.allocHandle<VulkanRaytracingProgram>();
+
     VulkanRaytracingProgram* vulkanProgram = 
-        mResourceAllocator.construct<VulkanRaytracingProgram>(program, shaderInfo.rayTracingName);
+        mResourceAllocator.construct<VulkanRaytracingProgram>(program, shaderInfo.rayGenShaderName);
 
     std::vector<std::pair<std::string, std::string>> shaderMacros;
     VkShaderModuleInfo shaderModuleInfo;
@@ -430,10 +416,12 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                 }
             }
         };
+
+    
     // Ray generation group
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::RayGenShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayTracingName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayGenShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayGenEntryName, shaderMacros, shaderModuleInfo);
@@ -464,7 +452,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     // Miss group
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::MissShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayTracingName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayMissShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayMissEntryName, shaderMacros, shaderModuleInfo);
@@ -504,7 +492,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     // Closest hit group for doing texture lookups
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::ClosestHitShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayTracingName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayClosethitShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayClosethitEntryName, shaderMacros, shaderModuleInfo);
@@ -526,7 +514,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
 
         shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
-        resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayTracingName);
+        resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayAnyHitShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayAnyHitEntryName, shaderMacros, shaderModuleInfo);
@@ -543,6 +531,8 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroups.push_back(shaderGroup);
     }
    
+    vulkanProgram->updateDescriptorInfo(bindingMap);
+
     VkDescriptorSetLayoutBinding toBind[VulkanDescriptorSetLayout::MAX_BINDINGS];
     uint32_t bindIndex = 0;
     VulkanPipelineLayoutCache::PipelineLayoutKey keys;
@@ -597,7 +587,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
                 }
             }
 
-            Handle<HwDescriptorSetLayout> layoutHandle = 
+            Handle<HwDescriptorSetLayout> layoutHandle =
                 mResourceAllocator.allocHandle<VulkanDescriptorSetLayout>();
             VulkanDescriptorSetLayout* vulkanLayout = 
                 mResourceAllocator.construct<VulkanDescriptorSetLayout>(layoutHandle, info);
@@ -661,9 +651,9 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     memcpy(raygenData, shaderHandleStorage.data(), handleSize);
     // We are using two miss shaders, so we need to get two handles for the miss shader binding table
     void* missData = shaderBindingTables->miss.mapped;
-    memcpy(missData, shaderHandleStorage.data() + handleSizeAligned, handleSize * 2);
+    memcpy(missData, shaderHandleStorage.data() + handleSizeAligned, handleSize);
     void* hitData = shaderBindingTables->hit.mapped;
-    memcpy(hitData, shaderHandleStorage.data() + handleSizeAligned * 3, handleSize);
+    memcpy(hitData, shaderHandleStorage.data() + handleSizeAligned * 2, handleSize);
     return program;
 }
 
@@ -679,12 +669,13 @@ Handle<HwDescriptorSet> VulkanRenderSystem::createDescriptorSet(
     VulkanDescriptorSetLayout* layout = mResourceAllocator.handle_cast<VulkanDescriptorSetLayout*>(layoutHandle);
     VkDescriptorSet vkSet = mDescriptorInfinitePool->obtainSet(layout);
     VulkanDescriptorSet* vulkanDescSet = mResourceAllocator.construct<VulkanDescriptorSet>(dsh, &mResourceAllocator, vkSet, set);
+    vulkanDescSet->updateVulkanProgram(program);
     return dsh;
 }
 
 void VulkanRenderSystem::bindPipeline(
     Handle<HwRaytracingProgram> programHandle,
-    Handle<HwDescriptorSet>* descSets,
+    const Handle<HwDescriptorSet>* descSets,
     uint32_t setCount
 )
 {

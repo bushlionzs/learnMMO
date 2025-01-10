@@ -260,11 +260,15 @@ struct ShaderInfo
 
 struct RaytracingShaderInfo
 {
-    String rayTracingName;
+    String rayGenShaderName;
     String rayGenEntryName;
+    String rayMissShaderName;
     String rayMissEntryName;
+    String rayClosethitShaderName;
     String rayClosethitEntryName;
+    String rayAnyHitShaderName;
     String rayAnyHitEntryName;
+    std::vector<std::pair<std::string, std::string>> shaderMacros;
 };
 
 class SkinnedData

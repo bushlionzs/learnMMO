@@ -410,17 +410,6 @@ void DX12ProgramImpl::updateRootSignature(ID3D12RootSignature* rootSignature)
     mRootSignature = rootSignature;
 }
 
-const DescriptorInfo* DX12ProgramImpl::getDescriptor(const char* descriptorName)
-{
-    auto itor = mDescriptorInfoMap.find(descriptorName);
-    if (itor != mDescriptorInfoMap.end())
-    {
-        return &itor->second;
-    }
-
-    return nullptr;
-}
-
 void DX12ProgramImpl::updateSetIndex()
 {
     for (uint32_t i = 0; i < 4; i++)

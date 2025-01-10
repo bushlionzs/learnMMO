@@ -2,7 +2,6 @@
 
 #include "renderSystem.h"
 #include "d3dutil.h"
-#include "UploadBuffer.h"
 #include "dx12Common.h"
 #include "dx12ResourceAllocator.h"
 #include "dx12PipelineCache.h"

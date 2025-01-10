@@ -79,6 +79,15 @@ namespace Ogre
 
 		static float getMaxLod(filament::backend::SamplerMipMapMode mipMapMode);
 		static D3D12_COMPARISON_FUNC getCompareOp(filament::backend::SamplerCompareFunc func);
+
+		static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS 
+			util_to_dx_acceleration_structure_build_flags(AccelerationStructureBuildFlags flags);
+
+		static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE ToDXRASType(AccelerationStructureType type);
+
+		static D3D12_RAYTRACING_GEOMETRY_FLAGS util_to_dx_geometry_flags(AccelerationStructureGeometryFlags flags);
+
+		static D3D12_RAYTRACING_INSTANCE_FLAGS util_to_dx_instance_flags(AccelerationStructureInstanceFlags flags);
 	};
 }
 #endif

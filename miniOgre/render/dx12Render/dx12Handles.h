@@ -1,6 +1,7 @@
 #pragma once
 #include <DriverBase.h>
 #include "dx12Common.h"
+#include "rayTracing.h"
 class DxMemoryAllocator;
 
 struct DX12BufferObject : public HwBufferObject {
@@ -92,16 +93,18 @@ private:
     DX12ProgramImpl* mProgramImpl;
 };
 
-struct DX12RayTracingProgram : public HwProgram
+class DX12RayTracingProgramImpl;
+
+struct DX12RayTracingProgram : public HwRaytracingProgram
 {
 public:
     DX12RayTracingProgram(const RaytracingShaderInfo& shaderInfo);
-    DX12ProgramImpl* getProgramImpl()
+    DX12RayTracingProgramImpl* getProgramImpl()
     {
         return mProgramImpl;
     }
 private:
-    DX12ProgramImpl* mProgramImpl;
+    DX12RayTracingProgramImpl* mProgramImpl;
 };
 
 struct DX12ComputeProgram : public HwComputeProgram
@@ -146,15 +149,15 @@ public:
 private:
     DxDescriptorID mDescriptorID;
 };
-
+class DX12ProgramBase;
 struct DX12DescriptorSet : public HwDescriptorSet
 {
 public:
-    DX12DescriptorSet(DX12ProgramImpl* program, uint32_t set);
+    DX12DescriptorSet(DX12ProgramBase* program, uint32_t set);
     ~DX12DescriptorSet();
 
 
-    DX12ProgramImpl* getProgram()
+    DX12ProgramBase* getProgram()
     {
         return mProgram;
     }
@@ -191,7 +194,7 @@ public:
         return mDescriptorInfos;
     }
 private:
-    DX12ProgramImpl* mProgram;
+    DX12ProgramBase* mProgram;
     uint32_t mSet;
 
     DxDescriptorID       mCbvSrvUavHandle;
@@ -200,4 +203,17 @@ private:
     DxDescriptorID mSamplerHandle;
     uint32_t mSamplerCount;
     std::vector<const DescriptorInfo*> mDescriptorInfos;
+};
+
+struct DX12AccelerationStructure : public Ogre::AccelerationStructure
+{
+    Handle<HwBufferObject> asBufferHandle;
+    uint64_t               mASDeviceAddress;
+    Handle<HwBufferObject> scratchBufferHandle;
+    uint64_t               mScratchBufferDeviceAddress;
+    D3D12_RAYTRACING_GEOMETRY_DESC* pGeometryDescs;
+    Handle<HwBufferObject> instanceDescBuffer;
+    uint32_t                                            mDescCount;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS mFlags;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE        mType;
 };

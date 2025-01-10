@@ -29,6 +29,7 @@
 #include <SamplerGroup.h>
 #include <Program.h>
 #include "VulkanTools.h"
+#include "rayTracing.h"
 #include <utils/bitset.h>
 #include <utils/FixedCapacityVector.h>
 #include <utils/Mutex.h>
@@ -56,7 +57,7 @@ inline uint8_t collapsedCount(Bitmask const& mask) {
 class VulkanTimestamps;
 struct VulkanBufferObject;
 
-struct VulkanDescriptorSetLayout : public VulkanResource, HwDescriptorSetLayout {
+struct VulkanDescriptorSetLayout : public VulkanResource,HwDescriptorSetLayout {
     static constexpr uint8_t UNIQUE_DESCRIPTOR_SET_COUNT = 4;
     static constexpr uint8_t MAX_BINDING_SET = 4;
     static constexpr uint8_t MAX_BINDINGS = 25;
@@ -711,6 +712,21 @@ private:
     utils::Mutex mFenceMutex;
 };
 
+struct VulkanAccelerationStructure : public Ogre::AccelerationStructure
+{
+    Handle<HwBufferObject> asBufferHandle;
+    uint64_t               mASDeviceAddress;
+    Handle<HwBufferObject> scratchBufferHandle;
+    uint64_t               mScratchBufferDeviceAddress;
+    Handle<HwBufferObject> instanceDescBuffer;
+    VkAccelerationStructureGeometryKHR* pGeometryDescs;
+    uint32_t* pMaxPrimitiveCountPerGeometry;
+    VkAccelerationStructureKHR           mAccelerationStructure;
+    uint32_t                             mPrimitiveCount;
+    uint32_t                             mDescCount;
+    VkBuildAccelerationStructureFlagsKHR mFlags;
+    VkAccelerationStructureTypeKHR       mType;
+};
 
 inline  VkBufferUsageFlags getBufferObjectUsage(
         uint32_t bindingType,

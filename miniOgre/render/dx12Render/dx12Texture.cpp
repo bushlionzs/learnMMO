@@ -3,7 +3,6 @@
 #include "OgreImage.h"
 #include "dx12RenderSystem.h"
 #include "OgreResourceManager.h"
-#include "dx12TextureHandleManager.h"
 #include "myutils.h"
 #include "dx12Helper.h"
 #include "D3D12Mappings.h"

@@ -6,6 +6,7 @@
 #include "memoryAllocator.h"
 #include "glslUtil.h"
 #include "myutils.h"
+#include "d3dutil.h"
 #include "shaderManager.h"
 
 DX12BufferObject::DX12BufferObject(
@@ -96,7 +97,17 @@ DX12BufferObject::DX12BufferObject(
         cbvDesc.SizeInBytes = (UINT)mByteCount;
         dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
     }
-        break;
+    break;
+    case BufferObjectBinding_AccelerationStructure:
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        srvDesc.RaytracingAccelerationStructure.Location = BufferGPU->GetGPUVirtualAddress();
+        dx12Device->CreateShaderResourceView(BufferGPU.Get(), &srvDesc, cpuHandle);
+    }
+    break;
     default:
         assert(false);
         break;
@@ -178,7 +189,7 @@ DX12ComputeProgram::~DX12ComputeProgram()
 }
 
 
-DX12DescriptorSet::DX12DescriptorSet(DX12ProgramImpl* program, uint32_t set)
+DX12DescriptorSet::DX12DescriptorSet(DX12ProgramBase* program, uint32_t set)
     :mProgram(program),
     mSet(set)
 {

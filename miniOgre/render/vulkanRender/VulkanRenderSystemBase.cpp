@@ -916,6 +916,8 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
 
     auto res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
     
+    assert(res);
+
     String* vertexContent = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
     VkShaderModuleInfo moduleInfo;
     moduleInfo.shaderType = Ogre::ComputeShader;
@@ -1101,96 +1103,6 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
     return pipelineHandle;
 }
 
-void VulkanRenderSystemBase::updateDescriptorSetBuffer(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    backend::BufferObjectHandle* boh,
-    uint32_t handleCount)
-{
-    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
-
-    assert(handleCount < MAX_HANDLE_COUNT);
-    VulkanBufferObject* bufferObjects[MAX_HANDLE_COUNT];
-    VkDescriptorBufferInfo bufferInfos[MAX_HANDLE_COUNT];
-    for (auto i = 0; i < handleCount; i++)
-    {
-        bufferObjects[i] = mResourceAllocator.handle_cast<VulkanBufferObject*>(boh[i]);
-
-        bufferInfos[i].offset = 0;
-        bufferInfos[i].range = VK_WHOLE_SIZE;
-        bufferInfos[i].buffer = bufferObjects[i]->buffer.getGpuBuffer();
-    }
-
-    VkDescriptorType type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-    if (bufferObjects[0]->bindingType & BufferObjectBinding::BufferObjectBinding_Storge)
-    {
-        type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    }
-    VkWriteDescriptorSet const descriptorWrite = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = set->vkSet,
-            .dstBinding = binding,
-            .descriptorCount = handleCount,
-            .descriptorType = type,
-            .pBufferInfo = &bufferInfos[0],
-    };
-    vkUpdateDescriptorSets(mVulkanPlatform->getDevice(), 1, &descriptorWrite, 0, nullptr);
-}
-
-void VulkanRenderSystemBase::updateDescriptorSetTexture(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    OgreTexture** tex,
-    uint32_t count,
-    TextureBindType bindType)
-{
-    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
-
-    
-    VkDescriptorImageInfo infos[256];
-    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    if (bindType == TextureBindType_RW_Image)
-    {
-        layout = VK_IMAGE_LAYOUT_GENERAL;
-    }
-    for (auto i = 0; i < count; i++)
-    {
-        VulkanTexture* vulkanTexture = (VulkanTexture*)tex[i];
-        infos[i].imageLayout = layout;
-        infos[i].imageView = vulkanTexture->getVkImageView();
-        if (bindType == TextureBindType_Combined_Image_Sampler)
-        {
-            infos[i].sampler = vulkanTexture->getSampler();
-        }
-    }
-    
-    VkDescriptorType type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    if (bindType == TextureBindType_Combined_Image_Sampler)
-    {
-        type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    }
-    else if (bindType == TextureBindType_RW_Image)
-    {
-        type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    }
-    VkWriteDescriptorSet const descriptorWrite = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = set->vkSet,
-            .dstBinding = binding,
-            .descriptorCount = count,
-            .descriptorType = type,
-            .pImageInfo = &infos[0],
-        };
-
-    vkUpdateDescriptorSets(
-        mVulkanPlatform->getDevice(),
-        1,
-        &descriptorWrite, 0, nullptr);
-}
-
 void VulkanRenderSystemBase::updateDescriptorSet(
     Handle<HwDescriptorSet> dsh,
     uint32_t count,
@@ -1202,6 +1114,7 @@ void VulkanRenderSystemBase::updateDescriptorSet(
     VkDescriptorImageInfo imageInfos[MAX_HANDLE_COUNT * 4];
     VkDescriptorImageInfo samplerInfos[MAX_HANDLE_COUNT];
     VkDescriptorBufferInfo bufferInfos[MAX_HANDLE_COUNT];
+    VkWriteDescriptorSetAccelerationStructureKHR writeSetKHR = {};
     uint32_t imageCount = 0;
     uint32_t bufferCount = 0;
     uint32_t samplerCount = 0;
@@ -1223,6 +1136,23 @@ void VulkanRenderSystemBase::updateDescriptorSet(
         
         switch (descriptroInfo->layoutBinding.descriptorType)
         {
+        case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+        {
+            VulkanAccelerationStructure* as = (VulkanAccelerationStructure*)pParam->pAS;
+            writeSetKHR.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            writeSetKHR.pNext = NULL;
+            writeSetKHR.accelerationStructureCount = 1;
+            writeSetKHR.pAccelerationStructures = &as->mAccelerationStructure;
+            descriptorWrite[write_index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite[write_index].dstSet = set->vkSet;
+            descriptorWrite[write_index].dstBinding = descriptroInfo->layoutBinding.binding;
+            descriptorWrite[write_index].pNext = &writeSetKHR;
+            descriptorWrite[write_index].dstArrayElement = 0;
+            descriptorWrite[write_index].descriptorCount = 1;
+            descriptorWrite[write_index].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            write_index++;
+        }
+        break;
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -1334,65 +1264,6 @@ void VulkanRenderSystemBase::updateDescriptorSet(
         descriptorWrite, 0, nullptr);
     
 }
-
-void VulkanRenderSystemBase::updateDescriptorSetSampler(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    Handle<HwSampler> samplerHandle)
-{
-    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
-
-    VulkanTextureSampler* vulkanSampler = mResourceAllocator.handle_cast<VulkanTextureSampler*>(samplerHandle);
-    VkDescriptorImageInfo info{};
-
-    info.imageView = VK_NULL_HANDLE;
-    info.sampler = vulkanSampler->getSampler();
-    info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    VkWriteDescriptorSet const descriptorWrite = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = set->vkSet,
-            .dstBinding = binding,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .pImageInfo = &info,
-    };
-
-    bluevk::vkUpdateDescriptorSets(
-        mVulkanPlatform->getDevice(),
-        1,
-        &descriptorWrite, 0, nullptr);
-}
-
-void VulkanRenderSystemBase::updateDescriptorSetSampler(
-    Handle<HwDescriptorSet> dsh,
-    backend::descriptor_binding_t binding,
-    OgreTexture* tex)
-{
-    VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(dsh);
-    VulkanTexture* vulkanTexture = (VulkanTexture*)tex;
-    VkDescriptorImageInfo info{};
-
-    info.imageView = VK_NULL_HANDLE;
-    info.sampler = vulkanTexture->getSampler();
-    info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    VkWriteDescriptorSet const descriptorWrite = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = set->vkSet,
-            .dstBinding = binding,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .pImageInfo = &info,
-    };
-
-    bluevk::vkUpdateDescriptorSets(
-        mVulkanPlatform->getDevice(),
-        1,
-        &descriptorWrite, 0, nullptr);
-}
-
-
 
 void VulkanRenderSystemBase::resourceBarrier(
     uint32_t numBufferBarriers,

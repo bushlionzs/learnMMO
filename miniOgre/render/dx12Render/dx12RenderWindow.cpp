@@ -3,8 +3,6 @@
 #include "OgreStringConverter.h"
 #include "dx12Helper.h"
 #include "dx12RenderSystemBase.h"
-#include "dx12Frame.h"
-#include "OgreStringConverter.h"
 #include "dx12RenderTarget.h"
 #include "dx12SwapChain.h"
 

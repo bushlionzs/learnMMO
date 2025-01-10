@@ -114,25 +114,7 @@ protected:
     virtual Handle<HwPipeline> createPipeline(
         backend::RasterState& rasterState, 
         Handle<HwProgram>& program) override;
-    virtual void updateDescriptorSetBuffer(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        backend::BufferObjectHandle* boh,
-        uint32_t handleCount) ;
-    virtual void updateDescriptorSetTexture(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture** tex,
-        uint32_t count,
-        TextureBindType type) ;
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        Handle<HwSampler> samplerHandle) ;
-    virtual void updateDescriptorSetSampler(
-        Handle<HwDescriptorSet> dsh,
-        backend::descriptor_binding_t binding,
-        OgreTexture* tex) ;
+    
     virtual void updateDescriptorSet(
         Handle<HwDescriptorSet> dsh,
         uint32_t count,

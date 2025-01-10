@@ -192,9 +192,13 @@ public:
 
     virtual void addAccelerationStructure(
         const AccelerationStructureDesc* pDesc,
-        AccelerationStructure** ppAccelerationStructure) {}
+        AccelerationStructure** ppAccelerationStructure) {
+        assert(false);
+    }
 
-    virtual void buildAccelerationStructure(RaytracingBuildASDesc* pDesc) {}
+    virtual void buildAccelerationStructure(RaytracingBuildASDesc* pDesc) { 
+        assert(false);
+    }
 
     virtual void removeAccelerationStructureScratch(
         AccelerationStructure* pAccelerationStructure) {}

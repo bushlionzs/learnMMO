@@ -4,13 +4,29 @@
 #include <dx12Common.h>
 #include <OgreCommon.h>
 #include "engine_struct.h"
-#include "shaderReflection.h"
 class Dx12RenderSystem;
 class VertexDeclaration;
 
 
+class DX12ProgramBase
+{
+public:
+    const DescriptorInfo* getDescriptor(const char* descriptorName)
+    {
+        auto itor = mDescriptorInfoMap.find(descriptorName);
+        if (itor != mDescriptorInfoMap.end())
+        {
+            return &itor->second;
+        }
 
-class DX12ProgramImpl
+        return nullptr;
+    }
+protected:
+    std::vector <ShaderResource> mProgramResourceList;
+    ID3D12RootSignature* mRootSignature;
+    std::map<std::string, DescriptorInfo> mDescriptorInfoMap;
+};
+class DX12ProgramImpl: public DX12ProgramBase
 {
 public:
     
@@ -62,7 +78,7 @@ public:
 
     void updateRootSignature(ID3D12RootSignature* rootSignature);
     
-    const DescriptorInfo* getDescriptor(const char* descriptorName);
+    
 
 
     uint32_t getCbvSrvUavDescCount(uint32_t set);
@@ -77,15 +93,14 @@ private:
     void updateInputDesc(VertexDeclaration* vDeclaration);
 private:
     std::vector<D3D12_INPUT_ELEMENT_DESC> mInputDesc;
-    std::vector <ShaderResource> mProgramResourceList;
+    
     uint32_t mInputSize = 0;
     std::string mVertexByteCode;
     std::string mGeometryByteCode;
     std::string mFragByteCode;
     std::string mComputeByteCode;
 
-    ID3D12RootSignature* mRootSignature;
-    std::map<std::string, DescriptorInfo> mDescriptorInfoMap;
+   
 
     D3d12ShaderParameters mShaderInputParameters;
 };

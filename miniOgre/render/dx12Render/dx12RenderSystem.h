@@ -2,7 +2,6 @@
 
 #include "renderSystem.h"
 #include "d3dutil.h"
-#include "UploadBuffer.h"
 #include "dx12Common.h"
 #include "dx12RenderSystemBase.h"
 class Dx12GraphicsCommandList;
@@ -22,4 +21,23 @@ public:
 
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(
         const RaytracingShaderInfo& mShaderInfo) override;
+
+    virtual Handle<HwDescriptorSet> createDescriptorSet(
+        Handle<HwRaytracingProgram> programHandle,
+        uint32_t set) override;
+
+    virtual void addAccelerationStructure(
+        const AccelerationStructureDesc* pDesc,
+        AccelerationStructure** ppAccelerationStructure) override;
+
+    virtual void buildAccelerationStructure(RaytracingBuildASDesc* pDesc)  override;
+
+    virtual void removeAccelerationStructureScratch(
+        AccelerationStructure* pAccelerationStructure)  override;
+
+    virtual uint64_t getBufferDeviceAddress(Handle<HwBufferObject> bufHandle) override;
+private:
+    DxDescriptorID getBufferDescriptorID(Handle<HwBufferObject> bufHandle);
+private:
+    ID3D12Device5* prDevice = nullptr;
 };

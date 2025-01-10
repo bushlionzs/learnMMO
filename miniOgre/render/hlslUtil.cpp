@@ -156,7 +156,7 @@ bool hlslToBin(
 		arguments.push_back(L"-D");
 		arguments.push_back(pool.back().c_str());
 	}
-	vulkan = false;
+
 	if (vulkan)
 	{
 		arguments.push_back(L"-D VULKAN");
