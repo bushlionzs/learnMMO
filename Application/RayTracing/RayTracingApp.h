@@ -98,6 +98,20 @@ public:
 		Ogre::RenderWindow* renderWindow,
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
+
+	void RayTracingBox(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
+
+	void RayTracingBasic(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
 	void update(float delta);
 
 	FrameInfo* getFrameInfo(uint32_t i)

@@ -50,7 +50,7 @@ public:
 				{
 					descriptorData.mCount = 1;
 					descriptorData.pName = "cbPass";
-					descriptorData.ppBuffers = &mFrameBufferObjectList[i];;
+					descriptorData.ppBuffers = &mFrameBufferObjectList[i];
 					FrameResourceInfo* resourceInfo = (FrameResourceInfo*)r->getFrameResourceInfo(frameIndex);
 					auto* rs = Ogre::Root::getSingleton().getRenderSystem();
 					rs->updateDescriptorSet(resourceInfo->zeroSet, 1, &descriptorData);

@@ -1,7 +1,4 @@
-//***************************************************************************************
-// Common.hlsl by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
+#include "base.hlsl"
 // Defaults for number of lights.
 #ifndef MAX_NUM_DIR_LIGHTS
     #define MAX_NUM_DIR_LIGHTS 1
@@ -22,7 +19,7 @@ struct Light {
     float FalloffEnd;   // point/spot light only
     float3 Position;    // point light only
     float SpotPower;    // spot light only
-	float4x4 viewProj;
+	float3 LightColor;
 };
 
 #ifdef VULKAN
@@ -68,22 +65,25 @@ SamplerState cubeSampler        VKBINDING(9, 1): register(s4,space1);
 #endif //PBR
 
 // Constant data that varies per frame.
-cbuffer cbPerObject : register(b0)
+
+struct ObjectBlock
 {
-    float4x4 gWorld;
-	float4x4 gProjector;
+    column_major  float4x4 gWorld;
+	column_major float4x4 gProjector;
+	float4 diffuseColor;
 };
 
-// Constant data that varies per material.
-cbuffer cbPass : register(b1)
+RES(CBUFFER(ObjectBlock), cbPerObject, UPDATE_FREQ_NONE, b0, VKBINDING(0, 0));
+
+struct PassBlock
 {
-    float4x4 gView;
-    float4x4 gInvView;
-    float4x4 gProj;
-    float4x4 gInvProj;
-    float4x4 gViewProj;
-    float4x4 gInvViewProj;
-	float4x4 gShadowTransform;
+    column_major float4x4 gView;
+    column_major float4x4 gInvView;
+    column_major float4x4 gProj;
+    column_major float4x4 gInvProj;
+    column_major float4x4 gViewProj;
+    column_major float4x4 gInvViewProj;
+	column_major float4x4 gShadowTransform;
     float3 gEyePosW;
     uint gShadow;
     float2 gRenderTargetSize;
@@ -96,10 +96,12 @@ cbuffer cbPass : register(b1)
 	uint numDirLights;
 };
 
+RES(CBUFFER(PassBlock), cbPass, UPDATE_FREQ_NONE, b1, VKBINDING(1, 0));
+
+
 #ifdef PBR
-cbuffer pbrMaterial : register(b2)
+struct PbrMaterialBlock
 {
-    //some constance value;
     float2 u_MetallicRoughnessValues;
 	float u_OcclusionStrength;
 	uint alpha_mask;
@@ -112,24 +114,32 @@ cbuffer pbrMaterial : register(b2)
     uint hasNormalMap;
     uint hasMetalRoughNessMap;
 };
+
+RES(CBUFFER(PbrMaterialBlock), pbrMaterial, UPDATE_FREQ_NONE, b2, VKBINDING(2, 0));
+
 #else
-cbuffer cbMaterial : register(b2)
+struct MaterialBlock
 {
-	float4   gDiffuseAlbedo;
+    float4   gDiffuseAlbedo;
     float3   gFresnelR0;
     float    gRoughness;
-    float4x4 gTexScale;
-	float4x4 gTexTransform;
+    column_major float4x4 gTexScale;
+	column_major float4x4 gTexTransform;
 	uint     gDiffuseMapIndex;
 	uint     MatPad0;
 	uint     MatPad1;
 	uint     MatPad2;
 };
+RES(CBUFFER(MaterialBlock), cbMaterial, UPDATE_FREQ_NONE, b2, VKBINDING(2, 0));
+
 #endif //PBR
 
 #ifdef SKINNED
-cbuffer cbSkinned : register(b3)
+struct SkinBlock
 {
     float4x4 gBoneTransforms[200];
 };
+
+RES(CBUFFER(MaterialBlock), cbSkinned, UPDATE_FREQ_NONE, b3, VKBINDING(3, 0));
+
 #endif

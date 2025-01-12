@@ -60,7 +60,7 @@ namespace Ogre {
             uint32 sliceCount,
             uint32 stackCount,
             std::vector<SVertexElement>& vertices,
-            std::vector<uint32_t>& indices);
+            std::vector<uint16_t>& indices);
         void BuildCylinderBottomCap(
             float bottomRadius,
             float topRadius,
@@ -68,11 +68,11 @@ namespace Ogre {
             uint32 sliceCount,
             uint32 stackCount,
             std::vector<SVertexElement>& vertices,
-            std::vector<uint32_t>& indices);
+            std::vector<uint16_t>& indices);
 
         Mesh* BuildHardBuffer(
             std::vector<SVertexElement>& vertices,
-            std::vector<uint32_t>& indices);
+            std::vector<uint16_t>& indices);
 
         void applyMesh(Mesh* pMesh, MaterialInfo& matInfo);
 

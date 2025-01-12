@@ -12,7 +12,6 @@
 #include "OgreResourceManager.h"
 #include "renderSystem.h"
 #include "m3d_loader.h"
-#include "OgreMaterialManager.h"
 
 
 
@@ -155,7 +154,7 @@ std::shared_ptr<Mesh> MeshManager::createBox(
 	vertices.push_back(SVertexElement(+w2, -h2, +d2, 1.0f, 0.0f, 0.0f,  1.0f, 1.0f));
 
 
-	std::vector<uint32_t> indices =
+	std::vector<uint16_t> indices =
 	{
 		0, 1, 2, 0, 2, 3, 
 		4, 5, 6, 4, 6, 7,
@@ -217,9 +216,9 @@ std::shared_ptr<Mesh> MeshManager::createRect(
 	}
 	
 
-	std::vector<uint32_t> indices32 = {0, 2, 1, 0, 3, 2};
+	std::vector<uint16_t> indices = {0, 2, 1, 0, 3, 2};
 
-	Mesh* pMesh = BuildHardBuffer(vertices, indices32);
+	Mesh* pMesh = BuildHardBuffer(vertices, indices);
 	auto mat = MaterialManager::getSingleton().getByName("myrect");
 
 	auto subMesh = pMesh->getSubMesh(0);
@@ -291,10 +290,10 @@ std::shared_ptr<Mesh> MeshManager::createGround(
 		
 	}
 	
-	std::vector<uint32_t> indices;
+	std::vector<uint16_t> indices;
 	indices.resize(gridCount * 6);
 
-	uint32_t* pIndex = indices.data();
+	uint16_t* pIndex = indices.data();
 	for (int32_t i = 0; i < gridCount; ++i)
 	{
 		// NB: We should take care with the clockwise ordered quad vertices
@@ -391,8 +390,8 @@ std::shared_ptr<Mesh> MeshManager::createGrid(
 	//
 	// Create the indices.
 	//
-	std::vector<uint32_t> indices32;
-	indices32.resize(faceCount * 3); // 3 indices per face
+	std::vector<uint16_t> indices;
+	indices.resize(faceCount * 3); // 3 indices per face
 
 	// Iterate over each quad and compute indices.
 	uint32 k = 0;
@@ -400,20 +399,20 @@ std::shared_ptr<Mesh> MeshManager::createGrid(
 	{
 		for (uint32 j = 0; j < n - 1; ++j)
 		{
-			indices32[k] = i * n + j;
-			indices32[k + 1] = i * n + j + 1;
-			indices32[k + 2] = (i + 1) * n + j;
+			indices[k] = i * n + j;
+			indices[k + 1] = i * n + j + 1;
+			indices[k + 2] = (i + 1) * n + j;
 
-			indices32[k + 3] = (i + 1) * n + j;
-			indices32[k + 4] = i * n + j + 1;
-			indices32[k + 5] = (i + 1) * n + j + 1;
+			indices[k + 3] = (i + 1) * n + j;
+			indices[k + 4] = i * n + j + 1;
+			indices[k + 5] = (i + 1) * n + j + 1;
 
 			k += 6; // next quad
 		}
 	}
 
 
-	Mesh* pMesh = BuildHardBuffer(vertices, indices32);
+	Mesh* pMesh = BuildHardBuffer(vertices, indices);
 
 	MaterialInfo matInfo;
 	matInfo.mTexname = "floor.dds";
@@ -477,13 +476,13 @@ std::shared_ptr<Mesh> MeshManager::CreateSphere(const std::string& name, float r
 
 	vertices.push_back(bottomvertex);
 
-	std::vector<uint32_t> indices32;
+	std::vector<uint16_t> indices;
 
 	for (uint32_t i = 1; i <= sliceCount; ++i)
 	{
-		indices32.push_back(0);
-		indices32.push_back(i + 1);
-		indices32.push_back(i);
+		indices.push_back(0);
+		indices.push_back(i + 1);
+		indices.push_back(i);
 	}
 
 	uint32_t baseIndex = 1;
@@ -492,28 +491,28 @@ std::shared_ptr<Mesh> MeshManager::CreateSphere(const std::string& name, float r
 	{
 		for (uint32_t j = 0; j < sliceCount; ++j)
 		{
-			indices32.push_back(baseIndex + i * ringVertexCount + j);
-			indices32.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
 
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
-			indices32.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
 		}
 	}
-	uint32_t southPoleIndex = (uint32)indices32.size() - 1;
+	uint32_t southPoleIndex = (uint32)indices.size() - 1;
 
 	// Offset the indices to the index of the first vertex in the last ring.
 	baseIndex = southPoleIndex - ringVertexCount;
 
 	for (uint32 i = 0; i < sliceCount; ++i)
 	{
-		indices32.push_back(southPoleIndex);
-		indices32.push_back(baseIndex + i);
-		indices32.push_back(baseIndex + i + 1);
+		indices.push_back(southPoleIndex);
+		indices.push_back(baseIndex + i);
+		indices.push_back(baseIndex + i + 1);
 	}
 
-	Mesh* pMesh = BuildHardBuffer(vertices, indices32);
+	Mesh* pMesh = BuildHardBuffer(vertices, indices);
 
 	std::shared_ptr<Mesh> p(pMesh);
 
@@ -579,13 +578,13 @@ std::shared_ptr<Mesh> MeshManager::CreateSphereSky(
 
 	vertices.push_back(bottomvertex);
 
-	std::vector<uint32_t> indices32;
+	std::vector<uint16_t> indices;
 
 	for (uint32_t i = 1; i <= sliceCount; ++i)
 	{
-		indices32.push_back(0);
-		indices32.push_back(i + 1);
-		indices32.push_back(i);
+		indices.push_back(0);
+		indices.push_back(i + 1);
+		indices.push_back(i);
 	}
 
 	uint32_t baseIndex = 1;
@@ -594,28 +593,28 @@ std::shared_ptr<Mesh> MeshManager::CreateSphereSky(
 	{
 		for (uint32_t j = 0; j < sliceCount; ++j)
 		{
-			indices32.push_back(baseIndex + i * ringVertexCount + j);
-			indices32.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
 
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
-			indices32.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
 		}
 	}
-	uint32_t southPoleIndex = (uint32)indices32.size() - 1;
+	uint32_t southPoleIndex = (uint32)indices.size() - 1;
 
 	// Offset the indices to the index of the first vertex in the last ring.
 	baseIndex = southPoleIndex - ringVertexCount;
 
 	for (uint32 i = 0; i < sliceCount; ++i)
 	{
-		indices32.push_back(southPoleIndex);
-		indices32.push_back(baseIndex + i);
-		indices32.push_back(baseIndex + i + 1);
+		indices.push_back(southPoleIndex);
+		indices.push_back(baseIndex + i);
+		indices.push_back(baseIndex + i + 1);
 	}
 
-	Mesh* pMesh = BuildHardBuffer(vertices, indices32);
+	Mesh* pMesh = BuildHardBuffer(vertices, indices);
 	
 	MaterialInfo matInfo;
 	matInfo.mTexname = "grasscube1024.dds";
@@ -685,26 +684,26 @@ std::shared_ptr<Mesh> MeshManager::CreateCylinder(const std::string& name, float
 
 	// Compute indices for each stack.
 
-	std::vector<uint32_t> indices32;
+	std::vector<uint16_t> indices;
 	for (uint32 i = 0; i < stackCount; ++i)
 	{
 		for (uint32 j = 0; j < sliceCount; ++j)
 		{
-			indices32.push_back(i * ringVertexCount + j);
-			indices32.push_back((i + 1) * ringVertexCount + j);
-			indices32.push_back((i + 1) * ringVertexCount + j + 1);
+			indices.push_back(i * ringVertexCount + j);
+			indices.push_back((i + 1) * ringVertexCount + j);
+			indices.push_back((i + 1) * ringVertexCount + j + 1);
 
-			indices32.push_back(i * ringVertexCount + j);
-			indices32.push_back((i + 1) * ringVertexCount + j + 1);
-			indices32.push_back(i * ringVertexCount + j + 1);
+			indices.push_back(i * ringVertexCount + j);
+			indices.push_back((i + 1) * ringVertexCount + j + 1);
+			indices.push_back(i * ringVertexCount + j + 1);
 		}
 	}
 
-	BuildCylinderTopCap(bottomRadius, topRadius, height, sliceCount, stackCount, vertices, indices32);
-	BuildCylinderBottomCap(bottomRadius, topRadius, height, sliceCount, stackCount, vertices, indices32);
+	BuildCylinderTopCap(bottomRadius, topRadius, height, sliceCount, stackCount, vertices, indices);
+	BuildCylinderBottomCap(bottomRadius, topRadius, height, sliceCount, stackCount, vertices, indices);
 
 
-	Mesh* pMesh = BuildHardBuffer(vertices, indices32);
+	Mesh* pMesh = BuildHardBuffer(vertices, indices);
 	
 
 	std::shared_ptr<Mesh> p(pMesh);
@@ -825,7 +824,7 @@ void MeshManager::BuildCylinderTopCap(
 	uint32 sliceCount, 
 	uint32 stackCount, 
 	std::vector<SVertexElement>& vertices,
-	std::vector<uint32_t>& indices)
+	std::vector<uint16_t>& indices)
 {
 	uint32_t baseIndex = (uint32_t)vertices.size();
 
@@ -867,7 +866,7 @@ void MeshManager::BuildCylinderBottomCap(
 	uint32 sliceCount, 
 	uint32 stackCount, 
 	std::vector<SVertexElement>& vertices,
-	std::vector<uint32_t>& indices)
+	std::vector<uint16_t>& indices)
 {
 	uint32 baseIndex = (uint32)vertices.size();
 	float y = -0.5f * height;
@@ -903,7 +902,7 @@ void MeshManager::BuildCylinderBottomCap(
 
 Mesh* MeshManager::BuildHardBuffer(
 	std::vector<SVertexElement>& vertices,
-	std::vector<uint32_t>& indices)
+	std::vector<uint16_t>& indices)
 {
 	Mesh* pMesh = new Mesh(std::string());
 
@@ -918,9 +917,9 @@ Mesh* MeshManager::BuildHardBuffer(
 	vd->addBindBuffer(0, sizeof(SVertexElement), vertexCount);
 	vd->writeBindBufferData(0, (const char*)vertices.data(), size);
 
-
-	id->createBuffer(4, indices.size());
-	id->writeData((const char*)indices.data(), 4 * indices.size());
+	uint32_t indexSize = sizeof(indices[0]);
+	id->createBuffer(indexSize, indices.size());
+	id->writeData((const char*)indices.data(), indexSize * indices.size());
 	SubMesh* sub = pMesh->addSubMesh(true, true);
 
 	sub->addIndexs(indices.size(), 0, 0);

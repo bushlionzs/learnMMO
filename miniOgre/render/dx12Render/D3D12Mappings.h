@@ -88,6 +88,8 @@ namespace Ogre
 		static D3D12_RAYTRACING_GEOMETRY_FLAGS util_to_dx_geometry_flags(AccelerationStructureGeometryFlags flags);
 
 		static D3D12_RAYTRACING_INSTANCE_FLAGS util_to_dx_instance_flags(AccelerationStructureInstanceFlags flags);
+
+		static D3D12_RESOURCE_STATES util_to_dx12_resource_state(ResourceState state);
 	};
 }
 #endif

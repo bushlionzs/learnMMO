@@ -48,6 +48,17 @@ public:
 		const char* byteCode,
 		uint32_t byteCodeSize);
 
+	//for raytracing
+	struct StageFlagsInfo
+	{
+		const char* funcName;
+		ShaderStageFlags stageFlags;
+	};
+	std::vector<ShaderResource> parseShaderResource2(
+		std::vector<StageFlagsInfo>& flagsInfoList,
+		const char* byteCode,
+		uint32_t byteCodeSize);
+
 	void parseInputParams(const char* byteCode,
 		uint32_t byteCodeSize,
 		D3d12ShaderParameters& parameters);

@@ -19,6 +19,23 @@ shader basic
 	 }
 }
 
+shader basic2
+{
+     shader_unit
+	 {
+		shader_type directx
+		vertex_shader basic2.hlsl VS
+		frag_shader basic2.hlsl PS
+	 }
+	 
+	 shader_unit
+	 {
+		shader_type vulkan
+		vertex_shader basic2.hlsl VS
+		frag_shader basic2.hlsl PS
+	 }
+}
+
 shader mygui
 {
     shader_unit
@@ -273,6 +290,23 @@ shader mipmap
 		shader_type vulkan
 		vertex_shader mipmap.glsl VS
 		frag_shader mipmap.glsl PS
+	 }
+}
+
+shader fbx
+{
+    shader_unit
+	 {
+		shader_type directx
+		vertex_shader fbx.hlsl VS
+		frag_shader fbx.hlsl PS
+	 }
+	 
+	 shader_unit
+	 {
+		shader_type vulkan
+		vertex_shader fbx.hlsl VS
+		frag_shader fbx.hlsl PS
 	 }
 }
 

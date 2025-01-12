@@ -151,7 +151,7 @@ void ManualApplication::render()
 	Ogre::Root::getSingleton()._fireFrameStarted();
 
 	{
-		RenderTargetBarrier rtBarriers[] =
+		/*RenderTargetBarrier rtBarriers[] =
 		{
 			{
 				mRenderWindow->getColorTarget(),
@@ -159,7 +159,7 @@ void ManualApplication::render()
 				RESOURCE_STATE_RENDER_TARGET
 			}
 		};
-		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);*/
 	}
 	
 
@@ -169,7 +169,7 @@ void ManualApplication::render()
 	}
 
 	{
-		RenderTargetBarrier rtBarriers[] =
+		/*RenderTargetBarrier rtBarriers[] =
 		{
 			{
 				mRenderWindow->getColorTarget(),
@@ -177,7 +177,7 @@ void ManualApplication::render()
 				RESOURCE_STATE_PRESENT
 			}
 		};
-		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);*/
 	}
 	
 

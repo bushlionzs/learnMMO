@@ -19,6 +19,13 @@ public:
 
     virtual Ogre::OgreTexture* createTextureFromFile(const std::string& name, Ogre::TextureProperty* texProperty) override;
 
+    virtual void traceRay(Handle<HwRaytracingProgram> programHandle);
+
+    virtual void bindPipeline(
+        Handle<HwRaytracingProgram> programHandle,
+        const Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount
+    );
     virtual Handle<HwRaytracingProgram> createRaytracingProgram(
         const RaytracingShaderInfo& mShaderInfo) override;
 
@@ -40,4 +47,5 @@ private:
     DxDescriptorID getBufferDescriptorID(Handle<HwBufferObject> bufHandle);
 private:
     ID3D12Device5* prDevice = nullptr;
+    ID3D12GraphicsCommandList5* m_dxrCommandList = nullptr;
 };

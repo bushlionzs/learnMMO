@@ -18,7 +18,7 @@ layout(location = 2) rayPayloadEXT bool shadowed;
 hitAttributeEXT vec2 attribs;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
-layout(binding = 3, set = 0) uniform sampler2D image;
+layout(binding = 3, set = 0) uniform sampler2D samplerImage;
 
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
@@ -28,7 +28,7 @@ struct GeometryNode {
 };
 layout(binding = 4, set = 0) buffer GeometryNodes { GeometryNode nodes[]; } geometryNodes;
 
-layout(binding = 5, set = 0) uniform sampler2D textures[];
+layout(binding = 5, set = 0) uniform sampler2D textures[256];
 
 #include "bufferreferences.glsl"
 #include "geometrytypes.glsl"

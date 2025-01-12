@@ -17,6 +17,7 @@ struct Triangle {
 	vec2 uv;
 };
 
+
 // This function will unpack our vertex buffer data into a single triangle and calculates uv coordinates
 Triangle unpackTriangle(uint index, int vertexSize) {
 	Triangle tri;

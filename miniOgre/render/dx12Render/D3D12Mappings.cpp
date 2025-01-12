@@ -2,7 +2,7 @@
 #include "D3D12Mappings.h"
 
 namespace Ogre {
-
+#define D3D12_RAYTRACING_AVAILABLE
     D3D12_BLEND D3D12Mappings::get(SceneBlendFactor sbf, bool forAlpha)
     {
         switch (sbf)
@@ -317,6 +317,7 @@ namespace Ogre {
         case D3D_SIT_TEXTURE:
         case D3D_SIT_BYTEADDRESS:
         case D3D_SIT_STRUCTURED:
+        case D3D_SIT_RTACCELERATIONSTRUCTURE:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         case D3D_SIT_SAMPLER:
             return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
@@ -547,6 +548,50 @@ namespace Ogre {
             ret |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
         if (flags & ACCELERATION_STRUCTURE_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE)
             ret |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+
+        return ret;
+    }
+
+    D3D12_RESOURCE_STATES D3D12Mappings::util_to_dx12_resource_state(ResourceState state)
+    {
+        D3D12_RESOURCE_STATES ret = D3D12_RESOURCE_STATE_COMMON;
+
+        // These states cannot be combined with other states so we just do an == check
+        if (state == RESOURCE_STATE_GENERIC_READ)
+            return D3D12_RESOURCE_STATE_GENERIC_READ;
+        if (state == RESOURCE_STATE_COMMON)
+            return D3D12_RESOURCE_STATE_COMMON;
+        if (state == RESOURCE_STATE_PRESENT)
+            return D3D12_RESOURCE_STATE_PRESENT;
+
+        if (state & RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+            ret |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        if (state & RESOURCE_STATE_INDEX_BUFFER)
+            ret |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+        if (state & RESOURCE_STATE_RENDER_TARGET)
+            ret |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+        if (state & RESOURCE_STATE_UNORDERED_ACCESS)
+            ret |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        if (state & RESOURCE_STATE_DEPTH_WRITE)
+            ret |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        else if (state & RESOURCE_STATE_DEPTH_READ)
+            ret |= D3D12_RESOURCE_STATE_DEPTH_READ;
+        if (state & RESOURCE_STATE_STREAM_OUT)
+            ret |= D3D12_RESOURCE_STATE_STREAM_OUT;
+        if (state & RESOURCE_STATE_INDIRECT_ARGUMENT)
+            ret |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        if (state & RESOURCE_STATE_COPY_DEST)
+            ret |= D3D12_RESOURCE_STATE_COPY_DEST;
+        if (state & RESOURCE_STATE_COPY_SOURCE)
+            ret |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+        if (state & RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+            ret |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        if (state & RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+            ret |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+#ifdef D3D12_RAYTRACING_AVAILABLE
+        if (state & (RESOURCE_STATE_ACCELERATION_STRUCTURE_READ | RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE))
+            ret |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+#endif
 
         return ret;
     }

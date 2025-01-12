@@ -16,7 +16,7 @@ layout(location = 3) rayPayloadInEXT uint payloadSeed;
 
 hitAttributeEXT vec2 attribs;
 
-layout(binding = 3, set = 0) uniform sampler2D image;
+layout(binding = 3, set = 0) uniform sampler2D samplerImage;
 
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;

@@ -115,6 +115,7 @@ bool hlslToBin(
 	};
 	
 	std::wstring targetProfile;
+	std::wstring wEntryPoint = dy::acsi_to_widebyte(entryPoint);
 	if (shaderType == VertexShader)
 	{
 		targetProfile = L"vs_6_5";
@@ -136,13 +137,14 @@ bool hlslToBin(
 		       shaderType == AnyHitShader ||
 		      shaderType == ClosestHitShader)
 	{
-		targetProfile = L"lib_6_6";
+		targetProfile = L"lib_6_5";
+		wEntryPoint.clear();
 	}
 	else
 	{
 		assert(false);
 	}
-	std::wstring wEntryPoint = dy::acsi_to_widebyte(entryPoint);
+	
 	std::wstring wShaderName = dy::acsi_to_widebyte(shaderName);
 	wchar_t buffer[256];
 	std::vector<std::wstring> pool;

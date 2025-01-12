@@ -695,7 +695,7 @@ void Dx12RenderSystemBase::updateDescriptorSet(
     {
         const DescriptorData* pParam = pParams + i;
         const DescriptorInfo* descriptroInfo = dx12ProgramImpl->getDescriptor(pParam->pName);
-        if (strcmp(pParam->pName, "outputTexture") == 0)
+        if (strcmp(pParam->pName, "RenderTarget") == 0)
         {
             int kk = 0;
         }
@@ -712,9 +712,16 @@ void Dx12RenderSystemBase::updateDescriptorSet(
         {
         case D3D_SIT_RTACCELERATIONSTRUCTURE:
         {
-
+            DX12AccelerationStructure* as = (DX12AccelerationStructure*)pParam->pAS;
+            DX12BufferObject* bo = mResourceAllocator.handle_cast<DX12BufferObject*>(as->asBufferHandle);
+            DxDescriptorID id = bo->getDescriptorID();
+            d3dUtil::copy_descriptor_handle(
+                mDescriptorHeapContext->mCPUDescriptorHeaps[0],
+                id,
+                mDescriptorHeapContext->mCbvSrvUavHeaps[0],
+                cbvSrvUavHandle + descriptroInfo->mSetIndex);
         }
-            break;
+        break;
         case D3D_SIT_TEXTURE:
         case D3D_SIT_UAV_RWTYPED:
         {
@@ -833,6 +840,14 @@ void Dx12RenderSystemBase::resourceBarrier(
             // if (!(pBuffer->mCurrentState & pTransBarrier->mNewState) && pBuffer->mCurrentState != pTransBarrier->mNewState)
             if (RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->mCurrentState &&
                 RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->mNewState)
+            {
+                pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                pBarrier->UAV.pResource = bo->getResource();
+                ++transitionCount;
+            }
+            else if ((RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE & pTransBarrier->mCurrentState) &&
+                (RESOURCE_STATE_ACCELERATION_STRUCTURE_READ & pTransBarrier->mNewState))
             {
                 pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;

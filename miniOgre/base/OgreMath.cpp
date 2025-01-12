@@ -50,7 +50,7 @@ namespace Ogre
 
     Math::RandomValueProvider* Math::mRandProvider = NULL;
 
-//#define LEFT_HANDED
+#define LEFT_HANDED
     //-----------------------------------------------------------------------
     Math::Math( unsigned int trigTableSize )
     {
@@ -1069,17 +1069,10 @@ namespace Ogre
 
         m[3][2] = 1.0f;
 
-        m[2][2] = zFar / (zFar - zNear);
+        m[2][2] = (zFar + zNear) / (zFar - zNear);
         m[2][3] = -(zFar * zNear) / (zFar - zNear);
-
-
-        static const float VECTORMATH_PI_OVER_2 = 1.570796327f;
-
-        float aspectInverse = 1.0 / aspect;
-
-        auto f = ::tanf(VECTORMATH_PI_OVER_2 - fovy * 0.5f);
-        m[0][0] = f;
-        m[1][1] = f / aspectInverse;
+        m[0][0] = 1.0f / (aspect * tanHalfFovy);
+        m[1][1] = 1.0f / tanHalfFovy;
         return m;
     }
 

@@ -278,7 +278,6 @@ void d3dUtil::create_descriptor_table(
     for (uint32_t i = 0; i < 1; ++i)
     {
         const ShaderResource* res = shaderResource;
-        pRange[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         pRange[i].BaseShaderRegister = res->reg;
         pRange[i].RegisterSpace = res->set;
         pRange[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;

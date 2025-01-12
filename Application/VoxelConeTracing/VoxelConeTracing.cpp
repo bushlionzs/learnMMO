@@ -374,6 +374,12 @@ void VoxelConeTracingApp::voxelizationPass()
 		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
 		mRenderSystem->pushGroupMarker("VoxelizationPass");
 		mRenderSystem->clearRenderTarget(context->voxelizationTarget, Ogre::Vector4::ZERO);
+		rtBarriers[0] = {
+			context->voxelizationTarget,
+			RESOURCE_STATE_UNORDERED_ACCESS,
+			RESOURCE_STATE_UNORDERED_ACCESS
+		};
+		mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
 		renderScene(mGameCamera->getCamera(), mSceneManager,
 			info, pUserDefineShader);
 		mRenderSystem->popGroupMarker();
@@ -413,37 +419,243 @@ void VoxelConeTracingApp::computePass()
 {
 	ComputePassCallback computeCallback = [=, this](ComputePassInfo& info) {
 		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
-		VctFrameData* frameData = &this->mComputeFrameData[frameIndex];
-		info.programHandle = mMipmapPrepareHandle;
-		info.computeGroup = Ogre::Vector3i(16, 16, 16);
-		info.descSets.clear();
-		info.descSets.push_back(frameData->mipmapPrepareZeroSet);
-		mRenderSystem->pushGroupMarker("MipmapPrepare");
-		mRenderSystem->beginComputePass(info);
-		mRenderSystem->endComputePass();
-		mRenderSystem->popGroupMarker();
-		mRenderSystem->pushGroupMarker("VCT Mipmapping main CS");
-		int mipDimension = VCT_SCENE_VOLUME_SIZE >> 1;
-		info.programHandle = mMipmapMainHandle;
-		for (uint32_t i = 0; i < VCT_MIPS; i++)
+		VctFrameData* frameData = &this->mComputeFrameData[0];
+
 		{
-			info.descSets.clear();
-			info.descSets.push_back(frameData->mipmapResultZeroSet[i]);
-			uint32_t count = mipDimension / 8;
-			info.computeGroup = Ogre::Vector3i(count, count, count);
-			mipDimension >>= 1;
-			/*mRenderSystem->beginComputePass(info);
-			mRenderSystem->endComputePass();*/
+			RenderTargetBarrier barriers[] = {
+			{
+				mVoxelizationContext.voxelizationTarget,
+				RESOURCE_STATE_UNORDERED_ACCESS,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			},
+			{
+				mVoxelizationContext.albedoTarget,
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			},
+			{
+				mVoxelizationContext.normalTarget,
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			},
+			{
+				mVoxelizationContext.worldPosTarget,
+				RESOURCE_STATE_RENDER_TARGET,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			},
+			};
+
+			mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 4, barriers);
 		}
-		mRenderSystem->popGroupMarker();
+		
+
+		if (1)
+		{
+			info.programHandle = mMipmapPrepareHandle;
+			info.computeGroup = Ogre::Vector3i(16, 16, 16);
+			info.descSets.clear();
+			info.descSets.push_back(frameData->mipmapPrepareZeroSet);
+			mRenderSystem->pushGroupMarker("MipmapPrepare");
+			mRenderSystem->beginComputePass(info);
+			mRenderSystem->endComputePass();
+			mRenderSystem->popGroupMarker();
+
+			
+		}
+		
+		if (1)
+		{
+			mRenderSystem->pushGroupMarker("VCT Mipmapping main CS");
+			int mipDimension = VCT_SCENE_VOLUME_SIZE >> 1;
+			info.programHandle = mMipmapMainHandle;
+			for (uint32_t i = 0; i < VCT_MIPS; i++)
+			{
+				info.descSets.clear();
+				info.descSets.push_back(frameData->mipmapResultZeroSet[i]);
+				uint32_t count = std::max(1, mipDimension / 8);
+				info.computeGroup = Ogre::Vector3i(count, count, count);
+				
+				mRenderSystem->beginComputePass(info);
+				mRenderSystem->endComputePass();
+				mipDimension >>= 1;
+			}
+			mRenderSystem->popGroupMarker();
+
+			{
+				RenderTargetBarrier barriers[] = {
+				{
+					mVoxelizationContext.posxResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.negxResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.posyResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.negyResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.poszResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+			   {
+					mVoxelizationContext.negzResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				}
+				};
+
+				mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 6, barriers);
+			}
+		}
+		
+		if (1)
+		{
+			{
+				RenderTargetBarrier barriers[] = {
+				{
+					mVoxelizationContext.posxResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				},
+				{
+					mVoxelizationContext.negxResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				},
+				{
+					mVoxelizationContext.posyResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				},
+				{
+					mVoxelizationContext.negyResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				},
+				{
+					mVoxelizationContext.poszResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				},
+			   {
+					mVoxelizationContext.negzResultTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+				}
+				};
+
+				mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 6, barriers);
+			}
+			mRenderSystem->pushGroupMarker("VCT TracingCone CS");
+			info.descSets.clear();
+			info.descSets.push_back(frameData->tracingConeZeroSet);
+			info.programHandle = mTracingConeHandle;
+			info.computeGroup = Ogre::Vector3i(mVoxelizationContext.tracingResultTarget->getWidth() / 8,
+				Ogre::Math::ICeil(mVoxelizationContext.tracingResultTarget->getHeight()/8.0f), 1);
+			mRenderSystem->beginComputePass(info);
+			mRenderSystem->endComputePass();
+			mRenderSystem->popGroupMarker();
+
+			{
+				RenderTargetBarrier barriers[] = {
+				{
+					mVoxelizationContext.posxResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.negxResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.posyResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.negyResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+				{
+					mVoxelizationContext.poszResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				},
+			   {
+					mVoxelizationContext.negzResultTarget,
+					RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				}
+				};
+
+				mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 6, barriers);
+			}
+		}
+
+		{
+			RenderTargetBarrier barriers[] = {
+			{
+				mVoxelizationContext.voxelizationTarget,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				RESOURCE_STATE_UNORDERED_ACCESS
+			},
+			{
+				mVoxelizationContext.albedoTarget,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				RESOURCE_STATE_RENDER_TARGET
+			},
+			{
+				mVoxelizationContext.normalTarget,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				RESOURCE_STATE_RENDER_TARGET
+			},
+			{
+				mVoxelizationContext.worldPosTarget,
+				RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				RESOURCE_STATE_RENDER_TARGET
+			}
+			};
+
+			mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 4, barriers);
+		}
 		};
+		auto* cam = mGameCamera->getCamera();
 	UpdatePassCallback updateCallback = [=, this](float delta) {
 		uint32_t frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		const Ogre::Matrix4& view = cam->getViewMatrix();
+		const Ogre::Matrix4& proj = cam->getProjectMatrix();
+		mVoxelizationBlock.viewProjection = (proj * view).transpose();
+
 		mRenderSystem->updateBufferObject(tracingVoxelizationBlockHandle,
 			(const char*)&this->mVoxelizationBlock, sizeof(mVoxelizationBlock));
+		mVctMainBlock.CameraPos = cam->getDerivedPosition();
+		mRenderSystem->updateBufferObject(tracingMainBlockHandle,
+			(const char*)&this->mVctMainBlock, sizeof(VCTMainBlock));
 		};
+	
+	mVctMainBlock.CameraPos = cam->getDerivedPosition();
+	mVctMainBlock.UpsampleRatio = Ogre::Vector2(2.0f, 2.0f);
+	mVctMainBlock.IndirectDiffuseStrength = 1.0f;
+	mVctMainBlock.IndirectSpecularStrength = 1.0f;
+	mVctMainBlock.MaxConeTraceDistance = 100.0f;
+	mVctMainBlock.AOFalloff = 2.0f;
+	mVctMainBlock.SamplingFactor = 0.5f;
+	mVctMainBlock.VoxelSampleOffset = 0.0f;
 	auto computePass = createComputePass(computeCallback, updateCallback);
-	//mRenderPipeline->addRenderPass(computePass);
+	mRenderPipeline->addRenderPass(computePass);
 }
 
 void VoxelConeTracingApp::initScene()
@@ -459,7 +671,7 @@ void VoxelConeTracingApp::initScene()
 	addEntry("bunny", "bunny.fbx", Ogre::Vector3(21.0f, 13.9f, -19.0f),
 		m, Ogre::Vector4(0.8f, 0.71f, 0, 0.0));
 	m = Ogre::Math::makeRotateMatrix(-90, Ogre::Vector3::UNIT_X);
-	m = m * Ogre::Math::makeRotateMatrix(-1.099557f / Ogre::Math::PI * 180, Ogre::Vector3::UNIT_X);
+	m = m * Ogre::Math::makeRotateMatrix(1.099557f / Ogre::Math::PI * 180, Ogre::Vector3::UNIT_X);
 	addEntry("torus", "torus.fbx", Ogre::Vector3(21.0f, 4.0f, -9.6f), m, Ogre::Vector4(0.329f, 0.26f, 0.8f, 0.8f));
 	addEntry("sphere_big", "sphere_big.fbx", Ogre::Vector3(-17.25f, -1.15f, -24.15f), 
 		Ogre::Matrix4::IDENTITY, Ogre::Vector4(0.692f, 0.215f, 0.0f, 0.6f));
@@ -469,17 +681,20 @@ void VoxelConeTracingApp::initScene()
 		Ogre::Matrix4::IDENTITY, Ogre::Vector4(0.01, 0.0, 0.8, 0.75f));
 	m = Ogre::Math::makeRotateMatrix(-90, Ogre::Vector3::UNIT_X);
 	addEntry("block", "block.fbx", Ogre::Vector3(3.0f, 8.0f, -30.0f), m, Ogre::Vector4(0.9, 0.15, 1.0, 0.0));
+	m =  Ogre::Math::makeRotateMatrix(-0.907571f / Ogre::Math::PI * 180, Ogre::Vector3::UNIT_Y) * m;
 	addEntry("cube", "cube.fbx", Ogre::Vector3(21.0f, 5.0f, -19.0f), m, Ogre::Vector4(0.1, 0.75, 0.8, 0.0));
 
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	TextureProperty texProperty;
 	texProperty._width = ogreConfig.width;
 	texProperty._height = ogreConfig.height;
-	texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8;
+	texProperty._tex_format = Ogre::PixelFormat::PF_A8B8G8R8;
 	texProperty._tex_usage = Ogre::TextureUsage::COLOR_ATTACHMENT;
 	texProperty._need_mipmap = false;
 	mVoxelizationContext.albedoTarget = mRenderSystem->createRenderTarget("albedoTarget", texProperty);
+	texProperty._tex_format = Ogre::PixelFormat::PF_RGBA16_SNORM;
 	mVoxelizationContext.normalTarget = mRenderSystem->createRenderTarget("normalTarget", texProperty);
+	texProperty._tex_format = Ogre::PixelFormat::PF_FLOAT32_RGBA;
 	mVoxelizationContext.worldPosTarget = mRenderSystem->createRenderTarget("worldPos", texProperty);
 	texProperty._width = 2048;
 	texProperty._height = 2048;
@@ -497,12 +712,17 @@ void VoxelConeTracingApp::initScene()
 	decl.addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
 	mSceneGeometryProgramHandle = mRenderSystem->createShaderProgram(shaderInfo, &decl);
 	backend::RasterState rasterState{};
+	rasterState.depthBiasConstantFactor = 0.0f;
+	rasterState.depthBiasSlopeFactor = 0.0f;
 	auto targetCount = 4;
 	rasterState.depthFunc = SamplerCompareFunc::LE;
 	rasterState.renderTargetCount = targetCount;
 	rasterState.depthWrite = true;
 	rasterState.depthTest = true;
-	rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+	rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8B8G8R8;
+	rasterState.pixelFormat[1] = Ogre::PixelFormat::PF_RGBA16_SNORM;
+	rasterState.pixelFormat[2] = Ogre::PixelFormat::PF_FLOAT32_RGBA;
+	rasterState.pixelFormat[3] = Ogre::PixelFormat::PF_A8R8G8B8;
 	mSceneGeometryPipelineHandle = mRenderSystem->createPipeline(rasterState, mSceneGeometryProgramHandle);
 
 	//
@@ -514,8 +734,10 @@ void VoxelConeTracingApp::initScene()
 	rasterState.renderTargetCount = 0;
 	rasterState.depthWrite = true;
 	rasterState.depthTest = true;
-	rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+	rasterState.depthBiasSlopeFactor = 10.0f;
+	rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8;
 	mShadowPipelineHandle = mRenderSystem->createPipeline(rasterState, mShadowProgramHandle);
+	rasterState.depthBiasSlopeFactor = 0.0f;
 	//
 	texProperty._texType = TEX_TYPE_3D;
 	texProperty._width = 256;
@@ -532,7 +754,7 @@ void VoxelConeTracingApp::initScene()
 	rasterState.renderTargetCount = 0;
 	rasterState.depthWrite = false;
 	rasterState.depthTest = false;
-	rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+	rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8;
 	mVoxellizationPipelineHandle = mRenderSystem->createPipeline(rasterState, mVoxellizationProgramHandle);
 
 	backend::SamplerParams params;
@@ -558,7 +780,7 @@ void VoxelConeTracingApp::initScene()
 	texProperty._width = 128;
 	texProperty._height = 128;
 	texProperty._depth = 128;
-	texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8;
+	texProperty._tex_format = Ogre::PixelFormat::PF_A8B8G8R8;
 	texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
 	texProperty._need_mipmap = false;
 
@@ -652,17 +874,17 @@ void VoxelConeTracingApp::initScene()
 	texProperty._width = 128;
 	texProperty._height = 128;
 	texProperty._depth = 128;
-	texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8;
+	texProperty._tex_format = Ogre::PixelFormat::PF_A8B8G8R8;
 	texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
 	texProperty._need_mipmap = true;
-
+	texProperty._maxMipLevel = 6;
 	mVoxelizationContext.posxResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultPosX", texProperty);
 	mVoxelizationContext.negxResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultNegX", texProperty);
 	mVoxelizationContext.posyResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultPosY", texProperty);
 	mVoxelizationContext.negyResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultNegY", texProperty);
 	mVoxelizationContext.poszResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultPosZ", texProperty);
 	mVoxelizationContext.negzResultTarget = mRenderSystem->createRenderTarget("voxelTextureResultNegZ", texProperty);
-
+	texProperty._maxMipLevel = INT_MAX;
 	desc.mBindingType = BufferObjectBinding_Uniform;
 	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
 	desc.bufferCreationFlags = 0;
@@ -711,102 +933,89 @@ void VoxelConeTracingApp::initScene()
 			descriptorData[2].pName = "voxelTextureSrcNegX";
 			descriptorData[2].mCount = 1;
 			descriptorData[2].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
-			OgreTexture* texture = nullptr;
+			OgreTexture* negxTexture = nullptr;
 			if (i == 0)
 			{
-				texture = mVoxelizationContext.negxTarget->getTarget();
+				negxTexture = mVoxelizationContext.negxTarget->getTarget();
 				descriptorData[2].mLevel = 0;
 			}
 			else
 			{
-				texture = mVoxelizationContext.negxResultTarget->getTarget();
+				negxTexture = mVoxelizationContext.negxResultTarget->getTarget();
 				descriptorData[2].mLevel = i - 1;
 			}
 
-			descriptorData[2].ppTextures = (const OgreTexture**)&texture;
+			descriptorData[2].ppTextures = (const OgreTexture**)&negxTexture;
+			
 			//
-
-			descriptorData[3].pName = "voxelTextureSrcNegX";
+			descriptorData[3].pName = "voxelTextureSrcPosY";
 			descriptorData[3].mCount = 1;
 			descriptorData[3].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+			OgreTexture* posyTexture = nullptr;
 			if (i == 0)
 			{
-				texture = mVoxelizationContext.negxTarget->getTarget();
+				posyTexture = mVoxelizationContext.posyTarget->getTarget();
 				descriptorData[3].mLevel = 0;
 			}
 			else
 			{
-				texture = mVoxelizationContext.negxResultTarget->getTarget();
+				posyTexture = mVoxelizationContext.posyResultTarget->getTarget();
 				descriptorData[3].mLevel = i - 1;
 			}
 
-			descriptorData[3].ppTextures = (const OgreTexture**)&texture;
-
+			descriptorData[3].ppTextures = (const OgreTexture**)&posyTexture;
 			//
-			descriptorData[4].pName = "voxelTextureSrcPosY";
+			descriptorData[4].pName = "voxelTextureSrcNegY";
 			descriptorData[4].mCount = 1;
 			descriptorData[4].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+			OgreTexture* negyTexture = nullptr;
 			if (i == 0)
 			{
-				texture = mVoxelizationContext.posyTarget->getTarget();
+				negyTexture = mVoxelizationContext.negyTarget->getTarget();
 				descriptorData[4].mLevel = 0;
 			}
 			else
 			{
-				texture = mVoxelizationContext.posyResultTarget->getTarget();
+				negyTexture = mVoxelizationContext.negyResultTarget->getTarget();
 				descriptorData[4].mLevel = i - 1;
 			}
 
-			descriptorData[4].ppTextures = (const OgreTexture**)&texture;
-			//
-			descriptorData[5].pName = "voxelTextureSrcNegY";
-			descriptorData[5].mCount = 1;
-			descriptorData[5].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
-			if (i == 0)
-			{
-				texture = mVoxelizationContext.negyTarget->getTarget();
-				descriptorData[5].mLevel = 0;
-			}
-			else
-			{
-				texture = mVoxelizationContext.negyResultTarget->getTarget();
-				descriptorData[5].mLevel = i - 1;
-			}
-
-			descriptorData[5].ppTextures = (const OgreTexture**)&texture;
+			descriptorData[4].ppTextures = (const OgreTexture**)&negyTexture;
 			//
 			descriptorData[5].pName = "voxelTextureSrcPosZ";
 			descriptorData[5].mCount = 1;
 			descriptorData[5].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+			OgreTexture* poszTexture = nullptr;
 			if (i == 0)
 			{
-				texture = mVoxelizationContext.poszTarget->getTarget();
+				poszTexture = mVoxelizationContext.poszTarget->getTarget();
 				descriptorData[5].mLevel = 0;
 			}
 			else
 			{
-				texture = mVoxelizationContext.poszResultTarget->getTarget();
+				poszTexture = mVoxelizationContext.poszResultTarget->getTarget();
 				descriptorData[5].mLevel = i - 1;
 			}
 
-			descriptorData[5].ppTextures = (const OgreTexture**)&texture;
+			descriptorData[5].ppTextures = (const OgreTexture**)&poszTexture;
 
 			//
 			descriptorData[6].pName = "voxelTextureSrcNegZ";
 			descriptorData[6].mCount = 1;
 			descriptorData[6].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+			OgreTexture* negzTexture = nullptr;
 			if (i == 0)
 			{
-				texture = mVoxelizationContext.negzTarget->getTarget();
+				negzTexture = mVoxelizationContext.negzTarget->getTarget();
 				descriptorData[6].mLevel = 0;
 			}
 			else
 			{
-				texture = mVoxelizationContext.negzResultTarget->getTarget();
+				negzTexture = mVoxelizationContext.negzResultTarget->getTarget();
 				descriptorData[6].mLevel = i - 1;
 			}
 
-			descriptorData[6].ppTextures = (const OgreTexture**)&texture;
+			descriptorData[6].ppTextures = (const OgreTexture**)&negzTexture;
 		}
 		
 
@@ -864,19 +1073,35 @@ void VoxelConeTracingApp::initScene()
 	desc.mBindingType = BufferObjectBinding_Uniform;
 	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
 	desc.bufferCreationFlags = 0;
+	desc.mSize = sizeof(VCTMainBlock);
+	tracingMainBlockHandle = mRenderSystem->createBufferObject(desc);
 	desc.mSize = sizeof(VoxelizationBlock);
 	tracingVoxelizationBlockHandle = mRenderSystem->createBufferObject(desc);
-
 	
+	float ratio = 0.8f;
 
 	texProperty._texType = TEX_TYPE_2D;
-	texProperty._width = 128;
-	texProperty._height = 128;
-	texProperty._depth = 128;
+	texProperty._width = 960.0f;
+	texProperty._height = 540.0f;
+	texProperty._depth = 1;
 	texProperty._tex_format = Ogre::PixelFormat::PF_A8R8G8B8;
 	texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
 	texProperty._need_mipmap = false;
 	mVoxelizationContext.tracingResultTarget = mRenderSystem->createRenderTarget("tracingResult", texProperty);
+
+	params.filterMag = backend::SamplerFilterType::LINEAR;
+	params.filterMin = backend::SamplerFilterType::LINEAR;
+	params.mipMapMode = backend::SamplerMipMapMode::MIPMAP_MODE_LINEAR;
+	params.wrapS = backend::SamplerWrapMode::CLAMP_TO_EDGE;
+	params.wrapT = backend::SamplerWrapMode::CLAMP_TO_EDGE;
+	params.wrapR = backend::SamplerWrapMode::CLAMP_TO_EDGE;
+	params.compareMode = backend::SamplerCompareMode::COMPARE_TO_TEXTURE;
+	params.compareFunc = backend::SamplerCompareFunc::LE;
+	params.anisotropyLog2 = 4;
+	params.padding0 = 0;
+	params.padding1 = 0;
+	params.padding2 = 0;
+	mVoxelizationContext.tracingSampler = mRenderSystem->createTextureSampler(params);
 
 	texProperty._texType = TEX_TYPE_3D;
 	texProperty._width = 128;
@@ -889,73 +1114,89 @@ void VoxelConeTracingApp::initScene()
 	VctFrameData* frameData = &mComputeFrameData[0];
 	frameData->tracingConeZeroSet = mRenderSystem->createDescriptorSet(mTracingConeHandle, 0);
 
-	OgreTexture* texture = mVoxelizationContext.albedoTarget->getTarget();
+	OgreTexture* albedoTexture = mVoxelizationContext.albedoTarget->getTarget();
 	descriptorData[0].pName = "albedoBuffer";
 	descriptorData[0].mCount = 1;
 	descriptorData[0].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[0].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[0].ppTextures = (const OgreTexture**)&albedoTexture;
 
-	texture = mVoxelizationContext.normalTarget->getTarget();
+	OgreTexture* normalTexture = mVoxelizationContext.normalTarget->getTarget();
 	descriptorData[1].pName = "normalBuffer";
 	descriptorData[1].mCount = 1;
 	descriptorData[1].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[1].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[1].ppTextures = (const OgreTexture**)&normalTexture;
 
-	texture = mVoxelizationContext.worldPosTarget->getTarget();
+	OgreTexture* worldPosTexture = mVoxelizationContext.worldPosTarget->getTarget();
 	descriptorData[2].pName = "worldPosBuffer";
 	descriptorData[2].mCount = 1;
 	descriptorData[2].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[2].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[2].ppTextures = (const OgreTexture**)&worldPosTexture;
 
-	texture = mVoxelizationContext.posxResultTarget->getTarget();
+	OgreTexture* posxTexture = mVoxelizationContext.posxResultTarget->getTarget();
 	descriptorData[3].pName = "voxelTexturePosX";
 	descriptorData[3].mCount = 1;
 	descriptorData[3].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[3].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[3].ppTextures = (const OgreTexture**)&posxTexture;
 
-	texture = mVoxelizationContext.negxResultTarget->getTarget();
-	descriptorData[3].pName = "voxelTextureNegX";
-	descriptorData[3].mCount = 1;
-	descriptorData[3].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[3].ppTextures = (const OgreTexture**)&texture;
-
-	texture = mVoxelizationContext.posyResultTarget->getTarget();
-	descriptorData[4].pName = "voxelTexturePosY";
+	OgreTexture* negxTexture = mVoxelizationContext.negxResultTarget->getTarget();
+	descriptorData[4].pName = "voxelTextureNegX";
 	descriptorData[4].mCount = 1;
 	descriptorData[4].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[4].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[4].ppTextures = (const OgreTexture**)&negxTexture;
 
-	texture = mVoxelizationContext.negyResultTarget->getTarget();
-	descriptorData[5].pName = "voxelTextureNegY";
+	OgreTexture* posyTexture = mVoxelizationContext.posyResultTarget->getTarget();
+	descriptorData[5].pName = "voxelTexturePosY";
 	descriptorData[5].mCount = 1;
 	descriptorData[5].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[5].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[5].ppTextures = (const OgreTexture**)&posyTexture;
 
-	texture = mVoxelizationContext.poszResultTarget->getTarget();
-	descriptorData[6].pName = "voxelTexturePosZ";
+	OgreTexture* negyTexture = mVoxelizationContext.negyResultTarget->getTarget();
+	descriptorData[6].pName = "voxelTextureNegY";
 	descriptorData[6].mCount = 1;
 	descriptorData[6].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[6].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[6].ppTextures = (const OgreTexture**)&negyTexture;
 
-	texture = mVoxelizationContext.negzResultTarget->getTarget();
-	descriptorData[7].pName = "voxelTextureNegZ";
+	OgreTexture* poszTexture = mVoxelizationContext.poszResultTarget->getTarget();
+	descriptorData[7].pName = "voxelTexturePosZ";
 	descriptorData[7].mCount = 1;
 	descriptorData[7].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
-	descriptorData[7].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[7].ppTextures = (const OgreTexture**)&poszTexture;
 
-	texture = mVoxelizationContext.tracingResultTarget->getTarget();
-	descriptorData[8].pName = "result";
+	OgreTexture* negzTexture = mVoxelizationContext.negzResultTarget->getTarget();
+	descriptorData[8].pName = "voxelTextureNegZ";
 	descriptorData[8].mCount = 1;
-	descriptorData[8].mLevel = 1;
-	descriptorData[8].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
-	descriptorData[8].ppTextures = (const OgreTexture**)&texture;
+	descriptorData[8].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+	descriptorData[8].ppTextures = (const OgreTexture**)&negzTexture;
 
-	descriptorData[9].pName = "result";
+	OgreTexture* voxelizationTexture = mVoxelizationContext.voxelizationTarget->getTarget();
+	descriptorData[9].pName = "voxelTexture";
 	descriptorData[9].mCount = 1;
-	descriptorData[9].descriptorType = DESCRIPTOR_TYPE_BUFFER;
-	descriptorData[9].ppBuffers = &tracingVoxelizationBlockHandle;
+	descriptorData[9].descriptorType = DESCRIPTOR_TYPE_TEXTURE;
+	descriptorData[9].ppTextures = (const OgreTexture**)&voxelizationTexture;
 
-	mRenderSystem->updateDescriptorSet(frameData->tracingConeZeroSet, 9, descriptorData);
+	OgreTexture* resultTexture = mVoxelizationContext.tracingResultTarget->getTarget();
+	descriptorData[10].pName = "result";
+	descriptorData[10].mCount = 1;
+	descriptorData[10].mLevel = 0;
+	descriptorData[10].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+	descriptorData[10].ppTextures = (const OgreTexture**)&resultTexture;
+
+	descriptorData[11].pName = "LinearSampler";
+	descriptorData[11].mCount = 1;
+	descriptorData[11].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	descriptorData[11].ppSamplers = &mVoxelizationContext.tracingSampler;
+
+	descriptorData[12].pName = "VoxelizationCB";
+	descriptorData[12].mCount = 1;
+	descriptorData[12].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+	descriptorData[12].ppBuffers = &tracingVoxelizationBlockHandle;
+
+	descriptorData[13].pName = "VCTMainCB";
+	descriptorData[13].mCount = 1;
+	descriptorData[13].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+	descriptorData[13].ppBuffers = &tracingMainBlockHandle;
+
+	mRenderSystem->updateDescriptorSet(frameData->tracingConeZeroSet, 14, descriptorData);
 }
 
 void VoxelConeTracingApp::addEntry(

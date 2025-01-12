@@ -3,11 +3,13 @@
 #include "dx12Handles.h"
 #include "dx12Helper.h"
 #include "dx12Shader.h"
+#include "dx12RayTracingShader.h"
 #include "memoryAllocator.h"
 #include "glslUtil.h"
 #include "myutils.h"
 #include "d3dutil.h"
 #include "shaderManager.h"
+#include "D3D12Mappings.h"
 
 DX12BufferObject::DX12BufferObject(
     DescriptorHeapContext* context,
@@ -29,13 +31,18 @@ DX12BufferObject::DX12BufferObject(
     ID3D12Device* dx12Device = DX12Helper::getSingleton().getDevice();
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(mByteCount);
-
-    D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+    //D3D12_RESOURCE_STATE_COMMON
+    D3D12_RESOURCE_STATES state = D3D12Mappings::util_to_dx12_resource_state(desc.mStartState);
 
     if (BufferObjectBinding_Storge == mBufferObjectBinding)
     {
-        state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    }
+
+    if (BufferObjectBinding_AccelerationStructure == mBufferObjectBinding)
+    {
+        bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     }
     ThrowIfFailed(dx12Device->CreateCommittedResource(
         &heapProperties,
@@ -53,6 +60,7 @@ DX12BufferObject::DX12BufferObject(
     case BufferObjectBinding_Vertex:
     case BufferObjectBinding_Index:
     case BufferObjectBinding_Buffer:
+    case BufferObjectBinding_AccelerationStructure:
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -72,6 +80,7 @@ DX12BufferObject::DX12BufferObject(
     }
     break;
     case BufferObjectBinding_Storge:
+    
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
         uavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -96,16 +105,6 @@ DX12BufferObject::DX12BufferObject(
         cbvDesc.BufferLocation = BufferGPU->GetGPUVirtualAddress();
         cbvDesc.SizeInBytes = (UINT)mByteCount;
         dx12Device->CreateConstantBufferView(&cbvDesc, cpuHandle);
-    }
-    break;
-    case BufferObjectBinding_AccelerationStructure:
-    {
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-        srvDesc.RaytracingAccelerationStructure.Location = BufferGPU->GetGPUVirtualAddress();
-        dx12Device->CreateShaderResourceView(BufferGPU.Get(), &srvDesc, cpuHandle);
     }
     break;
     default:
@@ -175,7 +174,7 @@ DX12Program::DX12Program(const ShaderInfo& info, VertexDeclaration* decl)
 
 DX12RayTracingProgram::DX12RayTracingProgram(const RaytracingShaderInfo& shaderInfo)
 {
-
+    mProgramImpl = new DX12RayTracingProgramImpl(shaderInfo);
 }
 
 DX12ComputeProgram::DX12ComputeProgram(const ShaderInfo& info)

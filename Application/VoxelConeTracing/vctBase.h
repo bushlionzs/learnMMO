@@ -26,6 +26,7 @@ struct VoxelizationContext
     Ogre::RenderTarget* negzResultTarget;
     
     Ogre::RenderTarget* tracingResultTarget;
+    Handle<HwSampler> tracingSampler;
 
     RenderPipeline* renderPipeline;
 };

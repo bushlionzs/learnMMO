@@ -483,9 +483,10 @@ void renderScene(
         {
             userDefineShader->initCallback(frameIndex, r);
             r->setFlag(frameIndex, true);
+            userDefineShader->bindCallback(frameIndex, r);
         }
 
-        userDefineShader->bindCallback(frameIndex, r);
+        updateFrameResource(frameIndex, r);
     }
 
     rs->beginRenderPass(renderPassInfo);

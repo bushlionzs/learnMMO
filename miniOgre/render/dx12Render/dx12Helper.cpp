@@ -226,12 +226,12 @@ std::vector<ShaderResource> DX12Helper::parseShaderResource(
 
 #define DXIL_FOURCC(ch0, ch1, ch2, ch3) \
     ((uint32_t)(uint8_t)(ch0) | (uint32_t)(uint8_t)(ch1) << 8 | (uint32_t)(uint8_t)(ch2) << 16 | (uint32_t)(uint8_t)(ch3) << 24)
-	UINT32                   shaderIdx;
-	(pReflection->FindFirstPartKind(DXIL_FOURCC('D', 'X', 'I', 'L'), &shaderIdx));
+	UINT32                   shaderIdx = 0;
+	HRESULT hr = pReflection->FindFirstPartKind(DXIL_FOURCC('D', 'X', 'I', 'L'), &shaderIdx);
 	ID3D12ShaderReflection* d3d12reflection = NULL;
-	pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&d3d12reflection));
+	hr = pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&d3d12reflection));
 	D3D12_SHADER_DESC shaderDesc;
-	HRESULT hr = d3d12reflection->GetDesc(&shaderDesc);
+	hr = d3d12reflection->GetDesc(&shaderDesc);
 	for (auto i = 0; i < shaderDesc.BoundResources; i++)
 	{
 		D3D12_SHADER_INPUT_BIND_DESC desc;
@@ -256,6 +256,81 @@ std::vector<ShaderResource> DX12Helper::parseShaderResource(
 	return resourceList;
 }
 
+static auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
+	std::vector <ShaderResource>& resourceList, ShaderStageFlags stageFlags)
+	{
+		for (auto& current : resourceList)
+		{
+			bool have = false;
+			for (auto& shaderResource : programResourceList)
+			{
+				if (current.name == shaderResource.name)
+				{
+					shaderResource.used_stages |= (uint8_t)stageFlags;
+					have = true;
+					break;
+				}
+			}
+
+			if (!have)
+			{
+				programResourceList.push_back(current);
+			}
+		}
+	};
+
+std::vector<ShaderResource> DX12Helper::parseShaderResource2(
+	std::vector<StageFlagsInfo>& flagsInfoList,
+	const char* byteCode,
+	uint32_t byteCodeSize)
+{
+	IDxcUtils* pUtils = nullptr;
+	DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&pUtils));
+	ID3D12LibraryReflection* LibraryReflection;
+	DxcBuffer ReflBuffer = { 0 };
+	ReflBuffer.Ptr = byteCode;
+	ReflBuffer.Size = byteCodeSize;
+	pUtils->CreateReflection(&ReflBuffer, IID_PPV_ARGS(&LibraryReflection));
+
+	D3D12_LIBRARY_DESC LibraryDesc = {};
+	LibraryReflection->GetDesc(&LibraryDesc);
+
+	ID3D12FunctionReflection* FunctionReflection = nullptr;
+	D3D12_FUNCTION_DESC FunctionDesc = {};
+
+
+	std::vector<ShaderResource> resourceList;
+	for (uint32 FunctionIndex = 0; FunctionIndex < LibraryDesc.FunctionCount; ++FunctionIndex)
+	{
+		FunctionReflection = LibraryReflection->GetFunctionByIndex(FunctionIndex);
+		FunctionReflection->GetDesc(&FunctionDesc);
+		for (auto& info : flagsInfoList)
+		{
+			if (strstr(FunctionDesc.Name, info.funcName))
+			{
+				std::vector<ShaderResource> tmplist;
+				for (uint32 ResourceIndex = 0; ResourceIndex < FunctionDesc.BoundResources; ResourceIndex++)
+				{
+					D3D12_SHADER_INPUT_BIND_DESC BindDesc;
+					FunctionReflection->GetResourceBindingDesc(ResourceIndex, &BindDesc);
+					tmplist.emplace_back();
+					auto& back = tmplist.back();
+					back.name = BindDesc.Name;
+					back.reg = BindDesc.BindPoint;
+					back.size = BindDesc.BindCount;
+					back.type = BindDesc.Type;
+					back.set = BindDesc.Space;
+					back.used_stages = (uint8_t)info.stageFlags;
+				}
+
+				updateResourceList(resourceList, tmplist, info.stageFlags);
+			}
+		}
+	}
+	LibraryReflection->Release();
+	pUtils->Release();
+	return resourceList;
+}
 
 void DX12Helper::parseInputParams(
 	const char* byteCode,

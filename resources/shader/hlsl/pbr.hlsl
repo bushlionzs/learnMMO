@@ -145,8 +145,8 @@ float3 getIBLContribution(PBRInfo pbrInputs, float3 n, float3 reflection)
     float3 specularLight = SRGBtoLINEAR2(param_4).xyz;
     float3 diffuse_1 = diffuseLight * pbrInputs.diffuseColor;
     float3 specular = specularLight * ((pbrInputs.specularColor * brdf.x) + brdf.y.xxx);
-    diffuse_1 *= u_ScaleIBLAmbient.x;
-    specular *= u_ScaleIBLAmbient.y;
+    diffuse_1 *= pbrMaterial.u_ScaleIBLAmbient.x;
+    specular *= pbrMaterial.u_ScaleIBLAmbient.y;
     return (diffuse_1 + specular) * 0.35f;
 }
 #endif
@@ -212,11 +212,11 @@ VertexOut VS(VertexIn vIn)
 {
     VertexOut vOut;
 	
-    float4 posW = mul(gWorld, float4(vIn.PosL, 1.0f));
+    float4 posW = mul(cbPerObject.gWorld, float4(vIn.PosL, 1.0f));
 
-    vOut.PosH = mul(gViewProj, posW);
+    vOut.PosH = mul(cbPass.gViewProj, posW);
     vOut.PosW = posW.xyz / posW.w;
-    vOut.NormalW = mul((float3x3) gWorld, vIn.NormalL);
+    vOut.NormalW = mul((float3x3)cbPerObject.gWorld, vIn.NormalL);
     vOut.v_UV = vIn.TexC;
 
     return vOut;
@@ -236,8 +236,8 @@ float4 PS(VertexOut pin) : SV_Target
 	float metalness = mrSample.b;
     float roughness = mrSample.g;
 #else
-    float roughness = u_MetallicRoughnessValues.y;
-    float metalness = u_MetallicRoughnessValues.x;
+    float roughness = pbrMaterial.u_MetallicRoughnessValues.y;
+    float metalness = pbrMaterial.u_MetallicRoughnessValues.x;
 	roughness = clamp(roughness, 0.04, 1.0);
     metalness = clamp(metalness, 0.0, 1.0);
 #endif
@@ -255,11 +255,11 @@ float4 PS(VertexOut pin) : SV_Target
 	float4 baseColorSource = float4(1.0f, 1.0f, 1.0f, 1.0f);
 #ifdef HAS_BASECOLORMAP
     baseColorSource = albedo_pbr.Sample(albedoSampler, pin.v_UV);
-    float4 baseColor = SRGBtoLINEAR(baseColorSource) * u_BaseColorFactor;
+    float4 baseColor = SRGBtoLINEAR(baseColorSource) * pbrMaterial.u_BaseColorFactor;
 	
-	if (alpha_mask > 0)
+	if (pbrMaterial.alpha_mask > 0)
 	{
-		if (baseColorSource.a < alpha_mask_cutoff)
+		if (baseColorSource.a < pbrMaterial.alpha_mask_cutoff)
 		{
 			discard;
 		}
@@ -290,9 +290,9 @@ float4 PS(VertexOut pin) : SV_Target
 #endif
     //n.y *= -1.0f;
 	
-	float3 v = normalize(gEyePosW - inWorldPos);        // Vector from surface point to camera
+	float3 v = normalize(cbPass.gEyePosW - inWorldPos);        // Vector from surface point to camera
 	
-	float3 l = normalize(gDirLights[0].Direction); 
+	float3 l = normalize(cbPass.gDirLights[0].Direction); 
     
 	float3 h = normalize(l+v);
 	float3 reflection = normalize(reflect(-v, n));
@@ -341,19 +341,19 @@ float4 PS(VertexOut pin) : SV_Target
 	float ao = 0.0f;
 #ifdef HAS_OCCLUSIONMAP
 	ao = ao_pbr.Sample(aoSampler, pin.v_UV).r;
-    color = lerp(color, color * ao, u_OcclusionStrength);
+    color = lerp(color, color * ao, pbrMaterial.u_OcclusionStrength);
 #endif
 
 #ifdef HAS_EMISSIVEMAP
-	float3 emissive = emissive_pbr.Sample(emissiveSampler ,pin.v_UV).rgb * u_EmissiveFactor;
+	float3 emissive = emissive_pbr.Sample(emissiveSampler ,pin.v_UV).rgb * pbrMaterial.u_EmissiveFactor;
     color += emissive;
 #endif
     
 	float4 outColor = float4(color, baseColor.a);
 		
-	if(debugRenderMode > 0)
+	if(pbrMaterial.debugRenderMode > 0)
 	{
-        switch (debugRenderMode)
+        switch (pbrMaterial.debugRenderMode)
 		{
 		default:
 		case 0: break;
@@ -368,7 +368,7 @@ float4 PS(VertexOut pin) : SV_Target
 		case 9: color = float3(D, D, D);break;
 		}
 		outColor = float4(color, baseColorSource.a);
-		if(debugRenderMode < 6)
+		if(pbrMaterial.debugRenderMode < 6)
 		{
 		    outColor = SRGBtoLINEAR(outColor);
 		}

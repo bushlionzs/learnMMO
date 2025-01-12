@@ -1,4 +1,5 @@
 #include "OgreHeader.h"
+#include <string_util.h>
 #include "dx12RenderSystem.h"
 #include "OgreMoveObject.h"
 #include "OgreMaterial.h"
@@ -12,6 +13,7 @@
 #include "dx12Commands.h"
 #include "memoryAllocator.h"
 #include "D3D12Mappings.h"
+
 
 
 Dx12RenderSystem::Dx12RenderSystem(HWND wnd)
@@ -28,6 +30,8 @@ Dx12RenderSystem::~Dx12RenderSystem()
 bool Dx12RenderSystem::engineInit(bool raytracing)
 {
 	Dx12RenderSystemBase::engineInit();
+
+    mDevice->QueryInterface(IID_PPV_ARGS(&prDevice));
 	return true;
 }
 
@@ -45,6 +49,80 @@ OgreTexture* Dx12RenderSystem::createTextureFromFile(const std::string& name, Te
 	return tex;
 }
 
+void Dx12RenderSystem::traceRay(Handle<HwRaytracingProgram> programHandle)
+{
+    DX12RayTracingProgram* program = mResourceAllocator.handle_cast<DX12RayTracingProgram*>(programHandle);
+    DX12RayTracingProgramImpl* impl = program->getProgramImpl();
+
+    D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};
+    ID3D12GraphicsCommandList* cl = mCommands->get();
+    if (m_dxrCommandList == nullptr)
+    {
+        cl->QueryInterface(IID_PPV_ARGS(&m_dxrCommandList));
+    }
+    
+    ID3D12Resource* hitGroupShaderTable = impl->getHitGroupShaderTable();
+    ID3D12Resource* missShaderTable = impl->getMissShaderTable();
+    ID3D12Resource* rayGenShaderTable = impl->getRayGenShaderTable();
+    ID3D12StateObject* stateObject = impl->getDxrStateObject();
+    dispatchDesc.HitGroupTable.StartAddress = hitGroupShaderTable->GetGPUVirtualAddress();
+    dispatchDesc.HitGroupTable.SizeInBytes = hitGroupShaderTable->GetDesc().Width;
+    dispatchDesc.HitGroupTable.StrideInBytes = dispatchDesc.HitGroupTable.SizeInBytes;
+    dispatchDesc.MissShaderTable.StartAddress = missShaderTable->GetGPUVirtualAddress();
+    dispatchDesc.MissShaderTable.SizeInBytes = missShaderTable->GetDesc().Width;
+    dispatchDesc.MissShaderTable.StrideInBytes = dispatchDesc.MissShaderTable.SizeInBytes;
+    dispatchDesc.RayGenerationShaderRecord.StartAddress = rayGenShaderTable->GetGPUVirtualAddress();
+    dispatchDesc.RayGenerationShaderRecord.SizeInBytes = rayGenShaderTable->GetDesc().Width;
+
+    auto width = mRenderWindow->getWidth();
+    auto height = mRenderWindow->getHeight();
+    dispatchDesc.Width = width;
+    dispatchDesc.Height = height;
+    dispatchDesc.Depth = 1;
+    m_dxrCommandList->SetPipelineState1(stateObject);
+    m_dxrCommandList->DispatchRays(&dispatchDesc);
+}
+
+void Dx12RenderSystem::bindPipeline(
+    Handle<HwRaytracingProgram> programHandle,
+    const Handle<HwDescriptorSet>* descSets,
+    uint32_t setCount
+)
+{
+    ID3D12GraphicsCommandList* cl = mCommands->get();
+    DX12RayTracingProgram* program = mResourceAllocator.handle_cast<DX12RayTracingProgram*>(programHandle);
+    DX12RayTracingProgramImpl* impl = program->getProgramImpl();
+    ID3D12RootSignature* rootSignature = impl->getRootSignature();
+    cl->SetComputeRootSignature(rootSignature);
+
+    for (uint32_t i = 0; i < setCount; i++)
+    {
+        if (!descSets[i])
+            continue;
+        DX12DescriptorSet* dset = mResourceAllocator.handle_cast<DX12DescriptorSet*>(descSets[i]);
+        std::vector<const DescriptorInfo*> descriptorInfos = dset->getDescriptorInfos();
+        auto cbvSrvUavHandle = dset->getCbvSrvUavHandle();
+        auto samplerHandle = dset->getSamplerHandle();
+        for (auto descriptorInfo : descriptorInfos)
+        {
+            if (descriptorInfo->mType == D3D_SIT_SAMPLER)
+            {
+                auto gpuHandle = descriptor_id_to_gpu_handle(
+                    mDescriptorHeapContext->pSamplerHeaps[0], samplerHandle + descriptorInfo->mSetIndex);
+                cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+            }
+            else
+            {
+              
+                auto gpuHandle = descriptor_id_to_gpu_handle(
+                    mDescriptorHeapContext->mCbvSrvUavHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], cbvSrvUavHandle + descriptorInfo->mSetIndex);
+                cl->SetComputeRootDescriptorTable(descriptorInfo->mRootIndex, gpuHandle);
+                int kk = 0;
+            }
+        }
+    }
+}
+
 Handle<HwRaytracingProgram> Dx12RenderSystem::createRaytracingProgram(
 	const RaytracingShaderInfo& shaderInfo)
 {
@@ -52,7 +130,10 @@ Handle<HwRaytracingProgram> Dx12RenderSystem::createRaytracingProgram(
 
 	DX12RayTracingProgram* program = mResourceAllocator.construct<DX12RayTracingProgram>(programHandle,
 		shaderInfo);
-
+    DX12RayTracingProgramImpl* impl = program->getProgramImpl();
+    
+    impl->createRaytracingPipelineStateObject(prDevice, shaderInfo);
+    impl->buildShaderTables(shaderInfo);
 	return programHandle;
 }
 
@@ -92,7 +173,7 @@ void Dx12RenderSystem::addAccelerationStructure(
 	}
 
 	DX12AccelerationStructure* pAS = (DX12AccelerationStructure*)malloc(memSize);
-
+    memset(pAS, 0, memSize);
 	pAS->mFlags = D3D12Mappings::util_to_dx_acceleration_structure_build_flags(pDesc->mFlags);
 	pAS->mType = D3D12Mappings::ToDXRASType(pDesc->mType);
 
@@ -123,7 +204,7 @@ void Dx12RenderSystem::addAccelerationStructure(
             pGeomD3D12->Triangles.VertexBuffer.StartAddress = getBufferDeviceAddress(pGeom->vertexBufferHandle) + pGeom->mVertexOffset;
             pGeomD3D12->Triangles.VertexBuffer.StrideInBytes = pGeom->mVertexStride;
             pGeomD3D12->Triangles.VertexCount = pGeom->mVertexCount;
-            pGeomD3D12->Triangles.VertexFormat = DXGI_FORMAT_R32G32_FLOAT;
+            pGeomD3D12->Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
         }
         /************************************************************************/
         // Get the size requirement for the Acceleration Structures
@@ -151,6 +232,7 @@ void Dx12RenderSystem::addAccelerationStructure(
         bufferDesc.mElementCount = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32));
         bufferDesc.mSize = info.ResultDataMaxSizeInBytes;
         bufferDesc.mStartState = RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE;
+        bufferDesc.raw = true;
         pAS->asBufferHandle = this->createBufferObject(bufferDesc);
         /************************************************************************/
         // Store the scratch buffer size so user can create the scratch buffer accordingly
@@ -176,8 +258,9 @@ void Dx12RenderSystem::addAccelerationStructure(
         /************************************************************************/
         /*  Construct buffer with instances descriptions                        */
         /************************************************************************/
-        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs = NULL;
-    
+
+        std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDescs;
+        instanceDescs.resize(pDesc->mTop.mDescCount);
         for (uint32_t i = 0; i < pDesc->mTop.mDescCount; ++i)
         {
             AccelerationStructureInstanceDesc* pInst = &pDesc->mTop.pInstanceDescs[i];
@@ -198,8 +281,9 @@ void Dx12RenderSystem::addAccelerationStructure(
         instanceDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
         instanceDesc.bufferCreationFlags = BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT;
         instanceDesc.mSize = instanceSize;
+        instanceDesc.raw = true;
         pAS->instanceDescBuffer = createBufferObject(instanceDesc);
-        updateBufferObject(pAS->instanceDescBuffer, (const char*)instanceDescs, instanceSize);
+        updateBufferObject(pAS->instanceDescBuffer, (const char*)instanceDescs.data(), instanceSize);
         
         /************************************************************************/
         // Allocate Acceleration Structure Buffer
@@ -213,7 +297,7 @@ void Dx12RenderSystem::addAccelerationStructure(
         bufferDesc.mElementCount = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32));
         bufferDesc.mSize = info.ResultDataMaxSizeInBytes;
         bufferDesc.mStartState = RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE;
-
+        bufferDesc.raw = true;
         pAS->asBufferHandle = createBufferObject(bufferDesc);
 
         scratchBufferSize = (UINT)info.ScratchDataSizeInBytes;
@@ -226,6 +310,7 @@ void Dx12RenderSystem::addAccelerationStructure(
     scratchBufferDesc.mStartState = RESOURCE_STATE_COMMON;
     scratchBufferDesc.bufferCreationFlags = BUFFER_CREATION_FLAG_NO_DESCRIPTOR_VIEW_CREATION;
     scratchBufferDesc.mSize = scratchBufferSize;
+    scratchBufferDesc.raw = true;
     pAS->scratchBufferHandle = createBufferObject(scratchBufferDesc);
     *ppAccelerationStructure = pAS;
 }

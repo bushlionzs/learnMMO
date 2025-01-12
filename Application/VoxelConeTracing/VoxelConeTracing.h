@@ -37,6 +37,18 @@ struct VoxelizationBlock
 	float worldVoxelScale;
 };
 
+struct VCTMainBlock
+{
+	Ogre::Vector4 CameraPos;
+	Ogre::Vector2 UpsampleRatio;
+	float IndirectDiffuseStrength;
+	float IndirectSpecularStrength;
+	float MaxConeTraceDistance;
+	float AOFalloff;
+	float SamplingFactor;
+	float VoxelSampleOffset;
+};
+
 struct MipmapBlock
 {
 	int MipDimension;
@@ -97,6 +109,7 @@ private:
 	Handle<HwComputeProgram> mTracingConeHandle;
 	Handle<HwBufferObject>  MipmapBlockHandle;
 	Handle<HwBufferObject> tracingVoxelizationBlockHandle;
+	Handle<HwBufferObject> tracingMainBlockHandle;
 	std::vector<VctFrameData> mComputeFrameData;
 	
 	Ogre::Vector3 mLightPos;
@@ -106,4 +119,6 @@ private:
 	Ogre::Matrix4 mLightProject;
 
 	VoxelizationBlock mVoxelizationBlock;
+
+	VCTMainBlock mVctMainBlock;
 };

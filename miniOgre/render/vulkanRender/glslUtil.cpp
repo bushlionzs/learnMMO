@@ -191,6 +191,13 @@ bool glslCompileShader(
         
         result.resize(aa.size() * sizeof(uint32_t));
         memcpy((void*)result.data(), aa.data(), aa.size() * sizeof(uint32_t));
+
+        if (shaderModuleInfo.shaderType == Ogre::ShaderType::ClosestHitShader)
+        {
+            /*std::string hlslSource;
+            spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
+            int kk = 0;*/
+        }
     }
     else
     {

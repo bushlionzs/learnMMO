@@ -45,11 +45,11 @@ VertexOut VS(VertexIn vIn)
         // Assume no nonuniform scaling when transforming normals, so 
         // that we do not have to use the inverse-transpose.
 
-		posL += weights[i] * mul(gBoneTransforms[vIn.BoneIndices[i]], float4(vIn.PosL, 1.0f)).xyz;
-        normalL += weights[i] * mul((float3x3)gBoneTransforms[vIn.BoneIndices[i]], vIn.NormalL);
+		posL += weights[i] * mul(cbSkinned.gBoneTransforms[vIn.BoneIndices[i]], float4(vIn.PosL, 1.0f)).xyz;
+        normalL += weights[i] * mul((float3x3)cbSkinned.gBoneTransforms[vIn.BoneIndices[i]], vIn.NormalL);
 		
 #ifdef USETANGENT
-        tangentL += weights[i] * mul(vIn.TangentL.xyz, (float3x3)gBoneTransforms[vIn.BoneIndices[i]]);
+        tangentL += weights[i] * mul(vIn.TangentL.xyz, (float3x3)cbSkinned.gBoneTransforms[vIn.BoneIndices[i]]);
 #endif
     }
 
@@ -60,23 +60,23 @@ VertexOut VS(VertexIn vIn)
 #endif
 #endif
 
-    float4 posW = mul(gWorld, float4(vIn.PosL, 1.0f));
-	vOut.PosH = mul(gViewProj, posW);
+    float4 posW = mul(cbPerObject.gWorld, float4(vIn.PosL, 1.0f));
+	vOut.PosH = mul(cbPass.gViewProj, posW);
 
 	
     vOut.PosW = posW.xyz;
-    vOut.NormalW = mul((float3x3) gWorld, vIn.NormalL);
+    vOut.NormalW = mul((float3x3)cbPerObject.gWorld, vIn.NormalL);
 #ifdef USETANGENT
-	vOut.TangentW = mul((float3x3)gWorld, vIn.TangentL);
+	vOut.TangentW = mul((float3x3)cbPerObject.gWorld, vIn.TangentL);
 #endif
-    vOut.TexC = mul(gTexTransform, float4(vIn.TexC, 0.0f, 1.0f)).xy;
-	vOut.ShadowPosH = mul(gShadowTransform, posW);
+    vOut.TexC = mul(cbMaterial.gTexTransform, float4(vIn.TexC, 0.0f, 1.0f)).xy;
+	vOut.ShadowPosH = mul(cbPass.gShadowTransform, posW);
     return vOut;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = first.Sample(firstSampler, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = first.Sample(firstSampler, pin.TexC) * cbMaterial.gDiffuseAlbedo;
 	//clip(diffuseAlbedo.a - 0.5f);
 	return diffuseAlbedo;
 }

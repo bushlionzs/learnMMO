@@ -512,22 +512,25 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroup.generalShader = VK_SHADER_UNUSED_KHR;
         shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
         shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-
-        shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
-        resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayAnyHitShaderName);
-        assert_invariant(resInfo != nullptr);
-        get_file_content(resInfo->_fullname.c_str(), content);
-        glslCompileShader(resInfo->_fullname, content, shaderInfo.rayAnyHitEntryName, shaderMacros, shaderModuleInfo);
-        results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-        bingingUpdate(bindingMap, results, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
         
-        shaderStage = {};
-        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStage.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-        shaderStage.module = shaderModuleInfo.shaderModule;
-        shaderStage.pName = shaderInfo.rayAnyHitEntryName.c_str();
-        shaderStages.push_back(shaderStage);
-        shaderGroup.anyHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayAnyHitShaderName);
+        if (resInfo)
+        {
+            shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
+            get_file_content(resInfo->_fullname.c_str(), content);
+            glslCompileShader(resInfo->_fullname, content, shaderInfo.rayAnyHitEntryName, shaderMacros, shaderModuleInfo);
+            results = vks::tools::getProgramBindings(shaderModuleInfo.spv, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+            bingingUpdate(bindingMap, results, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+            shaderStage = {};
+            shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStage.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+            shaderStage.module = shaderModuleInfo.shaderModule;
+            shaderStage.pName = shaderInfo.rayAnyHitEntryName.c_str();
+            shaderStages.push_back(shaderStage);
+            shaderGroup.anyHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        }
+       
         shaderGroups.push_back(shaderGroup);
     }
    

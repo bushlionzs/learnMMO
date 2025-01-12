@@ -7,19 +7,21 @@
 #include "d3dutil.h"
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <string_util.h>
 #include "OgreMaterial.h"
 #include "dx12Common.h"
 #include "D3D12Mappings.h"
 #include "shaderManager.h"
 #include "dx12Helper.h"
 #include "hlslUtil.h"
+#include "DirectXRaytracingHelper.h"
 
 
 DX12RayTracingProgramImpl::DX12RayTracingProgramImpl(
     const RaytracingShaderInfo& info)
 {
     load(info);
-    parseShaderInfo();
+    parseShaderInfo(info);
 }
 
 DX12RayTracingProgramImpl::~DX12RayTracingProgramImpl()
@@ -38,95 +40,46 @@ bool DX12RayTracingProgramImpl::loadhlsl(const RaytracingShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayGenShaderName);
         hlslToBin(shaderInfo.rayGenShaderName, *content, shaderInfo.rayGenEntryName,
-            shaderInfo.shaderMacros, Ogre::RayGenShader, mRayGenCode, false);
-    }
-    
-    {
-        String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayMissShaderName);
-        hlslToBin(shaderInfo.rayMissShaderName, *content, shaderInfo.rayGenEntryName,
-            shaderInfo.shaderMacros, Ogre::MissShader, mRayMissCode, false);
+            shaderInfo.shaderMacros, Ogre::RayGenShader, mRayTracingCode, false);
     }
 
-    
-    
-    {
-        String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayClosethitShaderName);
-        hlslToBin(shaderInfo.rayClosethitShaderName, *content, shaderInfo.rayGenEntryName,
-            shaderInfo.shaderMacros, Ogre::ClosestHitShader, mRayClosethitCode, false);
-    }
-
-    
-    {
-        String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayAnyHitShaderName);
-        hlslToBin(shaderInfo.rayAnyHitShaderName, *content, shaderInfo.rayGenEntryName,
-            shaderInfo.shaderMacros, Ogre::AnyHitShader, mRayAnyhitCode, false);
-    }
-
-   
     return true;
 }
 
-static auto updateResourceList = [](std::vector <ShaderResource>& programResourceList,
-    std::vector <ShaderResource>& resourceList, ShaderStageFlags stageFlags)
-    {
-        for (auto& current : resourceList)
-        {
-            bool have = false;
-            for (auto& shaderResource : programResourceList)
-            {
-                if (current.name == shaderResource.name)
-                {
-                    shaderResource.used_stages |= (uint8_t)stageFlags;
-                    have = true;
-                    break;
-                }
-            }
 
-            if (!have)
-            {
-                programResourceList.push_back(current);
-            }
-        }
-    };
 
-void DX12RayTracingProgramImpl::parseShaderInfo()
+void DX12RayTracingProgramImpl::parseShaderInfo(const RaytracingShaderInfo& info)
 {
     {
-        if (!mRayGenCode.empty())
+        if (!mRayTracingCode.empty())
         {
-            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::RAYGEN,
-                mRayGenCode.c_str(), mRayGenCode.size());
-            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::RAYGEN);
+            std::vector<DX12Helper::StageFlagsInfo> flagsInfoList;
+            if (!info.rayGenEntryName.empty())
+            {
+                flagsInfoList.push_back({ info.rayGenEntryName.c_str(), ShaderStageFlags::RAYGEN });
+            }
+
+            if (!info.rayMissEntryName.empty())
+            {
+                flagsInfoList.push_back({ info.rayMissEntryName.c_str(), ShaderStageFlags::RAYMISS });
+            }
+
+            if (!info.rayClosethitEntryName.empty())
+            {
+                flagsInfoList.push_back({ info.rayClosethitEntryName.c_str(), ShaderStageFlags::RAYCLOSETHIT });
+            }
+
+            if (!info.rayAnyHitEntryName.empty())
+            {
+                flagsInfoList.push_back({ info.rayAnyHitEntryName.c_str(), ShaderStageFlags::RAYANYHIT });
+            }
+            
+            mProgramResourceList = DX12Helper::getSingleton().parseShaderResource2(flagsInfoList,
+                mRayTracingCode.c_str(), mRayTracingCode.size());
         }
     }
 
-    {
-
-        if (!mRayMissCode.empty())
-        {
-            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::RAYMISS,
-                mRayMissCode.c_str(), mRayMissCode.size());
-            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::RAYMISS);
-        }
-    }
-
-    {
-        if (!mRayClosethitCode.empty())
-        {
-            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::RAYCLOSETHIT,
-                mRayClosethitCode.c_str(), mRayClosethitCode.size());
-            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::RAYCLOSETHIT);
-        }
-    }
-
-    {
-        if (!mRayAnyhitCode.empty())
-        {
-            auto resourceList = DX12Helper::getSingleton().parseShaderResource(ShaderStageFlags::RAYANYHIT,
-                mRayAnyhitCode.c_str(), mRayAnyhitCode.size());
-            updateResourceList(mProgramResourceList, resourceList, ShaderStageFlags::RAYANYHIT);
-        }
-    }
+    
 
     std::sort(mProgramResourceList.begin(), mProgramResourceList.end(),
         [](const ShaderResource& a, const ShaderResource& b) {
@@ -151,7 +104,8 @@ void DX12RayTracingProgramImpl::parseShaderInfo()
             shaderResource.type == D3D_SIT_UAV_RWBYTEADDRESS ||
             shaderResource.type == D3D_SIT_STRUCTURED ||
             shaderResource.type == D3D_SIT_UAV_RWSTRUCTURED ||
-            shaderResource.type == D3D_SIT_UAV_RWTYPED)
+            shaderResource.type == D3D_SIT_UAV_RWTYPED ||
+            shaderResource.type == D3D_SIT_RTACCELERATIONSTRUCTURE)
         {
             d3dUtil::create_descriptor_table(shaderResource.size,
                 &shaderResource, cbvSrvUavRange[index], &rootParams[rootParamCount]);
@@ -181,7 +135,6 @@ void DX12RayTracingProgramImpl::parseShaderInfo()
     rootSigDesc.Desc_1_1.pParameters = rootParams;
     rootSigDesc.Desc_1_1.NumStaticSamplers = 0;
     rootSigDesc.Desc_1_1.pStaticSamplers = nullptr;
-    rootSigDesc.Desc_1_1.pStaticSamplers = nullptr;
     rootSigDesc.Desc_1_1.Flags = rootSignatureFlags;
 
 
@@ -202,6 +155,8 @@ void DX12RayTracingProgramImpl::parseShaderInfo()
         serializedRootSig->GetBufferPointer(),
         serializedRootSig->GetBufferSize(),
         IID_PPV_ARGS(&mRootSignature)));
+
+    
 }
 
 std::vector<ShaderResource> DX12RayTracingProgramImpl::parseShaderResource(
@@ -250,6 +205,131 @@ std::vector<ShaderResource> DX12RayTracingProgramImpl::parseShaderResource(
 void DX12RayTracingProgramImpl::updateRootSignature(ID3D12RootSignature* rootSignature)
 {
     mRootSignature = rootSignature;
+}
+
+void DX12RayTracingProgramImpl::createRaytracingPipelineStateObject(
+    ID3D12Device5* prDevice, const RaytracingShaderInfo& shaderInfo)
+{
+    CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
+
+    CD3DX12_DXIL_LIBRARY_SUBOBJECT* lib = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+
+    const std::string* blob = getRayTracingBlob();
+
+    D3D12_SHADER_BYTECODE libdxil = CD3DX12_SHADER_BYTECODE((void*)blob->data(), blob->size());
+
+    lib->SetDXILLibrary(&libdxil);
+
+    std::wstring wRayGenEntryName = dy::acsi_to_widebyte(shaderInfo.rayGenEntryName);
+    std::wstring wRayClosethitEntryName = dy::acsi_to_widebyte(shaderInfo.rayClosethitEntryName);
+    std::wstring wRayMissEntryName = dy::acsi_to_widebyte(shaderInfo.rayMissEntryName);
+
+    std::vector<LPCWCHAR> exportNames;
+    exportNames.push_back(wRayGenEntryName.c_str());
+    exportNames.push_back(wRayClosethitEntryName.c_str());
+    exportNames.push_back(wRayMissEntryName.c_str());
+    {
+        lib->DefineExport(wRayGenEntryName.c_str());
+        lib->DefineExport(wRayClosethitEntryName.c_str());
+        lib->DefineExport(wRayMissEntryName.c_str());
+    }
+
+    CD3DX12_HIT_GROUP_SUBOBJECT* hitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
+    hitGroup->SetClosestHitShaderImport(wRayClosethitEntryName.c_str());
+    
+    hitGroup->SetHitGroupExport(c_hitGroupName);
+    hitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
+
+    auto shaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
+    UINT payloadSize = sizeof(Ogre::Vector4);    // float4 pixelColor
+    UINT attributeSize = sizeof(Ogre::Vector2);  // float2 barycentrics
+    shaderConfig->Config(payloadSize, attributeSize);
+
+
+    ID3D12RootSignature* rootSignature = getRootSignature();
+
+
+    auto globalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT>();
+    globalRootSignature->SetRootSignature(rootSignature);
+
+    auto pipelineConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT>();
+
+    UINT maxRecursionDepth = 1;
+
+    pipelineConfig->Config(maxRecursionDepth);
+
+    // Add a state subobject for the association between shaders and the payload
+
+    /*D3D12_STATE_SUBOBJECT* shaderPayloadAssociationObject = raytracingPipeline.CreateSubobject<D3D12_STATE_SUBOBJECT>();
+    D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderPayloadAssociation = {};
+    shaderPayloadAssociation.NumExports = static_cast<UINT>(exportNames.size());
+    shaderPayloadAssociation.pExports = exportNames.data();
+    shaderPayloadAssociation.pSubobjectToAssociate = shaderPayloadAssociationObject;
+    shaderPayloadAssociationObject->Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
+    shaderPayloadAssociationObject->pDesc = &shaderPayloadAssociation;*/
+
+    // Create the state object.
+    ThrowIfFailed(prDevice->CreateStateObject(raytracingPipeline, IID_PPV_ARGS(&mDxrStateObject)));
+}
+
+
+void DX12RayTracingProgramImpl::buildShaderTables(const RaytracingShaderInfo& shaderInfo)
+{
+    void* rayGenShaderIdentifier;
+    void* missShaderIdentifier;
+    void* hitGroupShaderIdentifier;
+
+    std::wstring wRayGenEntryName = dy::acsi_to_widebyte(shaderInfo.rayGenEntryName);
+    std::wstring wRayClosethitEntryName = dy::acsi_to_widebyte(shaderInfo.rayClosethitEntryName);
+    std::wstring wRayMissEntryName = dy::acsi_to_widebyte(shaderInfo.rayMissEntryName);
+
+    auto GetShaderIdentifiers = [&](ID3D12StateObjectProperties* stateObjectProperties)
+        {
+            rayGenShaderIdentifier = stateObjectProperties->GetShaderIdentifier(wRayGenEntryName.c_str());
+            missShaderIdentifier = stateObjectProperties->GetShaderIdentifier(wRayClosethitEntryName.c_str());
+            hitGroupShaderIdentifier = stateObjectProperties->GetShaderIdentifier(wRayMissEntryName.c_str());
+        };
+
+    // Get shader identifiers.
+    UINT shaderIdentifierSize;
+    {
+       
+        ComPtr<ID3D12StateObjectProperties> stateObjectProperties;
+        mDxrStateObject.As(&stateObjectProperties);
+        rayGenShaderIdentifier = stateObjectProperties->GetShaderIdentifier(wRayGenEntryName.c_str());
+        missShaderIdentifier = stateObjectProperties->GetShaderIdentifier(wRayMissEntryName.c_str());
+        hitGroupShaderIdentifier = stateObjectProperties->GetShaderIdentifier(c_hitGroupName);
+        shaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+    }
+
+    auto device = DX12Helper::getSingleton().getDevice();
+    // Ray gen shader table
+    {
+        UINT numShaderRecords = 1;
+        UINT shaderRecordSize = shaderIdentifierSize;
+        ShaderTable rayGenShaderTable(device, numShaderRecords, shaderRecordSize, L"RayGenShaderTable");
+        rayGenShaderTable.push_back(ShaderRecord(rayGenShaderIdentifier, shaderIdentifierSize));
+        m_rayGenShaderTable = rayGenShaderTable.GetResource();
+    }
+
+    // Miss shader table
+    {
+        UINT numShaderRecords = 1;
+        UINT shaderRecordSize = shaderIdentifierSize;
+        ShaderTable missShaderTable(device, numShaderRecords, shaderRecordSize, L"MissShaderTable");
+        missShaderTable.push_back(ShaderRecord(missShaderIdentifier, shaderIdentifierSize));
+        m_missShaderTable = missShaderTable.GetResource();
+    }
+
+    // Hit group shader table
+    {
+        
+        UINT numShaderRecords = 1;
+        UINT shaderRecordSize = shaderIdentifierSize;
+        ShaderTable hitGroupShaderTable(device, numShaderRecords, shaderRecordSize, L"HitGroupShaderTable");
+        hitGroupShaderTable.push_back(ShaderRecord(hitGroupShaderIdentifier, shaderIdentifierSize));
+        m_hitGroupShaderTable = hitGroupShaderTable.GetResource();
+    }
 }
 
 const DescriptorInfo* DX12RayTracingProgramImpl::getDescriptor(const char* descriptorName)

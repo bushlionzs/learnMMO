@@ -44,7 +44,7 @@ void BasicApplication::setup(
 	mRenderWindow = renderWindow;
 	mRenderSystem = renderSystem;
 	mRenderPipeline = renderPipeline;
-	base1();
+	base3();
 }
 
 void BasicApplication::update(float delta)
@@ -165,9 +165,10 @@ void BasicApplication::base2()
 void BasicApplication::base3()
 {
 	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
-	auto mesh = MeshManager::getSingleton().createBox("box.mesh", 1, "mybox");
 
-	auto& meshName = mesh->getName();
+	std::string meshName = "box";
+	auto mesh = MeshManager::getSingleton().createBox(meshName, 1, "mybox");
+
 	{
 		auto entity = mSceneManager->createEntity("box1", meshName);
 		SceneNode* node = root->createChildSceneNode("box1");
@@ -175,31 +176,38 @@ void BasicApplication::base3()
 		node->setPosition(0.0f, 0.0f, -5.0f);
 	}
 
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+
+	mGameCamera->setCameraType(CameraMoveType_LookAt);
+	mGameCamera->lookAt(
+		Ogre::Vector3(0.5f, 0.0f, -7),
+		Ogre::Vector3(0.0f, 0.0f, 0.0f));
+	mGameCamera->setMoveSpeed(5);
+
+	Ogre::Matrix4 m;
+
+	if (ogreConfig.reverseDepth)
 	{
-		auto entity = mSceneManager->createEntity("box1", meshName);
-		SceneNode* node = root->createChildSceneNode("box1");
-		node->attachObject(entity);
-		node->setPosition(0.0f, 0.0f, 5.0f);
+		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
+		m = Ogre::Math::makePerspectiveMatrixReverseZ(
+			Ogre::Math::PI / 4.0f, aspectInverse, 0.1, 10000.f);
 	}
-
+	else
 	{
-		auto entity = mSceneManager->createEntity("box1", meshName);
-		SceneNode* node = root->createChildSceneNode("box1");
-		node->attachObject(entity);
-		node->setPosition(-5.0f, 0.0f, 0.0f);
+		float aspect = ogreConfig.width / (float)ogreConfig.height;
+		m = Ogre::Math::makePerspectiveMatrix(
+			Ogre::Math::PI / 4.0f, aspect, 0.1, 10000.f);
 	}
+	mGameCamera->getCamera()->updateProjectMatrix(m);
 
-	{
-		auto entity = mSceneManager->createEntity("box1", meshName);
-		SceneNode* node = root->createChildSceneNode("box1");
-		node->attachObject(entity);
-		node->setPosition(5.0f, 0.0f, 0.0f);
-	}
-	
-
-	mGameCamera->setDistance(2.0f);
-
-	mGameCamera->setMoveSpeed(25.0f);
+	RenderPassInput input;
+	input.color = mRenderWindow->getColorTarget();
+	input.depth = mRenderWindow->getDepthTarget();
+	input.cam = mGameCamera->getCamera();
+	input.sceneMgr = mSceneManager;
+	auto mainPass = createStandardRenderPass(input);
+	mRenderPipeline->addRenderPass(mainPass);
 }
 
 void BasicApplication::base4()
@@ -372,7 +380,7 @@ void BasicApplication::base6()
 	rasterState.depthFunc = SamplerCompareFunc::A;
 	rasterState.colorWrite = true;
 	rasterState.renderTargetCount = 1;
-	rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+	rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8;
 	auto pipelineHandle = mRenderSystem->createPipeline(rasterState, presentHandle);
 
 	SubMesh* subMesh = mesh->getSubMesh(0);

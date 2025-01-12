@@ -282,9 +282,10 @@ bool GameCamera::update(float delta)
         auto transM = Ogre::Math::makeTranslateMatrix(-eyePosition);
         viewMatrix = transM * rotM;
     }
-    /*Ogre::Vector3 camPos = Ogre::Vector3(1, 0, 0);
+    /*Ogre::Vector3 camPos(0.0f, 0.1f, 1.0f);
     Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
-    Ogre::Matrix4 look = Ogre::Math::makeLookAt(camPos, lookAt, Ogre::Vector3::UNIT_Y);*/
+    Ogre::Matrix4 look = Ogre::Math::makeLookAt(camPos, lookAt, Ogre::Vector3::UNIT_Y);
+    mCamera->updateViewMatrix(look);*/
     mCamera->updateViewMatrix(viewMatrix);
     mCamera->updatePosition(eyePosition);
     return true;
