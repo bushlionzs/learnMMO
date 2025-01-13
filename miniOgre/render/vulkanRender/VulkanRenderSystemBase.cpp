@@ -539,6 +539,25 @@ void VulkanRenderSystemBase::copyImage(
         1, &copyRegion);
 }
 
+void VulkanRenderSystemBase::copyBuffer(
+    Handle<HwBufferObject> src,
+    uint32_t srcOffset,
+    Handle<HwBufferObject> dst,
+    uint32_t dstOffset,
+    uint32_t size
+)
+{
+    VkBuffer dstBuffer = mResourceAllocator.handle_cast<VulkanBufferObject*>(dst)->buffer.getGpuBuffer();
+    VkBuffer srcBuffer = mResourceAllocator.handle_cast<VulkanBufferObject*>(src)->buffer.getGpuBuffer();
+
+    VkBufferCopy copyRegion = {};
+    copyRegion.srcOffset = srcOffset;
+    copyRegion.dstOffset = dstOffset;
+    copyRegion.size = size;   
+
+    vkCmdCopyBuffer(mCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+}
+
 void VulkanRenderSystemBase::pushGroupMarker(const char* maker)
 {
     if (mVulkanSettings->mDebugUtilsExtension)

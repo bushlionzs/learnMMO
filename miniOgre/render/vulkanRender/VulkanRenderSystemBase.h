@@ -75,7 +75,13 @@ public:
         Ogre::RenderTarget* dst,
         Ogre::RenderTarget* src,
         ImageCopyDesc& desc);
-
+    virtual void copyBuffer(
+        Handle<HwBufferObject> src,
+        uint32_t srcOffset,
+        Handle<HwBufferObject> dst,
+        uint32_t dstOffset,
+        uint32_t size
+    );
 protected:
     virtual void pushGroupMarker(const char* maker);
     virtual void popGroupMarker();

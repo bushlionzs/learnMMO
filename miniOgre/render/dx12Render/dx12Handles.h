@@ -207,7 +207,6 @@ private:
 
 struct DX12AccelerationStructure : public Ogre::AccelerationStructure
 {
-    Handle<HwBufferObject> asBufferHandle;
     uint64_t               mASDeviceAddress;
     Handle<HwBufferObject> scratchBufferHandle;
     uint64_t               mScratchBufferDeviceAddress;

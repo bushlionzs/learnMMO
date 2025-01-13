@@ -260,10 +260,13 @@ struct ShaderInfo
 
 struct RaytracingShaderInfo
 {
+    String rayTracingShaderName;
     String rayGenShaderName;
     std::string rayGenEntryName;
     String rayMissShaderName;
     std::string rayMissEntryName;
+    String rayShadowShaderName;
+    std::string rayShadowEntryName;
     String rayClosethitShaderName;
     std::string rayClosethitEntryName;
     String rayAnyHitShaderName;

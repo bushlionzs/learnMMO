@@ -57,8 +57,17 @@ struct UniformData {
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
 	uint64_t indexBufferDeviceAddress;
+	uint32_t vertexOffset;
+	uint32_t indexOffset;
 	int32_t textureIndexBaseColor;
 	int32_t textureIndexOcclusion;
+};
+
+
+struct RayTracingContext
+{
+	AccelerationStructure* pBottomAS = nullptr;
+	AccelerationStructure* pTopAS = nullptr;
 };
 
 class RayTracingApp
@@ -92,13 +101,18 @@ public:
 		Ogre::RenderWindow* renderWindow,
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
-	void RayTracing(
+	void RayTracingGltf(
 		RenderPipeline* renderPipeline,
 		RenderSystem* renderSystem,
 		Ogre::RenderWindow* renderWindow,
 		Ogre::SceneManager* sceneManager,
 		GameCamera* gameCamera);
-
+	void RayTracingShadow(
+		RenderPipeline* renderPipeline,
+		RenderSystem* renderSystem,
+		Ogre::RenderWindow* renderWindow,
+		Ogre::SceneManager* sceneManager,
+		GameCamera* gameCamera);
 	void RayTracingBox(
 		RenderPipeline* renderPipeline,
 		RenderSystem* renderSystem,
@@ -118,6 +132,9 @@ public:
 	{
 		return &mFrameInfoList[i];
 	}
+
+private:
+	void initRayTracingContext(RayTracingContext& context, Ogre::Entity* entity);
 private:
 	std::vector<FrameInfo> mFrameInfoList;
 
@@ -131,4 +148,6 @@ private:
 	GameCamera* mGameCamera;
 	UniformData mUniformData;
 	GeometryNode mGeometryNode;
+
+	RenderSystem* mRenderSystem;
 };

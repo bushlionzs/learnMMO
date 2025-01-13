@@ -6,6 +6,9 @@
 #include <OgreSceneManager.h>
 #include <OgreVertexData.h>
 #include <OgreIndexData.h>
+#include <OgreMesh.h>
+#include <OgreMeshManager.h>
+#include <OgreMaterialManager.h>
 #include <renderSystem.h>
 #include "renderUtil.h"
 #include "game_camera.h"
@@ -594,4 +597,42 @@ void updateFrameData(
 
     frameConstantBuffer.TotalTime += Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
     frameConstantBuffer.DeltaTime = Ogre::Root::getSingleton().getFrameEvent().timeSinceLastFrame;
+}
+
+bool createManualMesh(
+    const std::string& name,
+    std::vector<BaseVertex>& vertices,
+    std::vector<uint16_t>& indices)
+{
+    Mesh* pMesh = new Ogre::Mesh(name);
+
+    VertexData* vd = pMesh->getVertexData();
+    IndexData* id = pMesh->getIndexData();
+    uint32_t size = vertices.size() * sizeof(BaseVertex);
+
+    auto vertexCount = vertices.size();
+    vd->setVertexCount(vertexCount);
+
+    vd->addBindBuffer(0, sizeof(BaseVertex), vertexCount);
+    vd->writeBindBufferData(0, (const char*)vertices.data(), size);
+
+    uint32_t indexSize = sizeof(indices[0]);
+    id->createBuffer(indexSize, indices.size());
+    id->writeData((const char*)indices.data(), indexSize * indices.size());
+    SubMesh* sub = pMesh->addSubMesh(true, true);
+
+    sub->addIndexs(indices.size(), 0, 0);
+
+
+    vd->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
+    vd->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
+
+    pMesh->prepare();
+
+    auto mat = MaterialManager::getSingleton().getByName("myrect");
+    auto subMesh = pMesh->getSubMesh(0);
+
+    subMesh->setMaterial(mat);
+    std::shared_ptr<Mesh> p(pMesh);
+    return MeshManager::getSingleton().addMesh(name, p);
 }

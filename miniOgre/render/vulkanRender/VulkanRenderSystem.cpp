@@ -120,7 +120,8 @@ void VulkanRenderSystem::addAccelerationStructure(
 
 
             VkDeviceOrHostAddressConstKHR vertexBufferDeviceAddress = {};
-            vertexBufferDeviceAddress.deviceAddress = getBufferDeviceAddress(getVkBuffer(pGeom->vertexBufferHandle)) + pGeom->mVertexOffset;
+            vertexBufferDeviceAddress.deviceAddress = 
+                getBufferDeviceAddress(getVkBuffer(pGeom->vertexBufferHandle)) + pGeom->mVertexOffset;
 
             pGeometry->geometry.triangles.vertexData = vertexBufferDeviceAddress;
             pGeometry->geometry.triangles.maxVertex = pGeom->mVertexCount;
@@ -418,10 +419,24 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         };
 
     
+    std::string rayGenShaderName = shaderInfo.rayGenShaderName;
+    std::string rayMissShaderName = shaderInfo.rayMissShaderName;
+    std::string rayShadowShaderName = shaderInfo.rayShadowShaderName;
+    std::string rayClosethitShaderName = shaderInfo.rayClosethitShaderName;
+    std::string rayAnyHitShaderName = shaderInfo.rayAnyHitShaderName;
+
+    if (!shaderInfo.rayTracingShaderName.empty())
+    {
+        rayGenShaderName = shaderInfo.rayTracingShaderName;
+        rayMissShaderName = shaderInfo.rayTracingShaderName;
+        rayShadowShaderName = shaderInfo.rayTracingShaderName;
+        rayClosethitShaderName = shaderInfo.rayTracingShaderName;
+        rayAnyHitShaderName = shaderInfo.rayTracingShaderName;
+    }
     // Ray generation group
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::RayGenShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayGenShaderName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(rayGenShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayGenEntryName, shaderMacros, shaderModuleInfo);
@@ -452,7 +467,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
     // Miss group
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::MissShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayMissShaderName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(rayMissShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayMissEntryName, shaderMacros, shaderModuleInfo);
@@ -476,23 +491,25 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroups.push_back(shaderGroup);
         // Second shader for shadows
 
-        /*resInfo = ResourceManager::getSingleton().getResource(shadowMissShaderName);
-        assert_invariant(resInfo != nullptr);
-        get_file_content(resInfo->_fullname.c_str(), content);
-        glslCompileShader(resInfo->_fullname, content, entryPoint, shaderMacros, shaderModuleInfo);
-        shaderStage = {};
-        shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStage.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-        shaderStage.module = shaderModuleInfo.shaderModule;
-        shaderStage.pName = entryPoint.c_str();
-        shaderStages.push_back(shaderStage);
-        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroups.push_back(shaderGroup);*/
+        resInfo = ResourceManager::getSingleton().getResource(rayShadowShaderName);
+        if (resInfo && !shaderInfo.rayShadowEntryName.empty() && false)
+        {
+            get_file_content(resInfo->_fullname.c_str(), content);
+            glslCompileShader(resInfo->_fullname, content, shaderInfo.rayShadowEntryName, shaderMacros, shaderModuleInfo);
+            shaderStage = {};
+            shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStage.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+            shaderStage.module = shaderModuleInfo.shaderModule;
+            shaderStage.pName = shaderInfo.rayShadowEntryName.c_str();
+            shaderStages.push_back(shaderStage);
+            shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+            shaderGroups.push_back(shaderGroup);
+        }
     }
     // Closest hit group for doing texture lookups
     {
         shaderModuleInfo.shaderType = Ogre::ShaderType::ClosestHitShader;
-        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayClosethitShaderName);
+        ResourceInfo* resInfo = ResourceManager::getSingleton().getResource(rayClosethitShaderName);
         assert_invariant(resInfo != nullptr);
         get_file_content(resInfo->_fullname.c_str(), content);
         glslCompileShader(resInfo->_fullname, content, shaderInfo.rayClosethitEntryName, shaderMacros, shaderModuleInfo);
@@ -514,8 +531,8 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
         shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
         
-        resInfo = ResourceManager::getSingleton().getResource(shaderInfo.rayAnyHitShaderName);
-        if (resInfo)
+        resInfo = ResourceManager::getSingleton().getResource(rayAnyHitShaderName);
+        if (resInfo && !shaderInfo.rayAnyHitEntryName.empty())
         {
             shaderModuleInfo.shaderType = Ogre::ShaderType::AnyHitShader;
             get_file_content(resInfo->_fullname.c_str(), content);

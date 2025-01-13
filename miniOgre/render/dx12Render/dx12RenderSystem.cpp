@@ -56,10 +56,9 @@ void Dx12RenderSystem::traceRay(Handle<HwRaytracingProgram> programHandle)
 
     D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};
     ID3D12GraphicsCommandList* cl = mCommands->get();
-    if (m_dxrCommandList == nullptr)
-    {
-        cl->QueryInterface(IID_PPV_ARGS(&m_dxrCommandList));
-    }
+    
+    cl->QueryInterface(IID_PPV_ARGS(&m_dxrCommandList));
+    
     
     ID3D12Resource* hitGroupShaderTable = impl->getHitGroupShaderTable();
     ID3D12Resource* missShaderTable = impl->getMissShaderTable();
@@ -189,7 +188,7 @@ void Dx12RenderSystem::addAccelerationStructure(
             D3D12_RAYTRACING_GEOMETRY_DESC* pGeomD3D12 = &pAS->pGeometryDescs[j];
 
             pGeomD3D12->Flags = D3D12Mappings::util_to_dx_geometry_flags(pGeom->mFlags);
-
+            pGeomD3D12->Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
             if (pGeom->mIndexCount)
             {
                 ASSERT(pGeom->indexBufferHandle);
@@ -205,6 +204,7 @@ void Dx12RenderSystem::addAccelerationStructure(
             pGeomD3D12->Triangles.VertexBuffer.StrideInBytes = pGeom->mVertexStride;
             pGeomD3D12->Triangles.VertexCount = pGeom->mVertexCount;
             pGeomD3D12->Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            pGeomD3D12->Triangles.Transform3x4 = 0;
         }
         /************************************************************************/
         // Get the size requirement for the Acceleration Structures

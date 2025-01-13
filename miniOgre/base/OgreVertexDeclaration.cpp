@@ -15,6 +15,10 @@ const VertexElement& VertexDeclaration::addElement(int16_t source, int16_t index
     VertexElementSemantic semantic)
 {
     mElementList.push_back(VertexElement(source, index, offset, theType, semantic));
+    if (mElementList.size() > 10)
+    {
+        int kk = 0;
+    }
     return mElementList.back();
 }
 

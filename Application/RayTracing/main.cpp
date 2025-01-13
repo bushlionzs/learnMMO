@@ -24,10 +24,6 @@ int main()
 		};
 
 	app.run(info);
-
-
-	return 0;
-
 	return 0;
 }
 

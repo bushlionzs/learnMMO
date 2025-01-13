@@ -12,7 +12,7 @@ cbuffer cam : register(b2) { CameraProperties cam; };
 
 struct Payload
 {
-   float3 hitValue;
+   float4 hitValue;
 };
 
 struct Attributes
@@ -40,19 +40,24 @@ void genMain()
 	Payload payload;
 	TraceRay(topLevelAS, RAY_FLAG_FORCE_OPAQUE, 0xff, 0, 0, 0, rayDesc, payload);
 
-	image[int2(LaunchID.xy)] = float4(payload.hitValue, 0.0);
+	image[int2(LaunchID.xy)] = payload.hitValue;
 }
 
+struct DataBlock {
+    uint data[25]; // 100 bytes / 4 bytes per uint = 25 elements
+};
 
 [shader("closesthit")]
 void closethitMain(inout Payload p, in Attributes attribs)
 {
+  //uint instanceId = InstanceID();
+  //uint geometryId = GeometryIndex();
   const float3 barycentricCoords = float3(1.0f - attribs.bary.x - attribs.bary.y, attribs.bary.x, attribs.bary.y);
-  p.hitValue = barycentricCoords;
+  p.hitValue = float4(barycentricCoords, 0.0f);
 }
 
 [shader("miss")]
 void missMain(inout Payload p)
 {
-    p.hitValue = float3(0.0, 0.0, 0.2);
+    p.hitValue = float4(0.0, 0.0, 0.2, 0.0f);
 }

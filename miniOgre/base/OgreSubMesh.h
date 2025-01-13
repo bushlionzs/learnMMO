@@ -24,7 +24,10 @@ namespace Ogre {
         Ogre::OperationType getOperationType();
         void setOperationType(Ogre::OperationType ot);
 
-        void addIndexs(uint32_t drawCount, uint32_t indexLocation, uint32_t baseVertexLocation);
+        void addIndexs(
+            uint32_t drawCount, 
+            uint32_t indexLocation, 
+            uint32_t baseVertexLocation);
 
         IndexDataView* getIndexView();
 

@@ -341,13 +341,13 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	{
 		float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 		projectMatrix = Ogre::Math::makePerspectiveMatrixReverseZ(
-			Ogre::Math::PI / 2.0f, aspectInverse, 0.1, 5000);
+			Ogre::Math::PI / 3.0f, aspectInverse, 0.1, 5000);
 	}
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
 		projectMatrix = Ogre::Math::makePerspectiveMatrix(
-			Ogre::Math::PI / 2.0f, aspect, 0.1, 5000);
+			Ogre::Math::PI / 3.0f, aspect, 0.1, 5000);
 	}
 
 	gameCamera->getCamera()->updateProjectMatrix(projectMatrix);

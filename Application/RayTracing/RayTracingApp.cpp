@@ -22,6 +22,7 @@
 #include "OgreMurmurHash3.h"
 #include "OgreTextureManager.h"
 #include "OgreMeshManager.h"
+#include "renderUtil.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -43,20 +44,24 @@ void RayTracingApp::setup(
 	Ogre::SceneManager* sceneManager,
 	GameCamera* gameCamera)
 {
+	mRenderSystem = renderSystem;
 	int type = 3;
 	switch (type)
 	{
 	case 0:
-		RayQuery(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
+		RayTracingBasic(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
 		break;
 	case 1:
-		RayTracing(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
-		break;
-	case 2:
 		RayTracingBox(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
 		break;
+	case 2:
+		RayTracingShadow(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
+		break;
 	case 3:
-		RayTracingBasic(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
+		RayTracingGltf(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
+		break;
+	case 4:
+		RayQuery(renderPipeline, renderSystem, renderWindow, sceneManager, gameCamera);
 		break;
 	}
 }
@@ -501,15 +506,23 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 		auto pipelineHandle = rs->createPipeline(rasterState, presentHandle);
 
 		RenderPassCallback presentCallback = [=, this](RenderPassInfo& info) {
-			TextureBarrier textureBarriers[] =
 			{
+				RenderTargetBarrier rtBarriers[] =
 				{
-					outPutTarget->getTarget(),
-					RESOURCE_STATE_UNORDERED_ACCESS,
-					RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-				}
-			};
-			rs->resourceBarrier(0, nullptr, 1, textureBarriers, 0, nullptr);
+					{
+						renderWindow->getColorTarget(),
+						RESOURCE_STATE_PRESENT,
+						RESOURCE_STATE_RENDER_TARGET
+					},
+					{
+						outPutTarget,
+						RESOURCE_STATE_UNORDERED_ACCESS,
+						RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+					}
+				};
+				rs->resourceBarrier(0, nullptr, 0, nullptr, 1, rtBarriers);
+			}
+			
 			info.renderTargetCount = 1;
 			info.renderTargets[0].renderTarget = renderWindow->getColorTarget();
 			info.renderTargets[0].clearColour = { 0.678431f, 0.847058f, 0.901960f, 1.000000000f };
@@ -524,6 +537,23 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 			rs->draw(3, 0);
 			rs->endRenderPass(info);
 			rs->popGroupMarker();
+
+			{
+				RenderTargetBarrier rtBarriers[] =
+				{
+					{
+						renderWindow->getColorTarget(),
+						RESOURCE_STATE_RENDER_TARGET,
+						RESOURCE_STATE_PRESENT
+					},
+					{
+						outPutTarget,
+						RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+						RESOURCE_STATE_UNORDERED_ACCESS
+					}
+				};
+				rs->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
+			}
 			};
 		UpdatePassCallback updateCallback = [](float delta) {
 			};
@@ -540,7 +570,7 @@ void RayTracingApp::RayQuery(RenderPipeline* renderPipeline,
 }
 
 
-void RayTracingApp::RayTracing(
+void RayTracingApp::RayTracingGltf(
 	RenderPipeline* renderPipeline,
 	RenderSystem* rs,
 	Ogre::RenderWindow* renderWindow,
@@ -558,10 +588,7 @@ void RayTracingApp::RayTracing(
 	Ogre::Vector3 righttop = Ogre::Vector3(aa, aa, 0.0f);
 	Ogre::Vector3 rightbottom = Ogre::Vector3(aa, -aa, 0.0f);
 	Ogre::Vector3 normal = Ogre::Vector3(0.0f, 0.0f, 1.0f);
-	/*auto mesh = MeshManager::getSingletonPtr()->createRect(
-		nullptr,
-		meshname,
-		leftop, leftbottom, righttop, rightbottom, normal);*/
+
     Entity* gltfEntity = sceneManager->createEntity(meshname, meshname);
     SceneNode* gltfNode = rootNode->createChildSceneNode(meshname);
 	gltfNode->attachObject(gltfEntity);
@@ -595,114 +622,8 @@ void RayTracingApp::RayTracing(
 	}
 	raytracingHandle = rs->createRaytracingProgram(shaderInfo);
 	
-
-	AccelerationStructureDesc         asDesc = {};
-	AccelerationStructureGeometryDesc geomDescs[128] = {};
-	
-	std::vector<TransformMatrix> transformMatrices;
-	transformMatrices.reserve(subMeshCount);
-
-	uint32_t transformSize = sizeof(TransformMatrix) * subMeshCount;
-	BufferDesc desc{};
-	desc.mBindingType = BufferObjectBinding_Storge;
-	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
-	desc.mSize = transformSize;
-	desc.mElementCount = subMeshCount;
-	desc.mStructStride = sizeof(TransformMatrix);
-	Handle< HwBufferObject> transformBufferHandle =rs->createBufferObject(desc);
-
-	
-	for (uint32_t i = 0; i < subMeshCount; i++)
-	{
-		SubMesh* subMesh = mesh->getSubMesh(i);
-		VertexData* vertexData = subMesh->getVertexData();
-		IndexData* indexData = subMesh->getIndexData();
-		auto& mat = subMesh->getMaterial();
-		auto materialFlag = mat->getMaterialFlags();
-		
-		SubEntity* subEntity = gltfEntity->getSubEntity(i);
-		const Ogre::Matrix4& subMatrix = subEntity->getModelMatrix();
-		TransformMatrix transformMatrix;
-
-		Ogre::Matrix4 m = Ogre::Matrix4::IDENTITY;
-		memcpy(&transformMatrix, (void*)&subMatrix, sizeof(transformMatrix));
-		transformMatrices.push_back(transformMatrix);
-		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
-			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
-			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
-		geomDescs[i].vertexBufferHandle = vertexData->getBuffer(0);
-		geomDescs[i].mVertexCount = (uint32_t)vertexData->getVertexCount();
-		geomDescs[i].mVertexStride = vertexData->getVertexSize(0);
-		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
-		geomDescs[i].indexBufferHandle = indexData->getHandle();
-		geomDescs[i].transformBufferHandle = transformBufferHandle;
-		IndexDataView* indexView = subMesh->getIndexView();
-		geomDescs[i].mIndexCount = indexView->mIndexCount;
-		geomDescs[i].mIndexOffset = indexView->mIndexLocation * sizeof(uint32_t);
-		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
-	}
-
-	rs->updateBufferObject(transformBufferHandle,
-		(const char*)transformMatrices.data(), transformSize);
-	AccelerationStructure* pSanMiguelBottomAS = nullptr;
-	AccelerationStructure* pSanMiguelAS = nullptr;
-
-	
-
-	if (1)
-	{
-		asDesc.mBottom.mDescCount = subMeshCount;
-		asDesc.mBottom.pGeometryDescs = geomDescs;
-		asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
-		asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-
-		rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
-
-		TransformMatrix transformMatrix = {
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, -1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f };
-
-		AccelerationStructureInstanceDesc instanceDesc = {};
-		instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
-		instanceDesc.mInstanceContributionToHitGroupIndex = 0;
-		instanceDesc.mInstanceID = 0;
-		instanceDesc.mInstanceMask = 1;
-		memcpy(instanceDesc.mTransform, &transformMatrix, sizeof(float[12]));
-		instanceDesc.pBottomAS = pSanMiguelBottomAS;
-
-		
-		
-
-		rs->beginCmd();
-		asDesc = {};
-		asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
-		asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-		asDesc.mTop.mDescCount = 1;
-		asDesc.mTop.pInstanceDescs = &instanceDesc;
-
-		
-
-		rs->addAccelerationStructure(&asDesc, &pSanMiguelAS);
-		
-		
-
-		// Build Acceleration Structures
-		RaytracingBuildASDesc buildASDesc = {};
-		buildASDesc.pAccelerationStructure = pSanMiguelBottomAS;
-		buildASDesc.mIssueRWBarrier = true;
-		rs->buildAccelerationStructure(&buildASDesc);
-
-		
-		buildASDesc = {};
-		buildASDesc.pAccelerationStructure = pSanMiguelAS;
-
-		rs->buildAccelerationStructure(&buildASDesc);
-		rs->flushCmd(true);
-		rs->removeAccelerationStructureScratch(pSanMiguelBottomAS);
-		rs->removeAccelerationStructureScratch(pSanMiguelAS);
-	}
+	RayTracingContext context;
+	initRayTracingContext(context, gltfEntity);
 	
 	
 
@@ -713,6 +634,7 @@ void RayTracingApp::RayTracing(
 	texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
 	auto outPutTarget = rs->createRenderTarget("outputTarget", texProperty);
 	OgreTexture* storeImage = outPutTarget->getTarget();
+	BufferDesc desc{};
 	desc.mBindingType = BufferObjectBinding_Uniform;
 	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
 	desc.bufferCreationFlags = 0;
@@ -785,7 +707,7 @@ void RayTracingApp::RayTracing(
 		descriptorData[0].mCount = 1;
 		descriptorData[0].pName = "topLevelAS";
 		descriptorData[0].descriptorType = DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE;
-		descriptorData[0].pAS = pSanMiguelAS;
+		descriptorData[0].pAS = context.pTopAS;
 
 		descriptorData[1].mCount = 1;
 		descriptorData[1].pName = "image";
@@ -899,6 +821,235 @@ void RayTracingApp::RayTracing(
 		Ogre::Math::PI / 3.0f, aspect, 0.1, 512.f);
 	gameCamera->getCamera()->updateProjectMatrix(m);
 	gameCamera->setCameraType(CameraMoveType_LookAt);
+}
+
+void RayTracingApp::RayTracingShadow(
+	RenderPipeline* renderPipeline,
+	RenderSystem* renderSystem,
+	Ogre::RenderWindow* renderWindow,
+	Ogre::SceneManager* sceneManager,
+	GameCamera* gameCamera)
+{
+	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
+	auto rootNode = sceneManager->getRoot();
+	auto root = sceneManager->getRoot();
+	std::string meshname = "vulkanscene_shadow.gltf";
+	std::shared_ptr<Mesh> mesh = MeshManager::getSingletonPtr()->load(meshname);
+
+	Entity* gltfEntity = sceneManager->createEntity(meshname, meshname);
+	SceneNode* gltfNode = rootNode->createChildSceneNode(meshname);
+	gltfNode->attachObject(gltfEntity);
+
+	auto subMeshCount = mesh->getSubMeshCount();
+
+
+	RaytracingShaderInfo shaderInfo;
+	Handle<HwRaytracingProgram> raytracingHandle;
+	
+	if (0)
+	{
+		shaderInfo.rayTracingShaderName = "rayTracingShadow.hlsl";
+		shaderInfo.rayGenEntryName = "rayGenMain";
+		shaderInfo.rayMissEntryName = "missMain";
+		//shaderInfo.rayShadowEntryName = "shadowMissmain";
+		shaderInfo.rayClosethitEntryName = "closethitMain";
+	}
+	else
+	{
+		shaderInfo.rayGenShaderName = "rayShadowGen.glsl";
+		shaderInfo.rayMissShaderName = "rayShadowMiss.glsl";
+		shaderInfo.rayClosethitShaderName = "rayShadowClosethit.glsl";
+		shaderInfo.rayGenEntryName = "main";
+		shaderInfo.rayMissEntryName = "main";
+		//shaderInfo.rayShadowEntryName = "shadowMissmain";
+		shaderInfo.rayClosethitEntryName = "main";
+	}	
+	raytracingHandle = mRenderSystem->createRaytracingProgram(shaderInfo);
+
+	RayTracingContext context;
+	initRayTracingContext(context, gltfEntity);
+
+	std::vector<GeometryNode> geometryNodes(subMeshCount);
+
+	for (uint32_t i = 0; i < subMeshCount; i++)
+	{
+		SubEntity* subEntity = gltfEntity->getSubEntity(i);
+		IndexDataView* indexView = subEntity->getIndexView();
+		GeometryNode& node = geometryNodes[i];
+		node.vertexOffset = indexView->mBaseVertexLocation;
+		node.indexOffset = indexView->mIndexLocation;
+	}
+	BufferDesc desc{};
+	desc.mBindingType = BufferObjectBinding_Storge;
+	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
+	desc.mElementCount = subMeshCount;
+	desc.mStructStride = sizeof(GeometryNode);
+	desc.mSize = subMeshCount * desc.mStructStride;
+	auto geometryNodesBuffer = mRenderSystem->createBufferObject(desc);
+
+	mRenderSystem->updateBufferObject(geometryNodesBuffer, 
+		(const char*)geometryNodes.data(), desc.mSize);
+	struct UBO
+	{
+		Ogre::Matrix4 viewInverse;
+		Ogre::Matrix4 projInverse;
+		Ogre::Vector4 lightPos;
+		int vertexSize;
+	};
+
+	TextureProperty texProperty;
+	texProperty._width = ogreConfig.width;
+	texProperty._height = ogreConfig.height;
+	texProperty._tex_format = renderWindow->getColorFormat();
+	texProperty._tex_usage = Ogre::TextureUsage::WRITEABLE;
+	auto outPutTarget = mRenderSystem->createRenderTarget("outputTarget", texProperty);
+	OgreTexture* storeImage = outPutTarget->getTarget();
+
+	desc.mBindingType = BufferObjectBinding_Uniform;
+	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+	desc.bufferCreationFlags = 0;
+	desc.mSize = sizeof(UBO);
+	Handle<HwBufferObject> uniformBuffer = mRenderSystem->createBufferObject(desc);
+
+	auto numFrame = ogreConfig.swapBufferCount;
+	mFrameInfoList.resize(numFrame);
+
+
+	DescriptorData descriptorData[10];
+	VertexData* vertexData = mesh->getVertexData();
+	IndexData* indexData = mesh->getIndexData();
+
+	Handle<HwBufferObject> indexBufferHandle = indexData->getHandle();
+
+	Handle<HwBufferObject> vertexBufferHandle = vertexData->getBuffer(0);
+
+	for (auto i = 0; i < numFrame; i++)
+	{
+		Handle<HwDescriptorSet> zeroDescSet = mRenderSystem->createDescriptorSet(raytracingHandle, 0);
+		mFrameInfoList[i].zeroDescSetOfRaytracing = zeroDescSet;
+
+		descriptorData[0].mCount = 1;
+		descriptorData[0].pName = "topLevelAS";
+		descriptorData[0].descriptorType = DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE;
+		descriptorData[0].pAS = context.pTopAS;
+
+		descriptorData[1].mCount = 1;
+		descriptorData[1].pName = "image";
+		descriptorData[1].descriptorType = DESCRIPTOR_TYPE_RW_TEXTURE;
+		descriptorData[1].ppTextures = (const OgreTexture**)&storeImage;
+
+		descriptorData[2].mCount = 1;
+		descriptorData[2].pName = "ubo";
+		descriptorData[2].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[2].ppBuffers = &uniformBuffer;
+
+		descriptorData[3].mCount = 1;
+		descriptorData[3].pName = "vertexDataBuffer";
+		descriptorData[3].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[3].ppBuffers = &vertexBufferHandle;
+
+		descriptorData[4].mCount = 1;
+		descriptorData[4].pName = "indexDataBuffer";
+		descriptorData[4].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[4].ppBuffers = &indexBufferHandle;
+
+		descriptorData[5].mCount = 1;
+		descriptorData[5].pName = "geometryNodes";
+		descriptorData[5].descriptorType = DESCRIPTOR_TYPE_BUFFER;
+		descriptorData[5].ppBuffers = &geometryNodesBuffer;
+
+		mRenderSystem->updateDescriptorSet(zeroDescSet, 6, descriptorData);
+	}
+
+
+	RenderPassCallback rayTracingCallback = [=, this](RenderPassInfo& info) {
+		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
+		auto* frameInfo = getFrameInfo(frameIndex);
+		auto descSet = frameInfo->zeroDescSetOfRaytracing;
+		//rs->beginRenderPass(info);
+		mRenderSystem->bindPipeline(raytracingHandle, &descSet, 1);
+		mRenderSystem->traceRay(raytracingHandle);
+		//rs->endRenderPass(info);
+		{
+			RenderTargetBarrier rtBarriers[] =
+			{
+				{
+					renderWindow->getColorTarget(),
+					RESOURCE_STATE_PRESENT,
+					RESOURCE_STATE_COPY_DEST
+				},
+				{
+					outPutTarget,
+					RESOURCE_STATE_UNORDERED_ACCESS,
+					RESOURCE_STATE_COPY_SOURCE
+				}
+			};
+			mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
+		}
+		ImageCopyDesc copyDesc{};
+		copyDesc.srcSubresource.aspectMask = 0;
+		copyDesc.srcSubresource.baseArrayLayer = 0;
+		copyDesc.srcSubresource.mipLevel = 0;
+		copyDesc.srcSubresource.layerCount = 1;
+
+		copyDesc.dstSubresource.aspectMask = 0;
+		copyDesc.dstSubresource.baseArrayLayer = 0;
+		copyDesc.dstSubresource.mipLevel = 0;
+		copyDesc.dstSubresource.layerCount = 1;
+
+		copyDesc.extent.width = outPutTarget->getWidth();
+		copyDesc.extent.height = outPutTarget->getHeight();
+		copyDesc.extent.depth = 1;
+		mRenderSystem->copyImage(renderWindow->getColorTarget(), outPutTarget, copyDesc);
+
+		{
+			RenderTargetBarrier rtBarriers[] =
+			{
+				{
+					renderWindow->getColorTarget(),
+					RESOURCE_STATE_COPY_DEST,
+					RESOURCE_STATE_PRESENT
+				},
+				{
+					outPutTarget,
+					RESOURCE_STATE_COPY_SOURCE,
+					RESOURCE_STATE_UNORDERED_ACCESS
+				}
+			};
+			mRenderSystem->resourceBarrier(0, nullptr, 0, nullptr, 2, rtBarriers);
+		}
+		};
+
+	auto* cam = gameCamera->getCamera();
+	UpdatePassCallback rayTracingUpdateCallback = [=, this](float delta) {
+		
+		};
+
+	auto rayTracingPass = createUserDefineRenderPass(
+		rayTracingCallback, rayTracingUpdateCallback);
+	renderPipeline->addRenderPass(rayTracingPass);
+
+	gameCamera->setMoveSpeed(1.0f);
+	Ogre::Vector3 camPos(0.0f, 3.0f, -10.0f);
+	Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
+	gameCamera->lookAt(camPos, lookAt);
+	float aspect = ogreConfig.width / (float)ogreConfig.height;
+	Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixRH(
+		Ogre::Math::PI / 3.0f, aspect, 0.1, 512.f);
+	gameCamera->getCamera()->updateProjectMatrix(m);
+	gameCamera->setCameraType(CameraMoveType_LookAt);
+
+	const auto& view = cam->getViewMatrix();
+	const auto& project = cam->getProjectMatrix();
+	UBO ubo;
+	ubo.projInverse = project.transpose().inverse();
+	ubo.viewInverse = view.transpose().inverse();
+
+	ubo.vertexSize = vertexData->getVertexSize(0);
+	ubo.lightPos = Ogre::Vector4(40.0f, -50.0f, 25.0f, 0.0f);
+	mRenderSystem->updateBufferObject(uniformBuffer,
+		(const char*)&ubo, sizeof(ubo));
 }
 
 void RayTracingApp::RayTracingBox(
@@ -1017,6 +1168,7 @@ void RayTracingApp::RayTracingBox(
 	desc.mElementCount = indices.size();
 	desc.mStructStride = sizeof(uint16_t);
 	desc.mSize = desc.mElementCount * desc.mStructStride;
+	desc.raw = true;
 	Handle< HwBufferObject> indexBufferHandle = rs->createBufferObject(desc);
 	rs->updateBufferObject(indexBufferHandle, (const char*)indices.data(), desc.mSize);
 
@@ -1266,8 +1418,17 @@ void RayTracingApp::RayTracingBox(
 			(const char*)&sceneBuffer, sizeof(sceneBuffer));
 		auto* cam = gameCamera->getCamera();
 		UpdatePassCallback rayTracingUpdateCallback = [=, this](float delta) {
-			
-
+			const Ogre::Matrix4& project = cam->getProjectMatrix();
+			const Ogre::Matrix4& view = cam->getViewMatrix();
+			Ogre::Matrix4 viewProj = project * view;
+			SceneConstantBuffer sceneBuffer;
+			sceneBuffer.projectionToWorld = viewProj.transpose().inverse();
+			sceneBuffer.cameraPosition = cam->getDerivedPosition();;
+			sceneBuffer.lightPosition = Ogre::Vector4(0.0f, 1.8f, -3.0f, 1.0f);
+			sceneBuffer.lightAmbientColor = Ogre::Vector4(0.5f, 0.5f, 0.5f, 1.0f);
+			sceneBuffer.lightDiffuseColor = Ogre::Vector4(0.5f, 0.0f, 0.0f, 1.0f);
+			rs->updateBufferObject(uniformBuffer,
+				(const char*)&sceneBuffer, sizeof(sceneBuffer));
 			if (gameCamera->changed())
 			{
 				mUniformData.frame = -1;
@@ -1279,17 +1440,15 @@ void RayTracingApp::RayTracingBox(
 			rayTracingCallback, rayTracingUpdateCallback);
 		renderPipeline->addRenderPass(rayTracingPass);
 
-		gameCamera->setMoveSpeed(1.0f);
-		Ogre::Vector3 camPos(0.0f, 2.0f, -5.0f);
+		gameCamera->setMoveSpeed(100.0f);
+		Ogre::Vector3 camPos(0.0f, 0.0f, -200.0f);
 		Ogre::Vector3 lookAt = Ogre::Vector3::ZERO;
 		gameCamera->lookAt(camPos, lookAt);
 		aspect = ogreConfig.width / (float)ogreConfig.height;
-		fov = Ogre::Math::PI / 4.0f;
-		Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLH(fov, aspect, 1.0f, 125.0f);
-		glm::mat4 kk = glm::perspectiveLH_NO(fov, aspect, 1.0f, 125.0f);
-		
+		fov = Ogre::Math::PI / 3.0f;
+		Ogre::Matrix4 m = Ogre::Math::makePerspectiveMatrixLH(fov, aspect, 1.0f, 1024);
 		gameCamera->getCamera()->updateProjectMatrix(m);
-		gameCamera->setCameraType(CameraMoveType_LookAt);
+		gameCamera->setCameraType(CameraMoveType_FirstPerson);
 }
 
 void RayTracingApp::RayTracingBasic(
@@ -1303,19 +1462,24 @@ void RayTracingApp::RayTracingBasic(
 	auto rootNode = sceneManager->getRoot();
 	auto root = sceneManager->getRoot();
 
-	struct Vertex {
-		float pos[3];
-	};
-	std::vector<Vertex> vertices = {
-		{ {  1.0f,  1.0f, 0.0f } },
-		{ { -1.0f,  1.0f, 0.0f } },
-		{ {  0.0f, -1.0f, 0.0f } }
+	std::vector<BaseVertex> vertices = {
+		{  Ogre::Vector3(1.0f,  1.0f, 0.0f ), Ogre::Vector3(0.0f, 0.0f, 0.0f) },
+		{  Ogre::Vector3(-1.0f,  1.0f, 0.0f),  Ogre::Vector3(0.0f, 0.0f, 0.0f)},
+		{ Ogre::Vector3(0.0f, -1.0f, 0.0f ),  Ogre::Vector3(0.0f, 0.0f, 0.0f)}
 	};
 
 	// Setup indices
-	std::vector<uint32_t> indices = { 0, 1, 2 };
+	std::vector<uint16_t> indices = { 0, 1, 2 };
+
+	std::string meshName = "RayTracingBasic";
+
+	bool create = createManualMesh(meshName, vertices, indices);
+	assert(create);
+	Entity* entity = sceneManager->createEntity(meshName, meshName);
+	SceneNode* entityNode = rootNode->createChildSceneNode(meshName);
+	entityNode->attachObject(entity);
 	uint32_t indexCount = static_cast<uint32_t>(indices.size());
-	uint32_t indexSize = sizeof(uint32_t);
+	uint32_t indexSize = sizeof(uint16_t);
 
 	auto subMeshCount = 1;
 
@@ -1333,122 +1497,8 @@ void RayTracingApp::RayTracingBasic(
 
 	raytracingHandle = rs->createRaytracingProgram(shaderInfo);
 
-
-	AccelerationStructureDesc         asDesc = {};
-	AccelerationStructureGeometryDesc geomDescs[128] = {};
-
-	std::vector<TransformMatrix> transformMatrices;
-	transformMatrices.reserve(subMeshCount);
-
-
-	BufferDesc desc{};
-
-	desc.mBindingType = BufferObjectBinding_Vertex;
-	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT |
-		BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
-	desc.mElementCount = vertices.size();
-	desc.mStructStride = sizeof(Vertex);
-	desc.mSize = desc.mElementCount * desc.mStructStride;
-	Handle< HwBufferObject> vertexBufferHandle = rs->createBufferObject(desc);
-
-	rs->updateBufferObject(vertexBufferHandle, (const char*)vertices.data(), desc.mSize);
-
-	desc.mBindingType = BufferObjectBinding_Index;
-	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT |
-		BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
-	desc.mElementCount = indices.size();
-	desc.mStructStride = indexSize;
-	desc.mSize = desc.mElementCount * desc.mStructStride;
-	Handle< HwBufferObject> indexBufferHandle = rs->createBufferObject(desc);
-	rs->updateBufferObject(indexBufferHandle, (const char*)indices.data(), desc.mSize);
-
-	uint32_t transformSize = sizeof(TransformMatrix) * subMeshCount;
-	desc.mBindingType = BufferObjectBinding_Storge;
-	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
-	desc.mSize = transformSize;
-	desc.mElementCount = subMeshCount;
-	desc.mStructStride = sizeof(TransformMatrix);
-	Handle< HwBufferObject> transformBufferHandle = rs->createBufferObject(desc);
-
-
-	for (uint32_t i = 0; i < subMeshCount; i++)
-	{
-		TransformMatrix transformMatrix = {
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f };
-
-		Ogre::Matrix4 m = Ogre::Matrix4::IDENTITY;
-		transformMatrices.push_back(transformMatrix);
-		geomDescs[i].mFlags = ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
-		geomDescs[i].vertexBufferHandle = vertexBufferHandle;
-		geomDescs[i].mVertexCount = (uint32_t)vertices.size();
-		geomDescs[i].mVertexStride = sizeof(Vertex);
-		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
-		geomDescs[i].indexBufferHandle = indexBufferHandle;
-		geomDescs[i].transformBufferHandle = transformBufferHandle;
-		geomDescs[i].mIndexCount = indices.size();
-		geomDescs[i].mIndexOffset = 0;
-		geomDescs[i].mIndexType = INDEX_TYPE_UINT32;
-	}
-
-	rs->updateBufferObject(transformBufferHandle,
-		(const char*)transformMatrices.data(), transformSize);
-	AccelerationStructure* pSanMiguelBottomAS = nullptr;
-	AccelerationStructure* pSanMiguelAS = nullptr;
-
-
-
-	if (1)
-	{
-		asDesc.mBottom.mDescCount = subMeshCount;
-		asDesc.mBottom.pGeometryDescs = geomDescs;
-		asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
-		asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-
-		rs->addAccelerationStructure(&asDesc, &pSanMiguelBottomAS);
-
-		TransformMatrix transformMatrix = {
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f };
-
-		AccelerationStructureInstanceDesc instanceDesc = {};
-		instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
-		instanceDesc.mInstanceContributionToHitGroupIndex = 0;
-		instanceDesc.mInstanceID = 0;
-		instanceDesc.mInstanceMask = 1;
-		memcpy(instanceDesc.mTransform, &transformMatrix, sizeof(float[12]));
-		instanceDesc.pBottomAS = pSanMiguelBottomAS;
-
-		rs->beginCmd();
-		asDesc = {};
-		asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
-		asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-		asDesc.mTop.mDescCount = 1;
-		asDesc.mTop.pInstanceDescs = &instanceDesc;
-
-		rs->addAccelerationStructure(&asDesc, &pSanMiguelAS);
-		// Build Acceleration Structures
-		RaytracingBuildASDesc buildASDesc = {};
-		buildASDesc.pAccelerationStructure = pSanMiguelBottomAS;
-		buildASDesc.mIssueRWBarrier = true;
-		rs->buildAccelerationStructure(&buildASDesc);
-
-
-		buildASDesc = {};
-		buildASDesc.pAccelerationStructure = pSanMiguelAS;
-
-		rs->buildAccelerationStructure(&buildASDesc);
-		rs->flushCmd(true);
-		rs->removeAccelerationStructureScratch(pSanMiguelBottomAS);
-		rs->removeAccelerationStructureScratch(pSanMiguelAS);
-	}
-
-
+	RayTracingContext context;
+	initRayTracingContext(context, entity);
 
 	TextureProperty texProperty;
 	texProperty._width = ogreConfig.width;
@@ -1468,9 +1518,12 @@ void RayTracingApp::RayTracingBasic(
 	{
 		Ogre::Vector4 albedo;
 	};
+
+	BufferDesc desc{};
 	desc.mBindingType = BufferObjectBinding_Uniform;
 	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
 	desc.bufferCreationFlags = 0;
+	desc.mStartState = RESOURCE_STATE_GENERIC_READ;
 	desc.mSize = sizeof(CameraProperties);
 	auto uniformBuffer = rs->createBufferObject(desc);
 
@@ -1499,7 +1552,7 @@ void RayTracingApp::RayTracingBasic(
 		descriptorData[0].mCount = 1;
 		descriptorData[0].pName = "topLevelAS";
 		descriptorData[0].descriptorType = DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE;
-		descriptorData[0].pAS = pSanMiguelAS;
+		descriptorData[0].pAS = context.pTopAS;
 
 		descriptorData[1].mCount = 1;
 		descriptorData[1].mLevel = 0;
@@ -1515,7 +1568,7 @@ void RayTracingApp::RayTracingBasic(
 		rs->updateDescriptorSet(zeroDescSet, 3, descriptorData);
 	}
 
-
+	int kk = 0;
 	RenderPassCallback rayTracingCallback = [=, this](RenderPassInfo& info) {
 		auto frameIndex = Ogre::Root::getSingleton().getCurrentFrameIndex();
 		auto* frameInfo = getFrameInfo(frameIndex);
@@ -1620,4 +1673,113 @@ void RayTracingApp::RayTracingBasic(
 
 	gameCamera->getCamera()->updateProjectMatrix(m);
 	gameCamera->setCameraType(CameraMoveType_LookAt);
+}
+
+void RayTracingApp::initRayTracingContext(RayTracingContext& context, Ogre::Entity* entity)
+{
+	AccelerationStructureDesc         asDesc = {};
+	AccelerationStructureGeometryDesc geomDescs[128] = {};
+
+	uint32_t subEntityCount = entity->getNumSubEntities();
+
+	std::vector<TransformMatrix> transformMatrices;
+	transformMatrices.reserve(subEntityCount);
+
+	uint32_t transformSize = sizeof(TransformMatrix) * subEntityCount;
+	BufferDesc desc{};
+	desc.mBindingType = BufferObjectBinding_Storge;
+	desc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+	desc.bufferCreationFlags = BUFFER_CREATION_FLAG_ACCELERATION_STRUCTURE_BUILD_INPUT | 
+		BUFFER_CREATION_FLAG_SHADER_DEVICE_ADDRESS;
+	desc.mSize = transformSize;
+	desc.mElementCount = subEntityCount;
+	desc.mStructStride = sizeof(TransformMatrix);
+	Handle< HwBufferObject> transformBufferHandle = mRenderSystem->createBufferObject(desc);
+
+
+	for (uint32_t i = 0; i < subEntityCount; i++)
+	{
+		SubEntity* subEntity = entity->getSubEntity(i);
+		VertexData* vertexData = subEntity->getVertexData();
+		IndexData* indexData = subEntity->getIndexData();
+		auto& mat = subEntity->getMaterial();
+		auto materialFlag = mat->getMaterialFlags();
+
+		
+		const Ogre::Matrix4& subMatrix = subEntity->getModelMatrix();
+		TransformMatrix transformMatrix;
+
+		memcpy(&transformMatrix, (void*)&subMatrix, sizeof(transformMatrix));
+		transformMatrices.push_back(transformMatrix);
+		geomDescs[i].mFlags = (materialFlag & MATERIAL_FLAG_ALPHA_TESTED)
+			? ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION
+			: ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
+		IndexDataView* indexView = subEntity->getIndexView();
+		geomDescs[i].vertexBufferHandle = vertexData->getBuffer(0);
+		geomDescs[i].mVertexCount = (uint32_t)vertexData->getVertexCount();
+		uint32_t stride = vertexData->getVertexSize(0);
+		geomDescs[i].mVertexStride = stride;
+		geomDescs[i].mVertexOffset = indexView->mBaseVertexLocation * stride;
+		geomDescs[i].mVertexElementType = VertexElementType::VET_FLOAT3;
+		geomDescs[i].indexBufferHandle = indexData->getHandle();
+		geomDescs[i].transformBufferHandle = transformBufferHandle;
+		uint32_t indexSize = indexData->getIndexSize();
+		geomDescs[i].mIndexCount = indexView->mIndexCount;
+		geomDescs[i].mIndexOffset = indexView->mIndexLocation * indexSize;
+		geomDescs[i].mIndexType = indexSize==2 ? INDEX_TYPE_UINT16:INDEX_TYPE_UINT32;
+	}
+
+	mRenderSystem->updateBufferObject(transformBufferHandle,
+		(const char*)transformMatrices.data(), transformSize);
+	AccelerationStructure* pBottomAS = nullptr;
+	AccelerationStructure* pTopAS = nullptr;
+
+
+	asDesc.mBottom.mDescCount = subEntityCount;
+	asDesc.mBottom.pGeometryDescs = geomDescs;
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_BOTTOM;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+	mRenderSystem->addAccelerationStructure(&asDesc, &pBottomAS);
+
+	TransformMatrix transformMatrix = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f };
+
+	AccelerationStructureInstanceDesc instanceDesc = {};
+	instanceDesc.mFlags = ACCELERATION_STRUCTURE_INSTANCE_FLAG_NONE;
+	instanceDesc.mInstanceContributionToHitGroupIndex = 0;
+	instanceDesc.mInstanceID = 0;
+	instanceDesc.mInstanceMask = 1;
+	memcpy(instanceDesc.mTransform, &transformMatrix, sizeof(float[12]));
+	instanceDesc.pBottomAS = pBottomAS;
+
+
+	mRenderSystem->beginCmd();
+	asDesc = {};
+	asDesc.mType = ACCELERATION_STRUCTURE_TYPE_TOP;
+	asDesc.mFlags = ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	asDesc.mTop.mDescCount = 1;
+	asDesc.mTop.pInstanceDescs = &instanceDesc;
+
+	mRenderSystem->addAccelerationStructure(&asDesc, &pTopAS);
+
+	// Build Acceleration Structures
+	RaytracingBuildASDesc buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pBottomAS;
+	buildASDesc.mIssueRWBarrier = true;
+	mRenderSystem->buildAccelerationStructure(&buildASDesc);
+
+
+	buildASDesc = {};
+	buildASDesc.pAccelerationStructure = pTopAS;
+
+	mRenderSystem->buildAccelerationStructure(&buildASDesc);
+	mRenderSystem->flushCmd(true);
+	mRenderSystem->removeAccelerationStructureScratch(pBottomAS);
+	mRenderSystem->removeAccelerationStructureScratch(pTopAS);
+
+	context.pTopAS = pTopAS;
+	context.pBottomAS = pBottomAS;
 }

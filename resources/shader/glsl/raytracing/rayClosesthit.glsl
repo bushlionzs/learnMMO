@@ -23,6 +23,8 @@ layout(binding = 3, set = 0) uniform sampler2D samplerImage;
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
 	uint64_t indexBufferDeviceAddress;
+	uint vertexOffset;
+    uint indexOffset;
 	int textureIndexBaseColor;
 	int textureIndexOcclusion;
 };

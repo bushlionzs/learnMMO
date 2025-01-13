@@ -138,7 +138,6 @@ bool hlslToBin(
 		      shaderType == ClosestHitShader)
 	{
 		targetProfile = L"lib_6_5";
-		wEntryPoint.clear();
 	}
 	else
 	{

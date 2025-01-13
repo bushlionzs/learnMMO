@@ -45,7 +45,6 @@ void IndexData::createBuffer(uint32_t indexSize, uint32_t indexCount)
     desc.mSize = indexSize * indexCount;
     if(indexSize == 4)
         desc.raw = true;
-    desc.pName = "IndexBuffer";
     mIndexBufferHandle = rs->createBufferObject(desc);
 }
 

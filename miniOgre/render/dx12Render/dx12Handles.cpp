@@ -57,10 +57,23 @@ DX12BufferObject::DX12BufferObject(
 
     switch (mBufferObjectBinding)
     {
+    case BufferObjectBinding_AccelerationStructure:
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Buffer.NumElements = mByteCount / 4;
+        srvDesc.Buffer.StructureByteStride = 0;
+        srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        srvDesc.RaytracingAccelerationStructure.Location = BufferGPU->GetGPUVirtualAddress();
+        dx12Device->CreateShaderResourceView(nullptr, &srvDesc, cpuHandle);
+    }
+    break;
     case BufferObjectBinding_Vertex:
     case BufferObjectBinding_Index:
     case BufferObjectBinding_Buffer:
-    case BufferObjectBinding_AccelerationStructure:
+    
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -157,7 +170,7 @@ void DX12BufferObject::unlock(ID3D12GraphicsCommandList* cmdList)
     BufferUploader->Unmap(0, &mRange);
     uint32_t size = mRange.End - mRange.Begin;
     auto dstBarrier = CD3DX12_RESOURCE_BARRIER::Transition(BufferGPU.Get(),
-        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+        D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
     cmdList->ResourceBarrier(1, &dstBarrier);
 
     cmdList->CopyBufferRegion(

@@ -52,3 +52,14 @@ void updateFrameData(
     ICamera* camera,
     ICamera* light,
     FrameConstantBuffer& frameConstantBuffer);
+
+struct BaseVertex
+{
+    Ogre::Vector3 position;
+    Ogre::Vector3 normal;
+};
+
+bool createManualMesh(
+    const std::string& name,
+    std::vector<BaseVertex>& vertices,
+    std::vector<uint16_t>& indices);
