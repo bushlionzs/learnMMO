@@ -87,6 +87,19 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
 	
     auto pMesh = new Ogre::Mesh(stream->getName());
 
+    std::vector<uint32_t> sharedIndices;
+    std::vector<GltfVertex> sharedVertexs;
+
+    bool useShared = true;
+    if (useShared)
+    {
+        sharedIndices.reserve(1000000);
+        sharedVertexs.reserve(220000);
+    }
+    
+    uint32_t vertexOffset = 0;
+    uint32_t indexOffset = 0;
+    uint32_t meshIndex = 0;
 	for (auto & mesh :model.meshes)
 	{
 		const tinygltf::Mesh& tm = mesh;
@@ -202,11 +215,14 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 assert(false);
                 continue;
             }
-
-            auto subMesh = pMesh->addSubMesh(false, false);
-
+            
+            auto subMesh = pMesh->addSubMesh(useShared, useShared);
+            subMesh->setUserDefineData((void*)meshIndex);
             std::vector<uint32_t> indices(accessor.count);
-
+            if (accessor.count == 36)
+            {
+                int kk = 0;
+            }
 
             int32_t stride = GetStrideFromFormat(accessor.type, accessor.componentType);
             const char* start = (const char*)buffer.data.data() + bView.byteOffset + accessor.byteOffset;
@@ -216,6 +232,12 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 {
                     uint16_t* data = (uint16_t*)(start + i * stride);
                     indices[i] = *data;
+                    if (useShared)
+                    {
+                        sharedIndices.emplace_back();
+                        sharedIndices.back() = *data;
+                    }
+                    
                 }
             }
             else
@@ -224,12 +246,21 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 {
                     uint32_t* data = (uint32_t*)(start + i * stride);
                     indices[i] = *data;
+                    if (useShared)
+                    {
+                        sharedIndices.emplace_back();
+                        sharedIndices.back() = *data;
+                    }
                 }
             }
-            IndexData* indexData = subMesh->getIndexData();
-      
-            indexData->createBuffer(4, accessor.count);
-            indexData->writeData((const char*)indices.data(), 4 * accessor.count);
+            if (!useShared)
+            {
+                IndexData* indexData = subMesh->getIndexData();
+
+                indexData->createBuffer(4, accessor.count);
+                indexData->writeData((const char*)indices.data(), 4 * accessor.count);
+            }
+            
 
             VertexData* vd = subMesh->getVertexData();
 
@@ -242,27 +273,41 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             
             for (int32_t i = 0; i < positionCount; i++)
             {
+                
                 mVertexBuffer[i].Pos = Ogre::Vector3(gltfPosition[0], gltfPosition[1], gltfPosition[2]);
                 mVertexBuffer[i].Normal = Ogre::Vector3(gltfNormal[0], gltfNormal[1], gltfNormal[2]);
+                if (useShared)
+                {
+                    sharedVertexs.emplace_back();
+                    GltfVertex& vertex = sharedVertexs.back();
+                    vertex.Pos = Ogre::Vector3(gltfPosition[0], gltfPosition[1], gltfPosition[2]);
+                    vertex.Normal = Ogre::Vector3(gltfNormal[0], gltfNormal[1], gltfNormal[2]);
+                }
                 
                 gltfPosition += 3;
                 gltfNormal += 3;
                 if (gltfTexture)
                 {
                     mVertexBuffer[i].TexC = Ogre::Vector2(gltfTexture[0], gltfTexture[1]);
+                    
+                    if (useShared)
+                    {
+                        GltfVertex& vertex = sharedVertexs.back();
+                        vertex.TexC = Ogre::Vector2(gltfTexture[0], gltfTexture[1]);
+                    }
                     gltfTexture += 2;
                 }
             }
             vd->setVertexCount(positionCount);
-
-            uint32_t binding = 0;
-            vd->addBindBuffer(binding, sizeof(GltfVertex), mVertexBuffer.size());
-            vd->writeBindBufferData(binding, (const char*)mVertexBuffer.data(), mVertexBuffer.size() * sizeof(GltfVertex));
-
-            vd->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
-            vd->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
-            vd->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
-
+            if (!useShared)
+            {
+                uint32_t binding = 0;
+                vd->addBindBuffer(binding, sizeof(GltfVertex), mVertexBuffer.size());
+                vd->writeBindBufferData(binding, (const char*)mVertexBuffer.data(), mVertexBuffer.size() * sizeof(GltfVertex));
+                vd->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
+                vd->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
+                vd->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
+            }
             std::vector<VertexBoneAssignment> assignInfoList;
      
             assignInfoList.reserve(10000);
@@ -366,7 +411,11 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
             
             const tinygltf::Material& tinyMat = model.materials[prim.material];
             
-           // sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("SKINNED", "1"));
+            if (!assignInfoList.empty())
+            {
+                sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("SKINNED", "1"));
+            }
+           
             std::shared_ptr<Ogre::Material> mat = std::make_shared<Ogre::Material>(tinyMat.name, true);
 
             PbrMaterialConstanceBuffer& matInfo = mat->getPbrMatInfo();
@@ -448,14 +497,37 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
 
             sinfo.shaderMacros.push_back(std::pair<std::string, std::string>("PBR", "1"));
             mat->addShader(sinfo);
-
-            subMesh->addIndexs(indices.size(), 0, 0);
+            
+            if (useShared)
+            {
+                subMesh->addIndexs(accessor.count, indexOffset, vertexOffset);
+                indexOffset += accessor.count;
+                vertexOffset += positionCount;
+            }
+            else
+            {
+                subMesh->addIndexs(indices.size(), 0, 0);
+            }
             subMesh->setMaterial(mat);
             Ogre::Material* tmp = mat.get();
             tmp->preLoad();
 		}
+        meshIndex++;
 	}
 
+    if (useShared)
+    {
+        VertexData* vertexData = pMesh->getVertexData();
+        vertexData->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
+        vertexData->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
+        vertexData->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
+        vertexData->setVertexCount(sharedVertexs.size());
+        vertexData->addBindBuffer(sizeof(GltfVertex), sharedVertexs.size());
+        vertexData->writeBindBufferData(0, (const char*)sharedVertexs.data(), sizeof(GltfVertex)* sharedVertexs.size());
+        IndexData* indexData = pMesh->getIndexData();
+        indexData->createBuffer(4, sharedIndices.size());
+        indexData->writeData((const char*)sharedIndices.data(), sharedIndices.size() * 4);
+    }
     const tinygltf::Scene& scene = model.scenes[model.defaultScene > -1 ? model.defaultScene : 0];
     for (size_t i = 0; i < scene.nodes.size(); i++) 
     {
@@ -501,6 +573,18 @@ void GltfLoader::TraverseNode(
         current.rotation.w = rotationData[3];
     }
 
+    if (!node.scale.empty())
+    {
+        current.scale.x = node.scale[0];
+        current.scale.y = node.scale[1];
+        current.scale.z = node.scale[2];
+    }
+
+    if (!node.matrix.empty())
+    {
+        int kk = 0;
+    }
+
     if (node.children.size() > 0) {
         for (auto i = 0; i < node.children.size(); i++) {
             TraverseNode(mesh, &current, model.nodes[node.children[i]], model);
@@ -521,15 +605,30 @@ void GltfLoader::TraverseNode(
             p = p->parent;
         }
 
-        auto q = m.extractQuaternion();
+        Ogre::Vector3 translation;
+        Ogre::Vector3 scale;
+        Ogre::Quaternion q;
+        m.decomposition(translation, scale, q);
+        /*auto q = m.extractQuaternion();
         auto translation = m.getTrans();
-        auto scale = Ogre::Vector3(1.0f);
+        auto scale = Ogre::Vector3(1.0f);*/
+        if (scale.y < 0.2)
+        {
+            int kk = 0;
+        }
 
-        auto subMesh = mesh->getSubMesh(node.mesh);
-
-        subMesh->setPosition(translation);
-        subMesh->setRotate(q);
-        subMesh->setScale(scale);
+        uint32_t subMeshCount = mesh->getSubMeshCount();
+        for (uint32_t i = 0; i < subMeshCount; i++)
+        {
+            auto subMesh = mesh->getSubMesh(i);
+            uint32_t meshIndex = (uint32_t)subMesh->getUserDefineData();
+            if (meshIndex == node.mesh)
+            {
+                subMesh->setPosition(translation);
+                subMesh->setRotate(q);
+                subMesh->setScale(scale);
+            }
+        }
     }
 }
 

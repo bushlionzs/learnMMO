@@ -44,7 +44,7 @@ void BasicApplication::setup(
 	mRenderWindow = renderWindow;
 	mRenderSystem = renderSystem;
 	mRenderPipeline = renderPipeline;
-	base3();
+	base2();
 }
 
 void BasicApplication::update(float delta)
@@ -120,6 +120,7 @@ void BasicApplication::base1()
 void BasicApplication::base2()
 {
 	std::string name = "Â¥À¼ÕÊÅñ04.mesh";
+	name = "vulkanscene_shadow.gltf";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = mSceneManager->getRoot()->createChildSceneNode("root");
@@ -127,13 +128,15 @@ void BasicApplication::base2()
 	Entity* sphere = mSceneManager->createEntity("sphere", name);
 	SceneNode* spherenode = root->createChildSceneNode("sphere");
 
+	sphere->setMaterialName("myrect");
+
 	spherenode->attachObject(sphere);
 
 	mGameCamera->lookAt(
-		Ogre::Vector3(1000, 0.0, 0.0f), 
+		Ogre::Vector3(0.0f, 3.0f, 15.0f),
 		Ogre::Vector3(0.0f, 0.0f, 0.0f));
 	mGameCamera->setMoveSpeed(200);
-
+	mGameCamera->setCameraType(CameraMoveType_LookAt);
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	float aspectInverse = ogreConfig.height / (float)ogreConfig.width;
 
@@ -148,7 +151,7 @@ void BasicApplication::base2()
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
-		m = Ogre::Math::makePerspectiveMatrix(
+		m = Ogre::Math::makePerspectiveMatrixRH(
 			Ogre::Math::PI / 2.0f, aspect, 0.1, 2000);
 	}
 	mGameCamera->getCamera()->updateProjectMatrix(m);

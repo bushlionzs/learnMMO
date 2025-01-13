@@ -17,8 +17,12 @@ layout(location = 0) rayPayloadInEXT vec3 hitValue;
 layout(location = 2) rayPayloadEXT bool shadowed;
 hitAttributeEXT vec2 attribs;
 
+#include "glslBase.glsl"
+
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 3, set = 0) uniform sampler2D samplerImage;
+
+
 
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
@@ -32,6 +36,17 @@ layout(binding = 4, set = 0) buffer GeometryNodes { GeometryNode nodes[]; } geom
 
 layout(binding = 5, set = 0) uniform sampler2D textures[256];
 
+layout (std430, UPDATE_FREQ_NONE, binding = 6) readonly buffer vertexDataBufferStruct
+{
+	uint vertexDataBuffer_data[];
+}vertexDataBuffer;
+
+
+layout (std430, UPDATE_FREQ_NONE, binding = 7) readonly buffer indexDataBufferStruct
+{
+	uint indexDataBuffer_data[];
+}indexDataBuffer;
+
 #include "bufferreferences.glsl"
 #include "geometrytypes.glsl"
 
@@ -41,8 +56,13 @@ void main()
 	hitValue = vec3(tri.normal);
 
 	GeometryNode geometryNode = geometryNodes.nodes[gl_GeometryIndexEXT];
-
-	vec3 color = texture(textures[nonuniformEXT(geometryNode.textureIndexBaseColor)], tri.uv).rgb;
+	
+	vec3 color = vec3(0.2, 0.0, 0.0);
+	if(geometryNode.textureIndexBaseColor > -1)
+	{
+	    color = texture(textures[nonuniformEXT(geometryNode.textureIndexBaseColor)], tri.uv).rgb;
+	}
+	
 	if (geometryNode.textureIndexOcclusion > -1) {
 		float occlusion = texture(textures[nonuniformEXT(geometryNode.textureIndexOcclusion)], tri.uv).r;
 		color *= occlusion;

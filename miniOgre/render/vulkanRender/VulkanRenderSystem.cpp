@@ -492,7 +492,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         // Second shader for shadows
 
         resInfo = ResourceManager::getSingleton().getResource(rayShadowShaderName);
-        if (resInfo && !shaderInfo.rayShadowEntryName.empty() && false)
+        if (resInfo && !shaderInfo.rayShadowEntryName.empty())
         {
             get_file_content(resInfo->_fullname.c_str(), content);
             glslCompileShader(resInfo->_fullname, content, shaderInfo.rayShadowEntryName, shaderMacros, shaderModuleInfo);
@@ -530,7 +530,8 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
         shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
         shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
         shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        
+        shaderGroups.push_back(shaderGroup);
+
         resInfo = ResourceManager::getSingleton().getResource(rayAnyHitShaderName);
         if (resInfo && !shaderInfo.rayAnyHitEntryName.empty())
         {
@@ -548,7 +549,7 @@ Handle<HwRaytracingProgram> VulkanRenderSystem::createRaytracingProgram(
             shaderGroup.anyHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
         }
        
-        shaderGroups.push_back(shaderGroup);
+       
     }
    
     vulkanProgram->updateDescriptorInfo(bindingMap);

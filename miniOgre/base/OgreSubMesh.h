@@ -78,6 +78,15 @@ namespace Ogre {
             return mIndexBuffer;
         }
 
+        void setUserDefineData(void* data)
+        {
+            mUserDefineData = data;
+        }
+
+        void* getUserDefineData()
+        {
+            return mUserDefineData;
+        }
     private:
         VertexDeclaration* mVetexDeclaration;
         VertexData* mVertexData;
@@ -102,5 +111,7 @@ namespace Ogre {
         IndexBuffer* mIndexBuffer = nullptr;
 
         std::vector<VertexBoneAssignment> mBoneAssignments;
+
+        void* mUserDefineData;
     };
 }

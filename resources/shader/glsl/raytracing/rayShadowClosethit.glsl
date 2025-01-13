@@ -16,6 +16,7 @@ CBUFFER(UBO, UPDATE_FREQ_NONE, b2, binding = 2)
 	mat4 projInverse;
 	float4 lightPos;
 	int vertexSize;
+	int frame;
 }ubo;
 
 
@@ -31,14 +32,6 @@ layout (std430, UPDATE_FREQ_NONE, binding = 4) readonly buffer indexDataBufferSt
 	uint indexDataBuffer_data[];
 }indexDataBuffer;
 
-struct Vertex
-{
-  vec3 pos;
-  vec3 normal;
-  vec4 color;
- };
-
-
 
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
@@ -48,8 +41,6 @@ struct GeometryNode {
 	int textureIndexBaseColor;
 	int textureIndexOcclusion;
 };
-
-
 
 
 layout (std430, UPDATE_FREQ_NONE, binding = 5) readonly buffer geometryNodesStruct
@@ -64,52 +55,71 @@ float4 LoadVertexPosition(uint vtxIndex, uint offset)
 }
 
 
-uint3 LoadIndex(uint index)
+uint LoadIndex(uint index)
 {
-    uint3 aa = LoadByte3(indexDataBuffer.indexDataBuffer_data, index * 4);
+    uint aa = LoadByte(indexDataBuffer.indexDataBuffer_data, index * 4);
 	return aa;
 }
 
-
-Vertex unpack(uint index)
+struct Vertex
 {
+  vec3 pos;
+  vec3 normal;
+  vec2 uv;
+  vec4 color;
+};
 
-	float4 d0 = LoadVertexPosition(index, 0);
-	float4 d1 = LoadVertexPosition(index, 16);
+struct Triangle {
+	Vertex vertices[3];
+	vec3 normal;
+	vec2 uv;
+};
 
-	Vertex v;
-	v.pos = d0.xyz;
-	v.normal = vec3(d0.w, d1.x, d1.y);
-	v.color = vec4(0.5, 0.0, 0.0, 1.0);
+Triangle unpackTriangle(uint index, int vertexSize) {
+	Triangle tri;
+	uint triIndex = index * 3;
 
-	return v;
+	GeometryNode geometryNode = geometryNodes.geometryNodesBuffer_data[gl_GeometryIndexEXT];
+
+    triIndex += geometryNode.indexOffset;
+	// Unpack vertices
+	// Data is packed as vec4 so we can map to the glTF vertex structure from the host side
+	// We match vkglTF::Vertex: pos.xyz+normal.x, normalyz+uv.xy
+	// glm::vec3 pos;
+	// glm::vec3 normal;
+	// glm::vec2 uv;
+	// ...
+	for (uint i = 0; i < 3; i++) {
+		uint vtxIndex = LoadIndex(triIndex + i);
+		vtxIndex += geometryNode.vertexOffset;
+		vec4 d0 = LoadVertexPosition(vtxIndex, 0);
+		vec4 d1 = LoadVertexPosition(vtxIndex, 16);
+		tri.vertices[i].pos = d0.xyz;
+		tri.vertices[i].normal = vec3(d0.w, d1.xy);
+		tri.vertices[i].uv = d1.zw;
+	}
+	// Calculate values at barycentric coordinates
+	vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
+	tri.uv = tri.vertices[0].uv * barycentricCoords.x + tri.vertices[1].uv * barycentricCoords.y + tri.vertices[2].uv * barycentricCoords.z;
+	tri.normal = tri.vertices[0].normal * barycentricCoords.x + tri.vertices[1].normal * barycentricCoords.y + tri.vertices[2].normal * barycentricCoords.z;
+	tri.vertices[0].color = vec4(1.0, 1.0, 1.0, 1.0);
+	return tri;
 }
 
 void main()
 {
-    uint geometryIndex = gl_GeometryIndexEXT;
+	Triangle tri = unpackTriangle(gl_PrimitiveID, 112);
 	
-	uint indexOffset = geometryNodes.geometryNodesBuffer_data[geometryIndex].indexOffset;
 	
-	uint index_ = 3 * gl_PrimitiveID + indexOffset;
-	
-	uint3 index = LoadIndex(index_);
-	
-	uint vertexOffset = geometryNodes.geometryNodesBuffer_data[geometryIndex].vertexOffset;
-	
-	Vertex v0 = unpack(index.x + vertexOffset);
-	Vertex v1 = unpack(index.y + vertexOffset);
-	Vertex v2 = unpack(index.z + vertexOffset);
+	Vertex v0 = tri.vertices[0];
 
-	// Interpolate normal
-	const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
-	vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
 
 	// Basic lighting
 	vec3 lightVector = normalize(ubo.lightPos.xyz);
-	float dot_product = max(dot(lightVector, normal), 0.2);
+	float dot_product = max(dot(lightVector, tri.normal), 0.2);
+	//dot_product = 1.0f;
 	hitValue = v0.color.rgb * dot_product;
- 
+    return;
 	// Shadow casting
 	float tmin = 0.001;
 	float tmax = 10000.0;

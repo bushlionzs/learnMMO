@@ -42,17 +42,21 @@ struct PathTracingData
 	float  mRandomSeed;
 };
 
+struct UBO
+{
+	Ogre::Matrix4 viewInverse;
+	Ogre::Matrix4 projInverse;
+	Ogre::Vector4 lightPos;
+	int vertexSize;
+	int frame;
+};
+
 struct PropData
 {
 	uint32_t  mMaterialCount = 0;
 	Ogre::Matrix4      mWorldMatrix;
 };
 
-struct UniformData {
-	Ogre::Matrix4 viewInverse;
-	Ogre::Matrix4 projInverse;
-	uint32_t frame{ 0 };
-} ;
 
 struct GeometryNode {
 	uint64_t vertexBufferDeviceAddress;
@@ -68,6 +72,10 @@ struct RayTracingContext
 {
 	AccelerationStructure* pBottomAS = nullptr;
 	AccelerationStructure* pTopAS = nullptr;
+	Handle<HwBufferObject> geometryNodesBuffer;
+	Handle<HwBufferObject> uniformBuffer;
+	Ogre::RenderTarget* outputTarget;
+	std::vector<OgreTexture*> textureList;
 };
 
 class RayTracingApp
@@ -146,8 +154,9 @@ private:
 
 	PropData sanMiguelProp;
 	GameCamera* mGameCamera;
-	UniformData mUniformData;
 	GeometryNode mGeometryNode;
 
+	Ogre::RenderWindow* mRenderWindow;
 	RenderSystem* mRenderSystem;
+	RayTracingContext context;
 };

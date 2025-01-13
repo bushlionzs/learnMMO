@@ -504,6 +504,10 @@ void renderScene(
         userDefineShader->drawCallback(frameIndex, r);
     }
 
+    auto& kk = renderList.back();
+
+    const auto& modelMatrix = kk->getModelMatrix();
+
     for (auto r : renderList)
     {
         break;

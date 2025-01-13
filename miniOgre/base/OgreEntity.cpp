@@ -266,7 +266,10 @@ namespace Ogre {
             std::shared_ptr<Material> newMat = mat->clone(newMatName);
 
             SubEntity* subEnt = createSubEntity(subMesh);
-
+            if (i == 5)
+            {
+                int kk = 0;
+            }
             const Ogre::Vector3& position = subMesh->getPosition();
             const Ogre::Vector3& scale = subMesh->getScale();
             const Ogre::Quaternion& q = subMesh->getRotate();
