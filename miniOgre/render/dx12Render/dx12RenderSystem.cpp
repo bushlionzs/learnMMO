@@ -204,7 +204,7 @@ void Dx12RenderSystem::addAccelerationStructure(
             pGeomD3D12->Triangles.VertexBuffer.StrideInBytes = pGeom->mVertexStride;
             pGeomD3D12->Triangles.VertexCount = pGeom->mVertexCount;
             pGeomD3D12->Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-            pGeomD3D12->Triangles.Transform3x4 = 0;
+            pGeomD3D12->Triangles.Transform3x4 = getBufferDeviceAddress(pGeom->transformBufferHandle) + j * 48;
         }
         /************************************************************************/
         // Get the size requirement for the Acceleration Structures

@@ -38,7 +38,7 @@ bool DX12RayTracingProgramImpl::load(const RaytracingShaderInfo& shaderInfo)
 bool DX12RayTracingProgramImpl::loadhlsl(const RaytracingShaderInfo& shaderInfo)
 {
     {
-        String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayGenShaderName);
+        String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayTracingShaderName);
         hlslToBin(shaderInfo.rayGenShaderName, *content, shaderInfo.rayGenEntryName,
             shaderInfo.shaderMacros, Ogre::RayGenShader, mRayTracingCode, false);
     }
@@ -241,7 +241,7 @@ void DX12RayTracingProgramImpl::createRaytracingPipelineStateObject(
     hitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
 
     auto shaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
-    UINT payloadSize = sizeof(Ogre::Vector4);    // float4 pixelColor
+    UINT payloadSize = sizeof(Ogre::Vector4) * 2;    // float4 pixelColor
     UINT attributeSize = sizeof(Ogre::Vector2);  // float2 barycentrics
     shaderConfig->Config(payloadSize, attributeSize);
 
