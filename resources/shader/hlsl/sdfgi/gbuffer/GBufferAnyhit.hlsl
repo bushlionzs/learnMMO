@@ -18,7 +18,7 @@ void AHS_PRIMARY(inout PackedPayload payload, BuiltInTriangleIntersectionAttribu
 {
     // Load the intersected mesh geometry's data
     GeometryData geometry;
-    GetGeometryData(InstanceID(), GeometryIndex(), geometry);
+    GetGeometryData(GeometryIndex(), geometry);
 
     // Load the material
     Material material = GetMaterial(geometry);

@@ -72,84 +72,86 @@ Payload UnpackPayload(PackedPayload input)
 /**
  * Load a triangle's indices.
  */
-uint3 LoadIndices(uint meshIndex, uint primitiveIndex, GeometryData geometry)
+uint3 LoadIndices(uint geometryIndex, uint primitiveIndex, GeometryData geometry)
 {
-    uint address = geometry.indexByteAddress + (primitiveIndex * 3) * 4;  // 3 indices per primitive, 4 bytes for each index
-    return GetIndexBuffer(meshIndex).Load3(address); // Mesh index buffers start at index 4 and alternate with vertex buffer pointers
+    uint index = primitiveIndex * 3 + geometry.indexOffset;
+    return GetIndexBuffer(geometryIndex).Load3(index * 4); 
 }
 
 /**
  * Load a triangle's vertex data (all: position, normal, tangent, uv0).
  */
-void LoadVertices(uint meshIndex, uint primitiveIndex, GeometryData geometry, out Vertex vertices[3])
+void LoadVertices(uint geometryIndex, uint primitiveIndex, GeometryData geometry, out Vertex vertices[3])
 {
     // Get the indices
-    uint3 indices = LoadIndices(meshIndex, primitiveIndex, geometry);
+    uint3 indices = LoadIndices(geometryIndex, primitiveIndex, geometry);
 
     // Load the vertices
     uint address;
+	
+	ByteAddressBuffer vertexBuffer = GetVertexBuffer(geometryIndex);
     for (uint i = 0; i < 3; i++)
     {
         vertices[i] = (Vertex)0;
-        address = geometry.vertexByteAddress + (indices[i] * 12) * 4;  // Vertices contain 12 floats / 48 bytes
+        address = (indices[i] + geometry.vertexOffset) * 48;
 
         // Load the position
-        vertices[i].position = asfloat(GetVertexBuffer(meshIndex).Load3(address));
+        vertices[i].position = asfloat(vertexBuffer.Load3(address));
         address += 12;
 
         // Load the normal
-        vertices[i].normal = asfloat(GetVertexBuffer(meshIndex).Load3(address));
+        vertices[i].normal = asfloat(vertexBuffer.Load3(address));
         address += 12;
 
         // Load the tangent
-        vertices[i].tangent = asfloat(GetVertexBuffer(meshIndex).Load4(address));
+        vertices[i].tangent = asfloat(vertexBuffer.Load4(address));
         address += 16;
 
         // Load the texture coordinates
-        vertices[i].uv0 = asfloat(GetVertexBuffer(meshIndex).Load2(address));
+        vertices[i].uv0 = asfloat(vertexBuffer.Load2(address));
     }
 }
 
 /**
  * Load a triangle's vertex data (only position and uv0).
  */
-void LoadVerticesPosUV0(uint meshIndex, uint primitiveIndex, GeometryData geometry, out Vertex vertices[3])
+void LoadVerticesPosUV0(uint geometryIndex, uint primitiveIndex, GeometryData geometry, out Vertex vertices[3])
 {
     // Get the indices
-    uint3 indices = LoadIndices(meshIndex, primitiveIndex, geometry);
+    uint3 indices = LoadIndices(geometryIndex, primitiveIndex, geometry);
 
     // Load the vertices
     uint address;
     for (uint i = 0; i < 3; i++)
     {
         vertices[i] = (Vertex)0;
-        address = geometry.vertexByteAddress + (indices[i] * 12) * 4;  // Vertices contain 12 floats / 48 bytes
+        address = (geometry.vertexOffset + indices[i]) * 48;
 
         // Load the position
-        vertices[i].position = asfloat(GetVertexBuffer(meshIndex).Load3(address));
+        vertices[i].position = asfloat(GetVertexBuffer(geometryIndex).Load3(address));
         address += 40; // skip normal and tangent
 
         // Load the texture coordinates
-        vertices[i].uv0 = asfloat(GetVertexBuffer(meshIndex).Load2(address));
+        vertices[i].uv0 = asfloat(GetVertexBuffer(geometryIndex).Load2(address));
     }
 }
 
 /**
  * Load (only) a triangle's texture coordinates and return the barycentric interpolated texture coordinates.
  */
-float2 LoadAndInterpolateUV0(uint meshIndex, uint primitiveIndex, GeometryData geometry, float3 barycentrics)
+float2 LoadAndInterpolateUV0(uint geometryIndex, uint primitiveIndex, GeometryData geometry, float3 barycentrics)
 {
     // Get the triangle indices
-    uint3 indices = LoadIndices(meshIndex, primitiveIndex, geometry);
+    uint3 indices = LoadIndices(geometryIndex, primitiveIndex, geometry);
 
     // Interpolate the texture coordinates
     int address;
     float2 uv0 = float2(0.f, 0.f);
     for (uint i = 0; i < 3; i++)
     {
-        address = geometry.vertexByteAddress + (indices[i] * 12) * 4;  // 12 floats (3: pos, 3: normals, 4:tangent, 2:uv0)
-        address += 40;                                                // 40 bytes (10 * 4): skip position, normal, and tangent
-        uv0 += asfloat(GetVertexBuffer(meshIndex).Load2(address)) * barycentrics[i];
+        address = (geometry.vertexOffset + indices[i]) * 48;
+        address += 40;                                                
+        uv0 += asfloat(GetVertexBuffer(geometryIndex).Load2(address)) * barycentrics[i];
     }
 
     return uv0;

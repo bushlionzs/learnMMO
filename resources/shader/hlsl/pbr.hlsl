@@ -266,7 +266,7 @@ float4 PS(VertexOut pin) : SV_Target
 		}
 	}
 #else
-    float4 baseColor = vec4(0.04f, 0.04f, 0.04f, 1.0f);
+    float4 baseColor = float4(0.04f, 0.04f, 0.04f, 1.0f);
 #endif
     float3 f0 = float3(0.04, 0.04, 0.04);
 	

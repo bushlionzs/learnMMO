@@ -81,7 +81,7 @@ VK_BINDING(11, 0) RaytracingAccelerationStructure            TLAS[]             
 VK_BINDING(12, 1) Texture2D                                  Tex2D[]             : register(t7, space1);
 VK_BINDING(13, 2) Texture2DArray                             Tex2DArray[]        : register(t7, space2);
 VK_BINDING(14, 3) ByteAddressBuffer                          ByteAddrBuffer[]    : register(t7, space3);
-
+VK_BINDING(15, 0) StructuredBuffer<GeometryData>             GeometryDatas       : register(t8, space0);
 // Defines for Convenience ----------------------------------------------------------------------------------
 
 #define PT_OUTPUT_INDEX 0
@@ -103,7 +103,7 @@ VK_BINDING(14, 3) ByteAddressBuffer                          ByteAddrBuffer[]   
 #define SPHERE_VERTEX_BUFFER_INDEX 1
 #define MESH_OFFSETS_INDEX 2
 #define GEOMETRY_DATA_INDEX 3
-#define GEOMETRY_BUFFERS_INDEX 4
+#define GEOMETRY_BUFFERS_INDEX 2
 
 // Sampler Accessor Functions ------------------------------------------------------------------------------
 
@@ -117,16 +117,12 @@ SamplerState GetAnisoWrapSampler() { return Samplers[2]; }
 
 StructuredBuffer<Light> GetLights() { return Lights; }
 
-void GetGeometryData(uint meshIndex, uint geometryIndex, out GeometryData geometry)
+void GetGeometryData(uint geometryIndex, out GeometryData geometry)
 {
-    uint address = ByteAddrBuffer[MESH_OFFSETS_INDEX].Load(meshIndex * 4); // address of the Mesh in the GeometryData buffer
-    address += geometryIndex * 12; // offset to mesh primitive geometry, GeometryData stride is 12 bytes
-
-    geometry.materialIndex = ByteAddrBuffer[GEOMETRY_DATA_INDEX].Load(address);
-    geometry.indexByteAddress = ByteAddrBuffer[GEOMETRY_DATA_INDEX].Load(address + 4);
-    geometry.vertexByteAddress = ByteAddrBuffer[GEOMETRY_DATA_INDEX].Load(address + 8);
+    geometry = GeometryDatas[geometryIndex];
 }
-Material GetMaterial(GeometryData geometry) { return Materials[geometry.materialIndex]; }
+
+Material GetMaterial(GeometryData geometry) { return Materials[GeometryIndex()]; }
 
 StructuredBuffer<DDGIVolumeDescGPUPacked> GetDDGIVolumeConstants(uint index) { return DDGIVolumes; }
 StructuredBuffer<DDGIVolumeResourceIndices> GetDDGIVolumeResourceIndices(uint index) { return DDGIVolumeBindless; }

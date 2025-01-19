@@ -22,11 +22,11 @@ void CHS_PRIMARY(inout PackedPayload packedPayload, BuiltInTriangleIntersectionA
 
     // Load the intersected mesh geometry's data
     GeometryData geometry;
-    GetGeometryData(InstanceID(), GeometryIndex(), geometry);
+    GetGeometryData(GeometryIndex(), geometry);
 
     // Load the triangle's vertices
     Vertex vertices[3];
-    LoadVertices(InstanceID(), PrimitiveIndex(), geometry, vertices);
+    LoadVertices(GeometryIndex(), PrimitiveIndex(), geometry, vertices);
 
     // Interpolate the triangle's attributes for the hit location (position, normal, tangent, texture coordinates)
     float3 barycentrics = float3((1.f - attrib.barycentrics.x - attrib.barycentrics.y), attrib.barycentrics.x, attrib.barycentrics.y);

@@ -25,9 +25,11 @@ struct GeometryNode {
 
 RES(Buffer(GeometryNode), geometryNodes, UPDATE_FREQ_NONE, t5, VKBINDING(5, 0));
 
-RES(ByteBuffer, vertexDataBuffer, UPDATE_FREQ_NONE, t6, VKBINDING(6, 0));
 
-RES(ByteBuffer, indexDataBuffer, UPDATE_FREQ_NONE, t7, VKBINDING(7, 0));
+VKBINDING(6, 0) ByteAddressBuffer     vertexDataBuffer[]    : register(t6, space0);
+
+VKBINDING(7, 0) ByteAddressBuffer     indexDataBuffer[]    : register(t7, space0);
+
 
 struct Payload
 {
@@ -66,14 +68,16 @@ void rayGenMain()
 
 float4 LoadVertexPosition(uint vtxIndex, uint offset)
 {
-    uint4 aa = LoadByte4(vertexDataBuffer, vtxIndex * ubo.vertexSize + offset);
+    uint geometryIndex = GeometryIndex();
+    uint4 aa = LoadByte4(vertexDataBuffer[geometryIndex], vtxIndex * ubo.vertexSize + offset);
     return asfloat(aa).xyzw;
 }
 
 
 uint LoadIndex(uint index)
 {
-    uint aa = LoadByte(indexDataBuffer, index * 4);
+    uint geometryIndex = GeometryIndex();
+    uint aa = LoadByte(indexDataBuffer[geometryIndex], index * 4);
 	return aa;
 }
 
@@ -126,7 +130,6 @@ Triangle unpackTriangle(uint index, Attributes attribs) {
 [shader("closesthit")]
 void closethitMain(inout Payload payload, in Attributes attribs)
 {
-    ByteBuffer aa = 1234;
     Triangle tri = unpackTriangle(PrimitiveIndex(), attribs);
 	
 	

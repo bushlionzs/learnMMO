@@ -92,9 +92,8 @@ struct Vertex
 
 struct GeometryData
 {
-	uint materialIndex;
-	uint indexByteAddress;
-	uint vertexByteAddress;
+	uint vertexOffset;
+    uint indexOffset;
 };
 
 struct Camera
