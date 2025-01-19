@@ -50,7 +50,7 @@ layout (std430, UPDATE_FREQ_NONE, binding = 5) readonly buffer geometryNodesStru
 
 float4 LoadVertexPosition(uint vtxIndex, uint offset)
 {
-    uint4 aa = LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * 32 + offset);
+    uint4 aa = LoadByte4(vertexDataBuffer.vertexDataBuffer_data, vtxIndex * ubo.vertexSize + offset);
     return asfloat(aa).xyzw;
 }
 
@@ -75,7 +75,7 @@ struct Triangle {
 	vec2 uv;
 };
 
-Triangle unpackTriangle(uint index, int vertexSize) {
+Triangle unpackTriangle(uint index) {
 	Triangle tri;
 	uint triIndex = index * 3;
 
@@ -108,7 +108,7 @@ Triangle unpackTriangle(uint index, int vertexSize) {
 
 void main()
 {
-	Triangle tri = unpackTriangle(gl_PrimitiveID, 112);
+	Triangle tri = unpackTriangle(gl_PrimitiveID);
 	
 	
 	Vertex v0 = tri.vertices[0];
@@ -117,16 +117,17 @@ void main()
 	// Basic lighting
 	vec3 lightVector = normalize(ubo.lightPos.xyz);
 	float dot_product = max(dot(lightVector, tri.normal), 0.2);
-	//dot_product = 1.0f;
+
 	hitValue = v0.color.rgb * dot_product;
-    return;
+
 	// Shadow casting
 	float tmin = 0.001;
 	float tmax = 10000.0;
 	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 	shadowed = true;  
 	// Trace shadow ray and offset indices to match shadow hit/miss shader group indices
-	traceRayEXT(topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT, 0xFF, 0, 0, 1, origin, tmin, lightVector, tmax, 2);
+	uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+	traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 1, origin, tmin, lightVector, tmax, 2);
 	if (shadowed) {
 		hitValue *= 0.3;
 	}

@@ -64,6 +64,14 @@ namespace Ogre
 				z + scalar);
 		}
 
+		inline Vector3i operator -  (const uint32_t scalar) const
+		{
+			return Vector3i(
+				x - scalar,
+				y - scalar,
+				z - scalar);
+		}
+
 		inline Vector3i& operator = (const Vector3i& other)
 		{
 			x = other.x;
@@ -111,6 +119,36 @@ namespace Ogre
 				x % other.x,
 				y % other.y,
 				z % other.z);
+		}
+
+		inline int32_t operator [] (const size_t i) const
+		{
+			assert(i < 3);
+
+			if (i == 0)
+			{
+				return x;
+			}
+			else if (i == 1)
+			{
+				return y;
+			}
+			return z;
+		}
+
+		inline int32_t& operator [] (const size_t i)
+		{
+			assert(i < 3);
+
+			if (i == 0)
+			{
+				return x;
+			}
+			else if (i == 1)
+			{
+				return y;
+			}
+			return z;
 		}
 	};
 }

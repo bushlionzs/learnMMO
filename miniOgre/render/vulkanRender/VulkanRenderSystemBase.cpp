@@ -204,8 +204,12 @@ Ogre::RenderTarget* VulkanRenderSystemBase::createRenderTarget(
 void VulkanRenderSystemBase::clearRenderTarget(
     Ogre::RenderTarget* target, const Ogre::Vector4& color)
 {
+    clearRenderTexture(target->getTarget(), color);
+}
+
+void VulkanRenderSystemBase::clearRenderTexture(OgreTexture* tex, const Ogre::Vector4& color)
+{
     VkClearColorValue clearColor = { color.x, color.y, color.z, color.w };
-    VulkanTexture* tex = (VulkanTexture*)target->getTarget();
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subresourceRange.baseMipLevel = 0;
@@ -213,12 +217,14 @@ void VulkanRenderSystemBase::clearRenderTarget(
     subresourceRange.baseArrayLayer = 0;
     subresourceRange.layerCount = 1;
     VkCommandBuffer cb = mCommands->get().buffer();
+
+    VulkanTexture* vulkanTexture = (VulkanTexture*)tex;
     vkCmdClearColorImage(
-        cb,   
-        tex->getVkImage(),           
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-        &clearColor,   
-        1,             
+        cb,
+        vulkanTexture->getVkImage(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        &clearColor,
+        1,
         &subresourceRange
     );
 }
@@ -399,15 +405,14 @@ void VulkanRenderSystemBase::endRenderPass(RenderPassInfo& renderPassInfo)
 
 
 void VulkanRenderSystemBase::bindPipeline(
-    Handle<HwProgram> programHandle,
     Handle<HwPipeline> pipelineHandle,
     const Handle<HwDescriptorSet>* descSets,
     uint32_t setCount)
 {
-    VulkanShaderProgram* vulkanProgram = mResourceAllocator.handle_cast<VulkanShaderProgram*>(programHandle);
+    
     VkCommandBuffer commandBuffer = mCommands->get().buffer();
     VulkanPipeline* vulkanPipeline = mResourceAllocator.handle_cast<VulkanPipeline*>(pipelineHandle);
-
+    VulkanShaderProgram* vulkanProgram = (VulkanShaderProgram*)vulkanPipeline->getProgram();
     auto pipeline = vulkanPipeline->getPipeline();
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -470,6 +475,36 @@ void VulkanRenderSystemBase::drawIndexedIndirect(
     VulkanBufferObject* vulkanBufferObject = mResourceAllocator.handle_cast<VulkanBufferObject*>(drawBuffer);
     VkBuffer vkBuf = vulkanBufferObject->buffer.getGpuBuffer();
     vkCmdDrawIndexedIndirect(cmdBuffer, vkBuf, offset, drawCount, stride);
+}
+
+void VulkanRenderSystemBase::bindComputePipeline(
+    Handle<HwComputeProgram> pipelineHandle,
+    const Handle<HwDescriptorSet>* descSets,
+    uint32_t setCount)
+{
+    VulkanComputeProgram* program = mResourceAllocator.handle_cast<VulkanComputeProgram*>(pipelineHandle);
+
+    auto pipeline = program->getPipeline();
+    auto pipelineLayout = program->getPipelineLayout();
+
+    vkCmdBindPipeline(mCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+
+    VkDescriptorSet descriptorSet[4];
+    uint32_t index = 0;
+    for (uint32_t i = 0; i < setCount; i++)
+    {
+        VulkanDescriptorSet* set = mResourceAllocator.handle_cast<VulkanDescriptorSet*>(descSets[i]);
+        descriptorSet[index] = set->vkSet;
+        index++;
+    }
+
+    vkCmdBindDescriptorSets(mCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+        pipelineLayout, 0, index, &descriptorSet[0], 0, nullptr);
+}
+
+void VulkanRenderSystemBase::dispatchComputeShader(int32_t x, int32_t y, int32_t z)
+{
+    vkCmdDispatch(mCommandBuffer, x, y, z);
 }
 
 void VulkanRenderSystemBase::beginComputePass(ComputePassInfo& computePassInfo)
@@ -558,7 +593,7 @@ void VulkanRenderSystemBase::copyBuffer(
     vkCmdCopyBuffer(mCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
-void VulkanRenderSystemBase::pushGroupMarker(const char* maker)
+void VulkanRenderSystemBase::pushGroupMarker(const char* maker, const Ogre::Vector3i& color)
 {
     if (mVulkanSettings->mDebugUtilsExtension)
     {
@@ -642,11 +677,21 @@ Handle<HwBufferObject> VulkanRenderSystemBase::createBufferObject(
 void VulkanRenderSystemBase::updateBufferObject(
     Handle<HwBufferObject> boh,
     const char* data,
-    uint32_t size)
+    uint32_t size,
+    uint32_t offset)
 {
     VulkanCommandBuffer& commands = mCommands->get();
     VulkanBufferObject* bo = mResourceAllocator.handle_cast<VulkanBufferObject*>(boh);
-    bo->buffer.loadFromCpu(commands.buffer(), data, 0, size);
+    bo->buffer.loadFromCpu(commands.buffer(), data, offset, size);
+}
+
+bool VulkanRenderSystemBase::getBufferObject(Handle<HwBufferObject> boh,
+    const char* data,
+    uint32_t size,
+    uint32_t offset)
+{
+    assert(false);
+    return true;
 }
 
 Handle<HwDescriptorSet> VulkanRenderSystemBase::createDescriptorSet(
@@ -757,6 +802,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
         *vertexContent,
         privateInfo->vertexShaderEntryPoint,
         shaderInfo.shaderMacros,
+        nullptr,
         moduleInfo);
     
     vulkanProgram->updateVertexShader(moduleInfo.shaderModule);
@@ -791,6 +837,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
             *content,
             privateInfo->geometryShaderEntryPoint,
             shaderInfo.shaderMacros,
+            nullptr,
             moduleInfo);
         vulkanProgram->updateGeometryShader(moduleInfo.shaderModule);
 
@@ -810,6 +857,7 @@ Handle<HwProgram> VulkanRenderSystemBase::createShaderProgram(const ShaderInfo& 
             *content,
             privateInfo->fragShaderEntryPoint,
             shaderInfo.shaderMacros,
+            nullptr,
             moduleInfo);
         vulkanProgram->updateFragmentShader(moduleInfo.shaderModule);
         constantsList.clear();
@@ -945,6 +993,7 @@ Handle<HwComputeProgram> VulkanRenderSystemBase::createComputeProgram(const Shad
         *vertexContent,
         privateInfo->computeShaderEntryPoint,
         shaderInfo.shaderMacros,
+        nullptr,
         moduleInfo);
     vulkanProgram->updateComputeShader(moduleInfo.shaderModule);
 
@@ -1118,7 +1167,7 @@ Handle<HwPipeline> VulkanRenderSystemBase::createPipeline(
     VkPipeline pipeline = mPipelineCache->getPipeline();
 
     VulkanPipeline* vulkanPipeline = mResourceAllocator.construct<VulkanPipeline>(
-        pipelineHandle, pipeline, VK_NULL_HANDLE);
+        pipelineHandle, pipeline, vulkanProgram);
     return pipelineHandle;
 }
 
@@ -1185,13 +1234,22 @@ void VulkanRenderSystemBase::updateDescriptorSet(
             for (uint32_t arr = 0; arr < arrayCount; ++arr)
             {
                 uint32_t index = arr + imageCount;
-                VulkanTexture* vulkanTexture = (VulkanTexture*)pParam->ppTextures[arr];
                 imageInfos[index].imageLayout = layout;
-                imageInfos[index].imageView = vulkanTexture->getVkImageView();
-                if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                VulkanTexture* vulkanTexture = (VulkanTexture*)pParam->ppTextures[arr];
+                if (nullptr == vulkanTexture)
                 {
-                    imageInfos[index].sampler = vulkanTexture->getSampler();
+                    imageInfos[index].imageView = VK_NULL_HANDLE;
+                    imageInfos[index].sampler = VK_NULL_HANDLE;
                 }
+                else
+                {
+                    imageInfos[index].imageView = vulkanTexture->getVkImageView();
+                    if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    {
+                        imageInfos[index].sampler = vulkanTexture->getSampler();
+                    }
+                }
+                
             }
             descriptorWrite[write_index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrite[write_index].pNext = nullptr;
@@ -1290,14 +1348,15 @@ void VulkanRenderSystemBase::resourceBarrier(
     uint32_t numTextureBarriers,
     TextureBarrier* pTextureBarriers,
     uint32_t numRtBarriers,
-    RenderTargetBarrier* pRtBarriers
+    RenderTargetBarrier* pRtBarriers,
+    QueueType queueType
 )
 {
     vks::tools::resourceBarrier(
         numBufferBarriers, pBufferBarriers,
         numTextureBarriers, pTextureBarriers,
         numRtBarriers, pRtBarriers,
-        QUEUE_TYPE_GRAPHICS,
+        queueType,
         mVulkanPlatform->getGraphicsQueueFamilyIndex(),
         mCommandBuffer
     );

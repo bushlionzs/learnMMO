@@ -38,9 +38,10 @@ public:
         const CreateWindowDesc& desc) = 0;
 
     virtual Ogre::RenderTarget* createRenderTarget(
-        const String& name, 
+        const String& name,
         TextureProperty& texProperty);
     virtual void clearRenderTarget(Ogre::RenderTarget*, const Ogre::Vector4& color) {}
+    virtual void clearRenderTexture(OgreTexture*, const Ogre::Vector4& color) {}
     virtual void ready() {}
 
     virtual const String& getRenderSystemName()
@@ -78,10 +79,9 @@ public:
     virtual void endRenderPass(RenderPassInfo& renderPassInfo);
 
     virtual void bindPipeline(
-        Handle<HwProgram> programHandle,
         Handle<HwPipeline> pipelineHandle,
         const Handle<HwDescriptorSet>* descSets,
-        uint32_t setCount) 
+        uint32_t setCount)
     {
     }
 
@@ -89,15 +89,24 @@ public:
         Handle<HwRaytracingProgram> programHandle,
         const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount
-    ) {}
+    ) {
+    }
 
     virtual void traceRay(Handle<HwRaytracingProgram> programHandle) {}
 
     virtual void copyImage(
-        Ogre::RenderTarget* dst, 
-        Ogre::RenderTarget* src, 
-        ImageCopyDesc& desc) {}
+        Ogre::RenderTarget* dst,
+        Ogre::RenderTarget* src,
+        ImageCopyDesc& desc) {
+    }
 
+    virtual void copyImageToBuffer(
+        OgreTexture* image,
+        Handle<HwBufferObject> bufferHandle,
+        Extent3D extent
+    ) {
+        assert(false);
+    }
     virtual void copyBuffer(
         Handle<HwBufferObject> src,
         uint32_t srcOffset,
@@ -127,6 +136,15 @@ public:
     {
     }
 
+    virtual void bindComputePipeline(
+        Handle<HwComputeProgram> pipelineHandle,
+        const Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount)
+    {
+    }
+
+    virtual void dispatchComputeShader(int32_t x, int32_t y, int32_t z) {}
+
     virtual void beginComputePass(
         ComputePassInfo& computePassInfo);
     virtual void endComputePass();
@@ -134,7 +152,7 @@ public:
     virtual void dispatchComputeShader();
     virtual void present();
 
-    virtual void pushGroupMarker(const char* maker) {}
+    virtual void pushGroupMarker(const char* maker, const Ogre::Vector3i& color = Ogre::Vector3i(0,0,0)) {}
     virtual void popGroupMarker() {}
     virtual void bindVertexBuffer(
         Handle<HwBufferObject> bufHandle, 
@@ -154,7 +172,14 @@ public:
     virtual void updateBufferObject(
         Handle<HwBufferObject> boh, 
         const char* data, 
-        uint32_t size);
+        uint32_t size,
+        uint32_t offset = 0);
+    virtual bool getBufferObject(Handle<HwBufferObject> boh,
+        const char* data,
+        uint32_t size,
+        uint32_t offset = 0) {
+        return false;
+    }
     virtual Handle<HwDescriptorSet> createDescriptorSet(
         Handle<HwProgram> programHandle, 
         uint32_t set);
@@ -190,7 +215,8 @@ public:
         uint32_t textureBarrierCount, 
         TextureBarrier* pTextureBarriers,
         uint32_t numRtBarriers, 
-        RenderTargetBarrier* pRtBarriers
+        RenderTargetBarrier* pRtBarriers,
+        QueueType queueType = QUEUE_TYPE_GRAPHICS
     ) {}
 
 

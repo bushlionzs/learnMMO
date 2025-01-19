@@ -96,6 +96,7 @@ bool hlslToBin(
 	const std::string& shaderContent,
 	const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+	const std::vector<std::wstring>* args,
 	Ogre::ShaderType shaderType,
 	std::string& spv,
 	bool vulkan
@@ -162,13 +163,19 @@ bool hlslToBin(
 	{
 		arguments.push_back(L"-D VULKAN");
 		arguments.push_back(L"-spirv");
-		arguments.push_back(L"-fspv-target-env=vulkan1.3");
+		arguments.push_back(L"-fspv-target-env=vulkan1.2");
 	}
 	
-
+	if (args)
+	{
+		for (auto& arg : *args)
+		{
+			arguments.push_back(arg.c_str());
+		 }
+	}
 	arguments.push_back(L"-D DIRECT3D12");
 
-	IDxcCompilerArgs* args = nullptr;
+	IDxcCompilerArgs* compilerArgs = nullptr;
 	pUtils->BuildArguments(
 		wShaderName.c_str(),
 		wEntryPoint.c_str(),
@@ -177,10 +184,10 @@ bool hlslToBin(
 		static_cast<UINT>(arguments.size()),
 		NULL,
 		0,
-		&args);
+		&compilerArgs);
 	{
-		uint32_t size = args->GetCount();
-		LPCWSTR* str = args->GetArguments();
+		uint32_t size = compilerArgs->GetCount();
+		LPCWSTR* str = compilerArgs->GetArguments();
 		std::vector<std::wstring> bb;
 		for (uint32_t i = 0; i < size; i++)
 		{
@@ -194,8 +201,8 @@ bool hlslToBin(
 
 	HRESULT hr = pCompiler->Compile(
 		&dxcBuffer,           // 源代码
-		args->GetArguments(),      // 编译参数
-		args->GetCount(),
+		compilerArgs->GetArguments(),      // 编译参数
+		compilerArgs->GetCount(),
 		&includer,
 		IID_PPV_ARGS(&pResult)
 		);
@@ -222,6 +229,6 @@ bool hlslToBin(
 	
 	spv.assign(data, size);
 	pResult->Release();
-	args->Release();
+	compilerArgs->Release();
 	return true;
 }

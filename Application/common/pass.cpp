@@ -68,7 +68,7 @@ public:
 			Handle<HwDescriptorSet> descriptorSet[2];
 			descriptorSet[0] = resourceInfo->zeroSet;
 			descriptorSet[1] = resourceInfo->firstSet;
-			rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+			rs->bindPipeline(piplineHandle, descriptorSet, 2);
 
 
 			VertexData* vertexData = r->getVertexData();

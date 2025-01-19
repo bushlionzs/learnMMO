@@ -145,15 +145,15 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------
-    Real Math::Sign (Real fValue)
+    int32_t Math::Sign (Real fValue)
     {
         if ( fValue > 0.0 )
-            return 1.0;
+            return 1;
 
         if ( fValue < 0.0 )
-            return -1.0;
+            return -1;
 
-        return 0.0;
+        return 0;
     }
     //-----------------------------------------------------------------------
     Real Math::InvSqrt(Real fValue)

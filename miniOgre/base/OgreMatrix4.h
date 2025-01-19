@@ -531,6 +531,7 @@ namespace Ogre
 
         Vector3 getUp() const;
 
+        Vector3 getForward() const;
         /** Extracts the rotation / scaling part of the Matrix as a 3x3 matrix. 
         @param m3x3 Destination Matrix3
         */

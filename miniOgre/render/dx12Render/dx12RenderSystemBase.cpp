@@ -21,7 +21,6 @@
 #include "dx12Handles.h"
 #include "dx12RenderTarget.h"
 #include "dx12Commands.h"
-#include "dx12ShadowMap.h"
 #include "dx12RenderWindow.h"
 #include "dx12Helper.h"
 #include "D3D12Mappings.h"

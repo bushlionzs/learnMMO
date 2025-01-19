@@ -133,7 +133,7 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->vertexShaderName);
         hlslToBin(shaderInfo.shaderName, *content, privateInfo->vertexShaderEntryPoint,
-            shaderInfo.shaderMacros, Ogre::VertexShader, mVertexByteCode, false);
+            shaderInfo.shaderMacros, nullptr, Ogre::VertexShader, mVertexByteCode, false);
         const char* data = mVertexByteCode.c_str();
         int kk = 0;
     }
@@ -143,7 +143,7 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->fragShaderName);
         hlslToBin(shaderInfo.shaderName, *content, privateInfo->fragShaderEntryPoint,
-            shaderInfo.shaderMacros, Ogre::PixelShader, mFragByteCode, false);
+            shaderInfo.shaderMacros, nullptr, Ogre::PixelShader, mFragByteCode, false);
     }
    
 
@@ -152,7 +152,7 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->geometryShaderName);
         hlslToBin(shaderInfo.shaderName, *content, privateInfo->geometryShaderEntryPoint,
-            shaderInfo.shaderMacros, Ogre::GeometryShader, mGeometryByteCode, false);
+            shaderInfo.shaderMacros, nullptr, Ogre::GeometryShader, mGeometryByteCode, false);
     }
 
     res = ResourceManager::getSingleton().getResource(privateInfo->computeShaderName);
@@ -160,7 +160,7 @@ bool DX12ProgramImpl::loadhlsl(const ShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(privateInfo->computeShaderName);
         hlslToBin(shaderInfo.shaderName, *content, privateInfo->computeShaderEntryPoint,
-            shaderInfo.shaderMacros, Ogre::ComputeShader, mComputeByteCode, false);
+            shaderInfo.shaderMacros, nullptr, Ogre::ComputeShader, mComputeByteCode, false);
     }
     return true;
 }

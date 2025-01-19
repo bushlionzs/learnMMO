@@ -41,6 +41,7 @@ public:
         const String& name, 
         TextureProperty& texProperty) override;
     virtual void clearRenderTarget(Ogre::RenderTarget*, const Ogre::Vector4& color) override;
+    virtual void clearRenderTexture(OgreTexture*, const Ogre::Vector4& color)override;
     virtual void frameStart() override;
     virtual void frameEnd() override;
     virtual void setViewport(float x, float y, float width, float height, float minDepth, float maxDepth);
@@ -48,7 +49,6 @@ public:
     virtual void beginRenderPass(RenderPassInfo& renderPassInfo) override;
     virtual void endRenderPass(RenderPassInfo& renderPassInfo) override;
     virtual void bindPipeline(
-        Handle<HwProgram> programHandle,
         Handle<HwPipeline> pipelineHandle,
         const Handle<HwDescriptorSet>* descSets,
         uint32_t setCount) override;
@@ -65,6 +65,14 @@ public:
         uint32_t drawCount,
         uint32_t stride
     );
+
+    void bindComputePipeline(
+        Handle<HwComputeProgram> pipelineHandle,
+        const Handle<HwDescriptorSet>* descSets,
+        uint32_t setCount);
+
+    void dispatchComputeShader(int32_t x, int32_t y, int32_t z);
+
     virtual void beginComputePass(
         ComputePassInfo& computePassInfo) override;
     virtual void endComputePass() override;
@@ -83,7 +91,7 @@ public:
         uint32_t size
     );
 protected:
-    virtual void pushGroupMarker(const char* maker);
+    virtual void pushGroupMarker(const char* maker, const Ogre::Vector3i& color)override;
     virtual void popGroupMarker();
     virtual void* lockBuffer(Handle<HwBufferObject> bufHandle, uint32_t offset, uint32_t numBytes);
     virtual void unlockBuffer(Handle<HwBufferObject> bufHandle);
@@ -98,8 +106,12 @@ protected:
     virtual void updateBufferObject(
         Handle<HwBufferObject> boh,
         const char* data, 
-        uint32_t size) override;
-
+        uint32_t size,
+        uint32_t offset) override;
+    bool getBufferObject(Handle<HwBufferObject> boh,
+        const char* data,
+        uint32_t size,
+        uint32_t offset) override;
     virtual Handle<HwDescriptorSet> createDescriptorSet(
         Handle<HwProgram> programHandle,
         uint32_t set) override;
@@ -132,7 +144,8 @@ protected:
         uint32_t textureBarrierCount,
         TextureBarrier* pTextureBarriers,
         uint32_t numRtBarriers,
-        RenderTargetBarrier* pRtBarriers
+        RenderTargetBarrier* pRtBarriers,
+        QueueType queueType = QUEUE_TYPE_GRAPHICS
     )  override;
     virtual void beginCmd();
     virtual void flushCmd(bool waitCmd);

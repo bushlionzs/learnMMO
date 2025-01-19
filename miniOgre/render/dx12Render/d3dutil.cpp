@@ -196,7 +196,7 @@ void d3dUtil::CompileGlslShader(
     translateToHlsl(sourceName, content, entrypoint, shaderMacros, shaderType, hlslContent);
     
     hlslToBin(sourceName, hlslContent, entrypoint,
-        shaderMacros, shaderType, blob, false);
+        shaderMacros, nullptr, shaderType, blob, false);
 
 }
 

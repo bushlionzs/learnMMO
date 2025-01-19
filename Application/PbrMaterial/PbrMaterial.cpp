@@ -255,7 +255,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 {
 	example_type = 2;
 	std::string name = "Sponza.gltf";
-	name = "FlightHelmet.gltf";
+	//name = "FlightHelmet.gltf";
 	auto mesh = MeshManager::getSingletonPtr()->load(name);
 
 	SceneNode* root = sceneManager->getRoot()->createChildSceneNode("root");
@@ -328,15 +328,15 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 			});
 	}
 
-	float h = 82.0f;
+	float h = 1.0f;
 	Ogre::Vector3 camPos = Ogre::Vector3(-1, h, 0);
 	Ogre::Vector3 lookAt = Ogre::Vector3(0, h, 0);
-	camPos = Ogre::Vector3(0.0f, 0.1f, 1.0f);
-	lookAt = Ogre::Vector3::ZERO;
+	//camPos = Ogre::Vector3(0.0f, 0.1f, 1.0f);
+	//lookAt = Ogre::Vector3::ZERO;
 	gameCamera->lookAt(camPos, lookAt);
 	gameCamera->setMoveSpeed(5);
 	gameCamera->setRotateSpeed(0.5);
-	gameCamera->setCameraType(CameraMoveType_LookAt);
+	gameCamera->setCameraType(CameraMoveType_FirstPerson);
 	auto& ogreConfig = Ogre::Root::getSingleton().getEngineConfig();
 	Ogre::Matrix4 projectMatrix;
 	if (ogreConfig.reverseDepth)
@@ -348,7 +348,7 @@ void PbrMaterial::example2(RenderPipeline* renderPipeline,
 	else
 	{
 		float aspect = ogreConfig.width / (float)ogreConfig.height;
-		projectMatrix = Ogre::Math::makePerspectiveMatrixRH(
+		projectMatrix = Ogre::Math::makePerspectiveMatrix(
 			Ogre::Math::PI / 3.0f, aspect, 0.1, 5000);
 	}
 

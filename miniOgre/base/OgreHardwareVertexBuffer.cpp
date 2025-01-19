@@ -17,6 +17,8 @@
             return 6;
         case VES_BLEND_INDICES:
             return 5;
+        case VES_TANGENT:
+            return 4;
         case VES_TEXTURE_COORDINATES:
             return 3;
         case VES_DIFFUSE:

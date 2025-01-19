@@ -125,8 +125,8 @@ namespace Ogre {
     {
         auto* rs = Ogre::Root::getSingleton().getRenderSystem();
 
-       //mProgramHandle = rs->createShaderProgram(mShaderInfo, mVertexDeclaration);
-      // mPipelineHandle = rs->createPipeline(mRasterState, mProgramHandle);
+       mProgramHandle = rs->createShaderProgram(mShaderInfo, mVertexDeclaration);
+       mPipelineHandle = rs->createPipeline(mRasterState, mProgramHandle);
         
         if (mPbr)
         {

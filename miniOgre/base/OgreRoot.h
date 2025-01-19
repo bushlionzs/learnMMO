@@ -6,7 +6,8 @@
 #include "engine_struct.h"
 #include "OgreFrameListener.h"
 #include <utils/JobSystem.h>
-class RenderSystem;
+#include <renderSystem.h>
+
 #define MAIN_SCENE_MANAGER "__main__"
 #define MAIN_CAMERA "__main_camera__"
 
@@ -15,9 +16,8 @@ namespace Ogre {
 	class MovableObjectFactory;
 	struct EngineConfig
 	{
-		uint32_t width = 1280;
-		uint32_t height = 720;
-		uint32_t frameConstantBufferSize = sizeof(FrameConstantBuffer);
+		uint32_t width = 1600;
+		uint32_t height = 900;
 		uint32_t swapBufferCount = 2;
 		bool     enableRaytracing = false;
 		bool     reverseDepth = false;

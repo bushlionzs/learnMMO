@@ -453,7 +453,7 @@ void BasicApplication::base6()
 		mRenderSystem->bindIndexBuffer(indexDataHandle, indexSize);
 		mRenderSystem->pushGroupMarker("presentPass");
 		mRenderSystem->beginRenderPass(info);
-		mRenderSystem->bindPipeline(presentHandle, pipelineHandle,
+		mRenderSystem->bindPipeline(pipelineHandle,
 			&mFrameData[frameIndex].zeroSet, 1);
 		mRenderSystem->drawIndexed(indexCount, 1, 0, 0, 0);
 		mRenderSystem->endRenderPass(info);

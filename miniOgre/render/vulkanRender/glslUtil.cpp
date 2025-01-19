@@ -94,6 +94,7 @@ bool glslCompileShader(
     const std::string& shaderContent,
     const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+    const std::vector<std::wstring>* args,
     VkShaderModuleInfo& shaderModuleInfo,
     bool createModule
 )
@@ -204,7 +205,7 @@ bool glslCompileShader(
         //hlsl
         
          hlslToBin(shaderName, shaderContent, 
-             entryPoint, shaderMacros, shaderModuleInfo.shaderType, result);
+             entryPoint, shaderMacros, args, shaderModuleInfo.shaderType, result);
          //std::string hlslSource;
          //uint32_t size = result.size();
          //spvToHlsl(shaderModuleInfo.shaderType, shaderName, result, hlslSource);
@@ -395,7 +396,7 @@ bool translateToHlsl(
     VkShaderModuleInfo moduleInfo;
     moduleInfo.shaderType = shaderType;
     bool compile = glslCompileShader(shaderName, shaderContent, entryPoint, 
-        shaderMacros, moduleInfo, false);
+        shaderMacros, nullptr, moduleInfo, false);
     if (!compile)
     {
         return false;

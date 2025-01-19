@@ -1,6 +1,6 @@
 #ifndef __Math_H__
 #define __Math_H__
-
+#include <math.h>
 namespace Ogre
 {
     class Radian
@@ -196,6 +196,11 @@ namespace Ogre
 
         static inline Real Floor (Real fValue) { return Real(floor(fValue)); }
 
+        static inline int32_t AbsFloor(Real fValue)
+        { 
+            return fValue >= 0.f ? int(floor(fValue)) : int(::ceil(fValue));
+        }
+
         static inline Real Log (Real fValue) { return Real(log(fValue)); }
 
         static const Real LOG2;
@@ -206,7 +211,7 @@ namespace Ogre
 
         static inline Real Pow (Real fBase, Real fExponent) { return Real(pow(fBase,fExponent)); }
 
-        static Real Sign (Real fValue);
+        static int32_t Sign (Real fValue);
         static inline Radian Sign ( const Radian& rValue )
         {
             return Radian(Sign(rValue.valueRadians()));

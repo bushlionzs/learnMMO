@@ -35,6 +35,7 @@ using UpdatePassCallback = std::function<void(float delta)>;
 class PassBase
 {
 public:
+	virtual bool initialize() { return true; }
 	virtual void execute(RenderSystem* rs) = 0;
 	virtual void update(float delta) {}
 };

@@ -190,6 +190,14 @@ namespace Ogre
                 z - rkVector.z);
         }
 
+        inline Vector3 operator * (const Vector3i& rkVector) const
+        {
+            return Vector3(
+                x * rkVector.x,
+                y * rkVector.y,
+                z * rkVector.z);
+        }
+
         inline Vector3 operator * ( const Real fScalar ) const
         {
             return Vector3(

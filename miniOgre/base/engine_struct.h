@@ -272,6 +272,7 @@ struct RaytracingShaderInfo
     String rayAnyHitShaderName;
     std::string rayAnyHitEntryName;
     std::vector<std::pair<std::string, std::string>> shaderMacros;
+    std::vector<std::wstring> args;
 };
 
 class SkinnedData

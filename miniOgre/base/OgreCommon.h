@@ -1291,7 +1291,8 @@ namespace Ogre {
     {
         const char* pName;
         uint32_t    mCount:16;
-        uint32_t    mLevel : 16;
+        uint32_t    mLevel : 8;
+        uint32_t    mArrayElement : 8;
         Ogre::DescriptorType descriptorType;
         union
         {

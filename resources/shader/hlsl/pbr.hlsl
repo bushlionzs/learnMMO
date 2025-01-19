@@ -197,6 +197,7 @@ struct VertexIn
 {
 	VKLOCATION(0) float3 PosL    : POSITION;
     VKLOCATION(1) float3 NormalL : NORMAL;
+	VKLOCATION(4) float4 tangent : TANGENT;
 	VKLOCATION(3) float2 TexC    : TEXCOORD;
 };
 

@@ -499,20 +499,20 @@ private:
 
 struct VulkanPipeline : private HwPipeline, VulkanResource
 {
-    VulkanPipeline(VkPipeline pipeline, VkPipeline pipelineShadow);
+    VulkanPipeline(VkPipeline pipeline, VulkanProgram* program);
 
     VkPipeline getPipeline()
     {
         return mPipeline;
     }
 
-    VkPipeline getPipelineShadow()
+    VulkanProgram* getProgram()
     {
-        return mPipelineShadow;
+        return mProgram;
     }
 private:
     VkPipeline mPipeline;
-    VkPipeline mPipelineShadow;
+    VulkanProgram* mProgram;
 };
 // The render target bundles together a set of attachments, each of which can have one of the
 // following ownership semantics:
@@ -714,11 +714,10 @@ private:
 
 struct VulkanAccelerationStructure : public Ogre::AccelerationStructure
 {
-    Handle<HwBufferObject> asBufferHandle;
     uint64_t               mASDeviceAddress;
     Handle<HwBufferObject> scratchBufferHandle;
     uint64_t               mScratchBufferDeviceAddress;
-    Handle<HwBufferObject> instanceDescBuffer;
+    
     VkAccelerationStructureGeometryKHR* pGeometryDescs;
     uint32_t* pMaxPrimitiveCountPerGeometry;
     VkAccelerationStructureKHR           mAccelerationStructure;

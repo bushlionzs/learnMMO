@@ -142,8 +142,7 @@ void VoxelConeTracingApp::sceneGeometryPass()
 		Handle<HwDescriptorSet> descriptorSet[2];
 		descriptorSet[0] = resourceInfo->zeroSet;
 		descriptorSet[1] = resourceInfo->firstSet;
-		mRenderSystem->bindPipeline(mSceneGeometryProgramHandle, 
-			mSceneGeometryPipelineHandle, descriptorSet, 2);
+		mRenderSystem->bindPipeline(mSceneGeometryPipelineHandle, descriptorSet, 2);
 
 
 		VertexData* vertexData = r->getVertexData();
@@ -260,8 +259,7 @@ void VoxelConeTracingApp::shadowPass()
 		VctFrameResourceInfo* resourceInfo = (VctFrameResourceInfo*)frameData;
 		Ogre::Material* mat = r->getMaterial().get();
 
-		mRenderSystem->bindPipeline(mShadowProgramHandle, mShadowPipelineHandle,
-			&resourceInfo->zeroShadowSet, 1);
+		mRenderSystem->bindPipeline(mShadowPipelineHandle, &resourceInfo->zeroShadowSet, 1);
 
 
 		VertexData* vertexData = r->getVertexData();
@@ -340,7 +338,7 @@ void VoxelConeTracingApp::voxelizationPass()
 		VctFrameResourceInfo* resourceInfo = (VctFrameResourceInfo*)frameData;
 		Ogre::Material* mat = r->getMaterial().get();
 
-		mRenderSystem->bindPipeline(mVoxellizationProgramHandle, mVoxellizationPipelineHandle, 
+		mRenderSystem->bindPipeline(mVoxellizationPipelineHandle, 
 			&resourceInfo->zeroSetOfVoxelization, 1);
 
 

@@ -24,6 +24,7 @@ struct GltfVertex
 {
     Ogre::Vector3 Pos;
     Ogre::Vector3 Normal;
+    Ogre::Vector4 Tangent;
     Ogre::Vector2 TexC;
 };
 
@@ -90,7 +91,7 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
     std::vector<uint32_t> sharedIndices;
     std::vector<GltfVertex> sharedVertexs;
 
-    bool useShared = true;
+    bool useShared = false;
     if (useShared)
     {
         sharedIndices.reserve(1000000);
@@ -170,6 +171,8 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 vertexData[dataSlot].mDataSize = accessor.count * stride;
             }
 
+            uint32_t tangentStride = vertexData[Vertex_Tangent].mDataStride;
+            //assert(tangentStride == 16);
             if (vertexData[Vertex_Position].mDataSize == 0 ||
                 vertexData[Vertex_Normal].mDataSize == 0)
             {
@@ -276,16 +279,37 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 
                 mVertexBuffer[i].Pos = Ogre::Vector3(gltfPosition[0], gltfPosition[1], gltfPosition[2]);
                 mVertexBuffer[i].Normal = Ogre::Vector3(gltfNormal[0], gltfNormal[1], gltfNormal[2]);
+                if (gltfTangent)
+                {
+                    mVertexBuffer[i].Tangent = Ogre::Vector4(gltfTangent[0], gltfTangent[1], gltfTangent[2], gltfTangent[3]);
+                }
+                else
+                {
+                    mVertexBuffer[i].Tangent = Ogre::Vector3::ZERO;
+                }
+                
                 if (useShared)
                 {
                     sharedVertexs.emplace_back();
                     GltfVertex& vertex = sharedVertexs.back();
                     vertex.Pos = Ogre::Vector3(gltfPosition[0], gltfPosition[1], gltfPosition[2]);
                     vertex.Normal = Ogre::Vector3(gltfNormal[0], gltfNormal[1], gltfNormal[2]);
+                    if (gltfTangent)
+                    {
+                        vertex.Tangent = Ogre::Vector4(gltfTangent[0], gltfTangent[1], gltfTangent[2], gltfTangent[3]);
+                    }
+                    else
+                    {
+                        vertex.Tangent = Ogre::Vector3::ZERO;
+                    }
                 }
                 
                 gltfPosition += 3;
                 gltfNormal += 3;
+                if (gltfTangent)
+                {
+                    gltfTangent += 4;
+                }
                 if (gltfTexture)
                 {
                     mVertexBuffer[i].TexC = Ogre::Vector2(gltfTexture[0], gltfTexture[1]);
@@ -306,7 +330,8 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
                 vd->writeBindBufferData(binding, (const char*)mVertexBuffer.data(), mVertexBuffer.size() * sizeof(GltfVertex));
                 vd->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
                 vd->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
-                vd->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
+                vd->addElement(0, 0, 24, VET_FLOAT4, VES_TANGENT);
+                vd->addElement(0, 0, 40, VET_FLOAT2, VES_TEXTURE_COORDINATES);
             }
             std::vector<VertexBoneAssignment> assignInfoList;
      
@@ -520,7 +545,8 @@ std::shared_ptr<Ogre::Mesh> GltfLoader::loadMeshFromFile(std::shared_ptr<Ogre::D
         VertexData* vertexData = pMesh->getVertexData();
         vertexData->addElement(0, 0, 0, VET_FLOAT3, VES_POSITION);
         vertexData->addElement(0, 0, 12, VET_FLOAT3, VES_NORMAL);
-        vertexData->addElement(0, 0, 24, VET_FLOAT2, VES_TEXTURE_COORDINATES);
+        vertexData->addElement(0, 0, 24, VET_FLOAT4, VES_TANGENT);
+        vertexData->addElement(0, 0, 40, VET_FLOAT2, VES_TEXTURE_COORDINATES);
         vertexData->setVertexCount(sharedVertexs.size());
         vertexData->addBindBuffer(sizeof(GltfVertex), sharedVertexs.size());
         vertexData->writeBindBufferData(0, (const char*)sharedVertexs.data(), sizeof(GltfVertex)* sharedVertexs.size());

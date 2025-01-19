@@ -40,7 +40,7 @@ bool DX12RayTracingProgramImpl::loadhlsl(const RaytracingShaderInfo& shaderInfo)
     {
         String* content = ShaderManager::getSingleton().getShaderContent(shaderInfo.rayTracingShaderName);
         hlslToBin(shaderInfo.rayGenShaderName, *content, shaderInfo.rayGenEntryName,
-            shaderInfo.shaderMacros, Ogre::RayGenShader, mRayTracingCode, false);
+            shaderInfo.shaderMacros, &shaderInfo.args, Ogre::RayGenShader, mRayTracingCode, false);
     }
 
     return true;

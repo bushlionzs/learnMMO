@@ -279,7 +279,7 @@ bool GameCamera::update(float delta)
     }
     else
     {
-        auto transM = Ogre::Math::makeTranslateMatrix(-eyePosition);
+        auto transM = Ogre::Math::makeTranslateMatrix(eyePosition);
         viewMatrix = transM * rotM;
     }
     /*Ogre::Vector3 camPos(0.0f, 0.1f, 1.0f);

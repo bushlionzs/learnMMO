@@ -201,10 +201,10 @@ VulkanComputeProgram::~VulkanComputeProgram() {
 
 }
 
-VulkanPipeline::VulkanPipeline(VkPipeline pipeline, VkPipeline pipelineShadow)
+VulkanPipeline::VulkanPipeline(VkPipeline pipeline, VulkanProgram* program)
     :
     mPipeline(pipeline),
-    mPipelineShadow(pipelineShadow),
+    mProgram(program),
     VulkanResource(VulkanResourceType::END_TYPE)
 {
     

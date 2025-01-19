@@ -18,6 +18,15 @@
 #include "VulkanRenderTarget.h"
 #include <SPIRV_Cross/spirv_glsl.hpp>
 
+const uint32_t maxSamplerDescriptorCount = 1024;
+const uint32_t maxUniformBufferDescriptorCount = 1024;
+const uint32_t maxAccelerationStructureDescriptorCount = 1024;
+const uint32_t maxStorageImageDescriptorCount = 2048;
+const uint32_t maxSampledImageDescriptorCount = 2048;
+const uint32_t maxCombinedImageSamplerDescriptorCount = 2048;
+const uint32_t maxStorageBufferDescriptorCount = 2048;
+const uint32_t maxDescriptorSets = 16;
+
 namespace vks
 {
 	namespace tools
@@ -370,11 +379,11 @@ namespace vks
 			{
 			case VertexShader:
 				shaderModuleInfo.shaderType = Ogre::ShaderType::VertexShader;
-				glslCompileShader(strName, content, entryPoint, shaderMacros, shaderModuleInfo);
+				glslCompileShader(strName, content, entryPoint, shaderMacros, nullptr, shaderModuleInfo);
 				break;
 			case PixelShader:
 				shaderModuleInfo.shaderType = Ogre::ShaderType::PixelShader;
-				glslCompileShader(strName, content, entryPoint, shaderMacros, shaderModuleInfo);
+				glslCompileShader(strName, content, entryPoint, shaderMacros, nullptr, shaderModuleInfo);
 				break;
 			default:
 				assert(false);
@@ -429,7 +438,7 @@ namespace vks
 				break;
 			}
 
-			glslCompileShader(strName, content, entryPoint, shaderMacros, shaderModuleInfo);
+			glslCompileShader(strName, content, entryPoint, shaderMacros, nullptr, shaderModuleInfo);
 
 			VkPipelineShaderStageCreateInfo shaderStage = {};
 			shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -868,7 +877,13 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 				
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = maxStorageBufferDescriptorCount;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
 
@@ -906,7 +921,13 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = maxSamplerDescriptorCount;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
 
@@ -939,7 +960,13 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = maxSampledImageDescriptorCount;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
 
@@ -972,7 +999,13 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = maxStorageImageDescriptorCount;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
 
@@ -1008,7 +1041,7 @@ namespace vks
 					layout.descriptorCount = type.array[0];
 					if (layout.descriptorCount == 0)
 					{
-						layout.descriptorCount = 10;
+						layout.descriptorCount = maxSampledImageDescriptorCount;
 					}
 				}
 				else
@@ -1045,7 +1078,13 @@ namespace vks
 				spirv_cross::SPIRType type = glsl.get_type(input.type_id);
 
 				if (type.array.size())
+				{
 					layout.descriptorCount = type.array[0];
+					if (layout.descriptorCount == 0)
+					{
+						layout.descriptorCount = maxAccelerationStructureDescriptorCount;
+					}
+				}
 				else
 					layout.descriptorCount = 1;
 

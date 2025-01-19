@@ -120,7 +120,8 @@ Handle<HwBufferObject> RenderSystem::createBufferObject(
 void RenderSystem::updateBufferObject(
     Handle<HwBufferObject> boh, 
     const char* data, 
-    uint32_t size)
+    uint32_t size,
+    uint32_t offset)
 {
     assert(false);
 }

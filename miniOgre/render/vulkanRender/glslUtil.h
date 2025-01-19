@@ -11,6 +11,7 @@ bool glslCompileShader
 	const std::string& shaderContent,
 	const std::string& entryPoint,
 	const std::vector<std::pair<std::string, std::string>>& shaderMacros,
+	const std::vector<std::wstring>* args,
 	VkShaderModuleInfo& shaderModuleInfo,
 	bool createModule = true
 );

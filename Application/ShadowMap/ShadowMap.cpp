@@ -832,7 +832,7 @@ void ShadowMap::base2()
         rasterState.colorWrite = false;
         rasterState.depthWrite = true;
         rasterState.depthTest = true;
-        rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8;
+        rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8;
         rasterState.depthFunc = SamplerCompareFunc::LE;
         auto meshDepthPipelineHandle = rs->createPipeline(rasterState, meshDepthHandle);
 
@@ -958,7 +958,7 @@ void ShadowMap::base2()
             tmp[1] = Handle<HwDescriptorSet>();
             tmp[2] = Handle<HwDescriptorSet>();
             tmp[3] = frameData->thirdDescrSetOfShadowPass;
-            rs->bindPipeline(meshDepthHandle, meshDepthPipelineHandle, &tmp[0], 4);
+            rs->bindPipeline(meshDepthPipelineHandle, &tmp[0], 4);
             rs->bindIndexBuffer(filteredIndexBuffer[target], 4);
             uint64_t indirectBufferByteOffset =
                 GET_INDIRECT_DRAW_ELEM_INDEX(target, 0, 0) * sizeof(uint32_t);
@@ -970,7 +970,7 @@ void ShadowMap::base2()
                 tmp[1] = frameData->firstDescrSetOfShadowPassAlpha;
                 tmp[2] = Handle<HwDescriptorSet>();
                 tmp[3] = frameData->thirdDescrSetOfShadowPassAlpha;
-                rs->bindPipeline(meshDepthAlphaHandle, meshDepthAlphaPipelineHandle, &tmp[0], 4);
+                rs->bindPipeline(meshDepthAlphaPipelineHandle, &tmp[0], 4);
 
 
                 indirectBufferByteOffset =
@@ -1004,7 +1004,7 @@ void ShadowMap::base2()
         rasterState.depthFunc = backend::SamplerCompareFunc::GE;
         rasterState.colorWrite = true;
         rasterState.renderTargetCount = 1;
-        rasterState.pixelFormat = Ogre::PixelFormat::PF_A8B8G8R8;
+        rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8B8G8R8;
         auto vbBufferPasssPipelineHandle = rs->createPipeline(rasterState, vbBufferPassHandle);
 
         auto vbBufferPasssAlphaPipelineHandle = rs->createPipeline(rasterState, vbBufferPassAlphaHandle);
@@ -1115,7 +1115,7 @@ void ShadowMap::base2()
             tmp[1] = nullSet;
             tmp[2] = nullSet;
             tmp[3] = frameData->thirdDescrSetOfVbPass;
-            rs->bindPipeline(vbBufferPassHandle, vbBufferPasssPipelineHandle, &tmp[0], 4);
+            rs->bindPipeline(vbBufferPasssPipelineHandle, &tmp[0], 4);
             uint64_t indirectBufferByteOffset =
                 GET_INDIRECT_DRAW_ELEM_INDEX(VIEW_CAMERA, 0, 0) * sizeof(uint32_t);
 
@@ -1126,7 +1126,7 @@ void ShadowMap::base2()
             tmp[1] = frameData->firstDescrSetOfVbPassAlpha;
             tmp[2] = nullSet;
             tmp[3] = frameData->thirdDescrSetOfVbPassAlpha;
-            rs->bindPipeline(vbBufferPassAlphaHandle, vbBufferPasssAlphaPipelineHandle, &tmp[0], 4);
+            rs->bindPipeline(vbBufferPasssAlphaPipelineHandle, &tmp[0], 4);
             indirectBufferByteOffset =
                 GET_INDIRECT_DRAW_ELEM_INDEX(VIEW_CAMERA, 1, 0) * sizeof(uint32_t);
             rs->drawIndexedIndirect(frameData->indirectDrawArgBuffer, indirectBufferByteOffset, 1, 32);
@@ -1164,7 +1164,7 @@ void ShadowMap::base2()
         rasterState.depthFunc = SamplerCompareFunc::A;
         rasterState.colorWrite = true;
         rasterState.renderTargetCount = 1;
-        rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+        rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
         auto pipelineHandle = rs->createPipeline(rasterState, programHandle);
 
         backend::SamplerParams samplerParams;
@@ -1408,7 +1408,7 @@ void ShadowMap::base2()
             Handle<HwDescriptorSet> tmp[2];
             tmp[0] = frameData->zeroDescrSetOfVbShadePass;
             tmp[1] = frameData->firstDescrSetOfVbShadePass;
-            rs->bindPipeline(programHandle, pipelineHandle, tmp, 2);
+            rs->bindPipeline(pipelineHandle, tmp, 2);
             rs->draw(3, 0);
             rs->endRenderPass(info);
             rs->popGroupMarker();
@@ -1467,7 +1467,7 @@ void ShadowMap::base2()
         rasterState.depthFunc = SamplerCompareFunc::A;
         rasterState.colorWrite = true;
         rasterState.renderTargetCount = 1;
-        rasterState.pixelFormat = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
+        rasterState.pixelFormat[0] = Ogre::PixelFormat::PF_A8R8G8B8_SRGB;
         auto pipelineHandle = rs->createPipeline(rasterState, presentHandle);
 
         RenderPassCallback presentCallback = [=, this](RenderPassInfo& info) {
@@ -1489,7 +1489,7 @@ void ShadowMap::base2()
             rs->pushGroupMarker("presentPass");
             rs->beginRenderPass(info);
             auto* frameData = getFrameData(frameIndex);
-            rs->bindPipeline(presentHandle, pipelineHandle,
+            rs->bindPipeline(pipelineHandle,
                 &frameData->zeroDescrSetOfPresentPass, 1);
             rs->draw(3, 0);
             rs->endRenderPass(info);

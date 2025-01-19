@@ -9,6 +9,7 @@ namespace Ogre
     struct AccelerationStructure
     {
         Handle<HwBufferObject> asBufferHandle;
+        Handle<HwBufferObject> instanceDescBuffer;
     };
 
 

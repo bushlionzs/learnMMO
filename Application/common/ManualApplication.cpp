@@ -117,6 +117,7 @@ void ManualApplication::run(AppInfo& info)
 	info.setup(mRenderSystem, mRenderWindow, mSceneManager, mGameCamera);
 	MSG msg;
 	mRenderSystem->ready();
+	printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 	while (true)
 	{
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -308,7 +309,7 @@ void ManualApplication::addUIPass()
 		Handle<HwDescriptorSet> descriptorSet[2];
 		descriptorSet[0] = resourceInfo->zeroSet;
 		descriptorSet[1] = resourceInfo->firstSet;
-		rs->bindPipeline(programHandle, piplineHandle, descriptorSet, 2);
+		rs->bindPipeline(piplineHandle, descriptorSet, 2);
 
 
 		VertexData* vertexData = r->getVertexData();
